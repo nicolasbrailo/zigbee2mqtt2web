@@ -95,7 +95,6 @@ class Lamp(Thing):
             self.turn_on()
 
     def broadcast_new_state(self):
-        print("Updated status for ", self.pretty_name, " = ", json.dumps(self.mqtt_status()))
         self.mqtt.send_message_to_thing(self.pretty_name, json.dumps(self.mqtt_status()))
 
 
@@ -136,7 +135,6 @@ class DimmableLamp(Lamp):
             self.brightness = int(int(msg['brightness']) / 255 * 100)
 
     def set_brightness(self, pct):
-        print("Dim lamp ", self.pretty_name, " b = ", pct, '%')
         if pct < 0 or pct > 100:
             raise Exception('Unexpected brightness %: {} (should be 0-100)'.format(pct))
 
@@ -159,10 +157,7 @@ class DimmableLamp(Lamp):
         if self.brightness is None:
             self.brightness = 0
 
-        print("Dim lamp ", self.pretty_name, " b = ", self.brightness, '%')
-        print("Dim lamp ", self.pretty_name, " b += ", int(direction * self.brightness_change_delta_pct), '%')
         new_brightness = self.brightness + int(direction * self.brightness_change_delta_pct)
-
         if new_brightness > 100:
             new_brightness = 100
         if new_brightness < 0:
@@ -229,7 +224,6 @@ flask_app = Flask(__name__)
 
 @flask_app.route('/webapp/<path:path>')
 def flask_endpoint_webapp_root(path):
-    print(path)
     return send_from_directory('webapp', path)
 
 
@@ -303,9 +297,5 @@ flask_app.run(host='0.0.0.0', port=2000, debug=True)
 
 print("STOPPING")
 mqtt.stop()
-print("CHAU")
-
-
-exit(0)
-
+print("EXIT")
 
