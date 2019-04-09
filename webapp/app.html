@@ -33,6 +33,14 @@
     margin: 0;
     padding: 0:
 }
+
+/*********************************/
+#networkstatus {
+}
+
+#networkstatus td {
+    border: 1px black solid;
+}
 </style>
 
 <script>
@@ -146,6 +154,7 @@ class Lamp {
                           .attr('id', element_id)
                           .css('display', 'none');
 
+        // TODO
         e.append($('<p>').text("HOLA MUNDO"));
 
         return e;
@@ -249,18 +258,31 @@ class ThingsApp {
 
         return things;
     }
+
+    build_lamps_ui(lamps_list_element_id) {
+        $.each(this.lamps, function(_, lamp) {
+            console.log("Created lamp ", lamp);
+            $(lamps_list_element_id).append(lamp.get_list_item_ctrl());
+        });
+    }
+
+    build_network_status_ui(netstatus_table_id) {
+        $.each(this.things, function(name, thing) {
+            console.log(name, thing);
+            var row = $('<tr>').append($('<td>').text(name))
+                               .append($('<td>').text(thing.status.link_quality || "Unknown"))
+                               .append($('<td>').text(thing.status.battery || "Unknown"));
+            $(netstatus_table_id + ' > tbody:last-child').append(row);
+        });
+    }
 }
 
 
 var things_app = new ThingsApp("http://127.0.0.1:2000/");
-
-
 $(document).ready(function(){
     $.when(things_app.ready).then(function() {
-        $.each(things_app.lamps, function(_, lamp) {
-            console.log("Created lamp ", lamp);
-            $('#lamps').append(lamp.get_list_item_ctrl());
-        });
+        things_app.build_lamps_ui('#lamps');
+        things_app.build_network_status_ui('#networkstatus');
     });
 });
 </script>
@@ -269,9 +291,18 @@ $(document).ready(function(){
 
 <body>
 
-Lamps
-<ul id="lamps">
-</ul>
+<h1>Lamps</h1>
+<ul id="lamps"></ul>
+
+<h1>Network status</h1>
+<table id="networkstatus">
+<tr>
+    <td>Thing</td>
+    <td>Link quality</td>
+    <td>Battery</td>
+</tr>
+</table>
+
 </body>
 
 </html>
