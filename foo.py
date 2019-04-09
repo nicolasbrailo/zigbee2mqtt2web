@@ -95,13 +95,15 @@ class Lamp(Thing):
             self.turn_on()
 
     def broadcast_new_state(self):
+        print("Updated status for ", self.pretty_name, " = ", json.dumps(self.mqtt_status()))
         self.mqtt.send_message_to_thing(self.pretty_name, json.dumps(self.mqtt_status()))
 
 
 class DimmableLamp(Lamp):
     def __init__(self, pretty_name, mqtt):
         super().__init__(pretty_name, mqtt)
-        self.brightness = None # 0-255
+        self.brightness = None # 0-100, mqtt => 0-255
+        self.brightness_change_delta_pct = 20
 
     def thing_types(self):
         s = super().thing_types()
@@ -116,13 +118,13 @@ class DimmableLamp(Lamp):
     def mqtt_status(self):
         s = super().mqtt_status()
         if self.brightness is not None:
-            s['brightness'] = self.brightness
+            s['brightness'] = int(self.brightness / 100.0 * 255)
         return s
 
     def json_status(self):
         s = super().json_status()
         if self.brightness is not None:
-            s['brightness'] = self.brightness / 255
+            s['brightness'] = self.brightness
         else:
             s['brightness'] = None
         return s
@@ -131,13 +133,14 @@ class DimmableLamp(Lamp):
         super().on_message(topic, msg)
 
         if 'brightness' in msg:
-            self.brightness = int(msg['brightness'])
+            self.brightness = int(int(msg['brightness']) / 255 * 100)
 
     def set_brightness(self, pct):
+        print("Dim lamp ", self.pretty_name, " b = ", pct, '%')
         if pct < 0 or pct > 100:
             raise Exception('Unexpected brightness %: {} (should be 0-100)'.format(pct))
 
-        self.brightness = int(255.0*pct/100)
+        self.brightness = pct
 
         if self.brightness == 0:
             self.turn_off(broadcast_update=False)
@@ -156,10 +159,12 @@ class DimmableLamp(Lamp):
         if self.brightness is None:
             self.brightness = 0
 
-        new_brightness = self.brightness + int(direction * 255 / 5)
+        print("Dim lamp ", self.pretty_name, " b = ", self.brightness, '%')
+        print("Dim lamp ", self.pretty_name, " b += ", int(direction * self.brightness_change_delta_pct), '%')
+        new_brightness = self.brightness + int(direction * self.brightness_change_delta_pct)
 
-        if new_brightness > 255:
-            new_brightness = 255
+        if new_brightness > 100:
+            new_brightness = 100
         if new_brightness < 0:
             new_brightness = 0
 

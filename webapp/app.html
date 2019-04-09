@@ -168,7 +168,7 @@ class Lamp {
                             .attr('id', element_id)
                             .attr('min', 0)
                             .attr('max', 100)
-                            .attr('value', (this.status.brightness*100));
+                            .attr('value', (this.status.brightness));
 
         var self = this;
         $(document).on('click', '#'+element_id, function(){ 

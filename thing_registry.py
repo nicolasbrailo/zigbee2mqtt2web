@@ -27,6 +27,9 @@ class MqttProxy(object):
             print("Connected to MQTT broker with result code "+str(rc))
             client.subscribe("#")
 
+        def on_unsubscribe(client, userdata, msg_id):
+            client.disconnect()
+
         self.mqtt_ip = mqtt_ip
         self.mqtt_port = mqtt_port
         self.mqtt_topic_prefix = mqtt_topic_prefix
@@ -35,6 +38,7 @@ class MqttProxy(object):
 
         self.client = mqtt.Client()
         self.client.on_connect = on_connect
+        self.client.on_unsubscribe = on_unsubscribe
         self.client.on_message = self._on_mqtt_message
         self.client.connect(mqtt_ip, mqtt_port, 10)
 
@@ -49,7 +53,7 @@ class MqttProxy(object):
         self.client.loop_forever()
 
     def stop(self):
-        self.client.disconnect()
+        self.client.unsubscribe('#')
         self.bg_thread.join()
 
     def _on_mqtt_message(self, _, _2, msg):
@@ -75,6 +79,9 @@ class MqttProxy(object):
             return
 
         try:
+            # TODO: Repeated msgs -> Close subscription before disconnect?
+            #print(msg.timestamp)
+            #print(msg.timestamp, "Call thing msg", msg.payload)
             self.message_handler.on_thing_message(thing_id, msg.topic, parsed_msg)
         except Exception as ex:
             print('Found error while handling MQTT message: {}'.format(str(ex)))
