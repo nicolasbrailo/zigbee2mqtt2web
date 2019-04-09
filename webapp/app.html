@@ -113,7 +113,8 @@ class Lamp {
         return $('<li class="lamp_li">')
                         .append(this._onoff_small_ctrl() || "")
                         .append(this._open_panel_ctrl())
-                        .append(this._brightness_small_ctrl() || "");
+                        .append(this._brightness_small_ctrl() || "")
+                        .append(this._detailed_panel_ctrl() || "");
     }
 
     _open_panel_ctrl() {
@@ -127,8 +128,25 @@ class Lamp {
 
         var self = this;
         $(document).on('click', '#'+element_id, function(){ 
-            console.log("HOLA ", self.name);
+            $('#' + self._get_id_detailed_panel_ctrl()).toggle();
         });
+
+        return e;
+    }
+
+    _get_id_detailed_panel_ctrl() {
+        return 'lamp_detailed_panel_ctrl' + this.html_id;
+    }
+
+    _detailed_panel_ctrl() {
+        var class_name = 'lamp_detailed_panel_ctrl';
+        var element_id = this._get_id_detailed_panel_ctrl();
+        this.id_detailed_panel_ctrl = element_id;
+        var e = $('<div>').attr('class', class_name)
+                          .attr('id', element_id)
+                          .css('display', 'none');
+
+        e.append($('<p>').text("HOLA MUNDO"));
 
         return e;
     }
