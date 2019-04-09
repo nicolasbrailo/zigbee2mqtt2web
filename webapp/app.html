@@ -38,10 +38,44 @@ var wget = function(url) {
 }
 
 class Lamp {
-    constructor(name, supported_actions, status) {
+    constructor(things_server_url, name, supported_actions, status) {
+        this.action_base_url = things_server_url + 'things/' + name;
         this.name = name;
+        // HTML ids can't contain whitespaces
+        this.html_id = name.split(' ').join('_');
         this.supported_actions = supported_actions;
         this.status = status;
+
+        this.id_onoff_small_ctrl = null;
+        this.id_brightness_small_ctrl = null;
+    }
+
+    should_be_on(should_be_on) {
+        this._request_action(((should_be_on)? '/turn_on' : '/turn_off'));
+    }
+
+    set_brightness(brightness_pct) {
+        this._request_action('/set_brightness/' + brightness_pct);
+    }
+
+    update_status(new_status) {
+        console.log(this.name, new_status);
+
+        if (this.id_onoff_small_ctrl) {
+            $('#'+this.id_onoff_small_ctrl).prop('checked', new_status.is_on);
+        }
+
+        if (this.id_brightness_small_ctrl) {
+            $('#'+this.id_onoff_small_ctrl).val(new_status.brightness * 100);
+        }
+    }
+
+    _request_action(action_url) {
+        var url = this.action_base_url + action_url
+        var self = this;
+        $.when(wget(url)).then(function(thing_status) {
+            self.update_status(thing_status);
+        });
     }
 
     get_list_item_ctrl() {
@@ -50,15 +84,26 @@ class Lamp {
         return $('<li>').append(ctrl1).append(this.name).append(ctrl2);
     }
 
-
     onoff_small_ctrl() {
         if (! this.supported_actions.includes('turn_on')) {
             return null;
         }
 
-        return $('<input>').attr('type', 'checkbox')
-                           .attr('class', 'lamp_ison_checkbox')
-                           .attr('checked', this.status.is_on);
+        var class_name = 'lamp_is_on_checkbox';
+        var element_id = class_name + this.html_id;
+        this.id_onoff_small_ctrl = element_id;
+        var e = $('<input>').attr('type', 'checkbox')
+                            .attr('class', class_name)
+                            .attr('id', element_id)
+                            .attr('checked', this.status.is_on);
+
+        var self = this;
+        $(document).on('click', '#'+element_id, function(){ 
+            var state_on = $('#'+element_id).is(':checked');
+            self.should_be_on(state_on); 
+        });
+
+        return e;
     }
 
     brightness_small_ctrl() {
@@ -66,17 +111,29 @@ class Lamp {
             return null;
         }
 
-        return $('<input>').attr('type', 'range')
-                           .attr('min', 0)
-                           .attr('max', 100)
-                           .attr('value', (this.status.brightness*100))
-                           .attr('class', 'lamp_brightness_slider');
+        var class_name = 'lamp_set_brightness_slider';
+        var element_id = class_name + this.html_id;
+        this.id_brightness_small_ctrl = element_id;
+        var e = $('<input>').attr('type', 'range')
+                            .attr('class', class_name)
+                            .attr('id', element_id)
+                            .attr('min', 0)
+                            .attr('max', 100)
+                            .attr('value', (this.status.brightness*100));
+
+        var self = this;
+        $(document).on('click', '#'+element_id, function(){ 
+            var brightness_pct = $('#'+element_id).val();
+            self.set_brightness(brightness_pct); 
+        });
+
+        return e;
     }
 }
 
 class ThingsApp {
-    constructor() {
-        this.base_url = "http://127.0.0.1:2000/";
+    constructor(base_url) {
+        this.base_url = base_url;
         this.things = [];
         this.unknown_things= [];
 
@@ -98,7 +155,7 @@ class ThingsApp {
             self.lamps = [];
             var lamps = self.get_things_of_type('lamp');
             for (var name in lamps) {
-                self.lamps.push(new Lamp(name,
+                self.lamps.push(new Lamp(self.base_url, name,
                                          lamps[name].supported_actions,
                                          lamps[name].status))
             }
@@ -128,7 +185,7 @@ class ThingsApp {
 }
 
 
-var things_app = new ThingsApp();
+var things_app = new ThingsApp("http://127.0.0.1:2000/");
 
 
 $(document).ready(function(){

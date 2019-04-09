@@ -209,6 +209,26 @@ def flask_endpoint_get_world_status():
     return json.dumps(actions)
 
 
+# Actions
+
+@flask_app.route('/things/<name_or_id>/turn_on')
+def flask_endpoint_things_turn_on(name_or_id):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.turn_on()
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/turn_off')
+def flask_endpoint_things_turn_off(name_or_id):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.turn_off()
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/set_brightness/<brightness>')
+def flask_endpoint_things_set_brightness(name_or_id, brightness):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.set_brightness(int(brightness))
+    return json.dumps(obj.json_status())
+
 
 
 @flask_app.route('/things/<name_or_id>/status')
