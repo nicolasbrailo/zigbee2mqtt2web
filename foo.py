@@ -20,10 +20,8 @@ class Thing(object):
         return {'link_quality': self.link_quality}
         
     def on_message(self, topic, msg):
-        try:
+        if 'linkquality' in msg:
             self.link_quality = msg['linkquality']
-        except KeyError:
-            print('Warning: {} doesn\'t support link_quality'.format(self.pretty_name))
 
 
 class BatteryPoweredThing(Thing):
@@ -42,17 +40,13 @@ class BatteryPoweredThing(Thing):
         return s
         
     def on_message(self, topic, msg):
-        try:
+        if 'battery' in msg:
             self.battery_level = msg['battery']
-        except KeyError:
-            print('Warning: {} doesn\'t support battery'.format(self.pretty_name))
 
-
-class DimmableLamp(Thing):
+class Lamp(Thing):
     def __init__(self, pretty_name, mqtt):
         super().__init__(pretty_name)
         self.is_on = None
-        self.brightness = None # 0-255
         self.mqtt = mqtt
 
     def thing_types(self):
@@ -62,36 +56,34 @@ class DimmableLamp(Thing):
 
     def supported_actions(self):
         s = super().supported_actions()
-        s.extend(['turn_on', 'turn_off', 'toggle', 'set_brightness', 'brightness_up', 'brightness_down'])
+        s.extend(['turn_on', 'turn_off', 'toggle'])
         return s
 
     def json_status(self):
         s = super().json_status()
-        s.update({'is_on': self.is_on, 'brightness': self.brightness})
-        if self.brightness is not None:
-            s['brightness'] = self.brightness / 255
+        s['is_on'] = self.is_on
         return s
+
+    def mqtt_status(self):
+        return {'state': 'ON' if self.is_on else 'OFF'}
 
     def on_message(self, topic, msg):
         super().on_message(topic, msg)
+
         if topic.lower().endswith('/config'):
-            # Received thing config when 1st connecting. No use for it so far:
+            # Received tconfig when 1st connecting. No use for it so far:
             # since everything is setup by hand the capabilities of each device
             # are already known
             self.config = msg
-        else:
-            self.is_on = (msg['state'] == 'ON')
-            self.brightness = int(msg['brightness'])
-            print(topic)
-            print(msg)
-            print("XXXXXXXXXXXXXXXXX")
-            print("XXXXXXXXXXXXXXXXX")
 
-    def turn_on(self):
+        if 'state' in msg:
+            self.is_on = (msg['state'] == 'ON')
+
+    def turn_on(self, broadcast_update=True):
         self.is_on = True
         self.broadcast_new_state()
 
-    def turn_off(self):
+    def turn_off(self, broadcast_update=True):
         self.is_on = False
         self.broadcast_new_state()
 
@@ -102,12 +94,56 @@ class DimmableLamp(Thing):
             # If is_on was None (unknown) assume it was off
             self.turn_on()
 
+    def broadcast_new_state(self):
+        self.mqtt.send_message_to_thing(self.pretty_name, json.dumps(self.mqtt_status()))
+
+
+class DimmableLamp(Lamp):
+    def __init__(self, pretty_name, mqtt):
+        super().__init__(pretty_name, mqtt)
+        self.brightness = None # 0-255
+
+    def thing_types(self):
+        s = super().thing_types()
+        s.extend(['dimmable'])
+        return s
+
+    def supported_actions(self):
+        s = super().supported_actions()
+        s.extend(['set_brightness', 'brightness_up', 'brightness_down'])
+        return s
+
+    def mqtt_status(self):
+        s = super().mqtt_status()
+        if self.brightness is not None:
+            s['brightness'] = self.brightness
+        return s
+
+    def json_status(self):
+        s = super().json_status()
+        if self.brightness is not None:
+            s['brightness'] = self.brightness / 255
+        else:
+            s['brightness'] = None
+        return s
+
+    def on_message(self, topic, msg):
+        super().on_message(topic, msg)
+
+        if 'brightness' in msg:
+            self.brightness = int(msg['brightness'])
+
     def set_brightness(self, pct):
         if pct < 0 or pct > 100:
             raise Exception('Unexpected brightness %: {} (should be 0-100)'.format(pct))
 
-        self.brightness = 255.0*pct/100
-        self.is_on = (self.brightness > 0)
+        self.brightness = int(255.0*pct/100)
+
+        if self.brightness == 0:
+            self.turn_off(broadcast_update=False)
+        else:
+            self.turn_on(broadcast_update=False)
+
         self.broadcast_new_state()
 
     def brightness_up(self):
@@ -119,21 +155,16 @@ class DimmableLamp(Thing):
     def _chg_brightness(self, direction):
         if self.brightness is None:
             self.brightness = 0
-        self.brightness += int(direction * 255 / 5)
-        if self.brightness >= 255:
-            self.brightness = 255
-        if self.brightness <= 0:
-            self.brightness = 0
-        self.is_on = (self.brightness > 0)
 
-        self.broadcast_new_state()
+        new_brightness = self.brightness + int(direction * 255 / 5)
 
-    def broadcast_new_state(self):
-        state = 'ON' if self.is_on else 'OFF'
-        msg = '"state":"{}"'.format(state)
-        if self.brightness is not None:
-            msg += ',"brightness":{}'.format(self.brightness)
-        self.mqtt.send_message_to_thing(self.pretty_name, '{{{}}}'.format(msg))
+        if new_brightness > 255:
+            new_brightness = 255
+        if new_brightness < 0:
+            new_brightness = 0
+
+        self.set_brightness(new_brightness)
+
 
 class Buttons(BatteryPoweredThing):
     def __init__(self, pretty_name, btn1, btn2):
@@ -148,6 +179,14 @@ class Buttons(BatteryPoweredThing):
 
     def on_message(self, topic, msg):
         super().on_message(topic, msg)
+
+        if topic.lower().endswith('/config'):
+            # Received thing config when 1st connecting. No use for it so far:
+            # since everything is setup by hand the capabilities of each device
+            # are already known
+            self.config = msg
+            return
+
         if msg['action'] == 'arrow_right_click':
             self.btn1.brightness_up()
         if msg['action'] == 'arrow_left_click':
@@ -189,6 +228,7 @@ def flask_endpoint_webapp_root(path):
     return send_from_directory('webapp', path)
 
 
+# Registry status actions
 
 @flask_app.route('/things/all_known_things')
 def flask_endpoint_known_things():
@@ -209,7 +249,7 @@ def flask_endpoint_get_world_status():
     return json.dumps(actions)
 
 
-# Actions
+# Thing actions
 
 @flask_app.route('/things/<name_or_id>/turn_on')
 def flask_endpoint_things_turn_on(name_or_id):
@@ -229,29 +269,30 @@ def flask_endpoint_things_set_brightness(name_or_id, brightness):
     obj.set_brightness(int(brightness))
     return json.dumps(obj.json_status())
 
-
-
 @flask_app.route('/things/<name_or_id>/status')
 def flask_endpoint_things_status(name_or_id):
     return json.dumps(thing_registry.get_by_name_or_id(name_or_id).json_status())
 
-@flask_app.route('/things/<name_or_id>/toggle')
-def flask_endpoint_things_toggle(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.toggle()
-    return json.dumps(obj.json_status())
 
-@flask_app.route('/things/<name_or_id>/brightness_down')
-def flask_endpoint_things_brightness_down(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.brightness_down()
-    return json.dumps(obj.json_status())
 
-@flask_app.route('/things/<name_or_id>/brightness_up')
-def flask_endpoint_things_brightness_up(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.brightness_up()
-    return json.dumps(obj.json_status())
+ 
+# @flask_app.route('/things/<name_or_id>/toggle')
+# def flask_endpoint_things_toggle(name_or_id):
+#     obj = thing_registry.get_by_name_or_id(name_or_id)
+#     obj.toggle()
+#     return json.dumps(obj.json_status())
+# 
+# @flask_app.route('/things/<name_or_id>/brightness_down')
+# def flask_endpoint_things_brightness_down(name_or_id):
+#     obj = thing_registry.get_by_name_or_id(name_or_id)
+#     obj.brightness_down()
+#     return json.dumps(obj.json_status())
+# 
+# @flask_app.route('/things/<name_or_id>/brightness_up')
+# def flask_endpoint_things_brightness_up(name_or_id):
+#     obj = thing_registry.get_by_name_or_id(name_or_id)
+#     obj.brightness_up()
+#     return json.dumps(obj.json_status())
 
 flask_app.run(host='0.0.0.0', port=2000, debug=True)
 

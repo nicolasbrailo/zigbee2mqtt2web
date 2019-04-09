@@ -31,6 +31,7 @@ class MqttProxy(object):
         self.mqtt_port = mqtt_port
         self.mqtt_topic_prefix = mqtt_topic_prefix
         self.message_handler = MqttProxy.DummyHandler()
+        self.ignore_topics = ['zigbee2mqtt/bridge/state', 'zigbee2mqtt/bridge/config']
 
         self.client = mqtt.Client()
         self.client.on_connect = on_connect
@@ -54,7 +55,10 @@ class MqttProxy(object):
     def _on_mqtt_message(self, _, _2, msg):
         # Try to guess a thing ID from the topic
         if msg.topic.find(self.TOPIC_DELIM + self.THING_ID_PREFIX) == -1:
-            return self.message_handler.on_unknown_message(msg.topic, msg.payload)
+            if msg.topic in self.ignore_topics:
+                return
+            else:
+                return self.message_handler.on_unknown_message(msg.topic, msg.payload)
 
         id_start = msg.topic.find(self.TOPIC_DELIM + self.THING_ID_PREFIX) \
                         + len(self.TOPIC_DELIM)
@@ -66,7 +70,8 @@ class MqttProxy(object):
         try:
             parsed_msg = json.loads(msg.payload.decode('utf-8'))
         except Exception as ex:
-            print('Error decoding mqtt message from json')
+            print('Error decoding mqtt message from json in channel {}: {}'.\
+                    format(msg.topic, msg.payload))
             return
 
         try:

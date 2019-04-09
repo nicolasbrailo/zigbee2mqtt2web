@@ -4,6 +4,37 @@
     <meta charset="UTF-8">
     <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
 
+<style>
+.lamp_li {
+    list-style-type: none;
+    border: 1px black solid;
+    width: 350px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.lamp_is_on_checkbox {
+    width: 40px;
+    margin: 0;
+    padding: 0:
+}
+
+.lamp_open_panel_ctrl {
+    text-decoration: none;
+    display: inline-block;
+    width: 150px;
+    margin: 0;
+    padding: 0:
+}
+
+.lamp_set_brightness_slider {
+    vertical-align:middle;
+    width: 150px;
+    margin: 0;
+    padding: 0:
+}
+</style>
+
 <script>
 JSON.stringify = JSON.stringify || function (obj) {
     var t = typeof (obj);
@@ -59,7 +90,7 @@ class Lamp {
     }
 
     update_status(new_status) {
-        console.log(this.name, new_status);
+        console.log("Update lamp status: ", this.name, new_status);
 
         if (this.id_onoff_small_ctrl) {
             $('#'+this.id_onoff_small_ctrl).prop('checked', new_status.is_on);
@@ -79,12 +110,30 @@ class Lamp {
     }
 
     get_list_item_ctrl() {
-        var ctrl1 =  this.onoff_small_ctrl() || "";
-        var ctrl2 = this.brightness_small_ctrl() || "";
-        return $('<li>').append(ctrl1).append(this.name).append(ctrl2);
+        return $('<li class="lamp_li">')
+                        .append(this._onoff_small_ctrl() || "")
+                        .append(this._open_panel_ctrl())
+                        .append(this._brightness_small_ctrl() || "");
     }
 
-    onoff_small_ctrl() {
+    _open_panel_ctrl() {
+        var class_name = 'lamp_open_panel_ctrl';
+        var element_id = class_name + this.html_id;
+        this.id_open_panel_ctrl = element_id;
+        var e = $('<a>').text(this.name)
+                        .attr('class', class_name)
+                        .attr('id', element_id)
+                        .attr('href', '#');
+
+        var self = this;
+        $(document).on('click', '#'+element_id, function(){ 
+            console.log("HOLA ", self.name);
+        });
+
+        return e;
+    }
+
+    _onoff_small_ctrl() {
         if (! this.supported_actions.includes('turn_on')) {
             return null;
         }
@@ -106,7 +155,7 @@ class Lamp {
         return e;
     }
 
-    brightness_small_ctrl() {
+    _brightness_small_ctrl() {
         if (! this.supported_actions.includes('set_brightness')) {
             return null;
         }
@@ -191,7 +240,7 @@ var things_app = new ThingsApp("http://127.0.0.1:2000/");
 $(document).ready(function(){
     $.when(things_app.ready).then(function() {
         $.each(things_app.lamps, function(_, lamp) {
-            console.log(lamp);
+            console.log("Created lamp ", lamp);
             $('#lamps').append(lamp.get_list_item_ctrl());
         });
     });
