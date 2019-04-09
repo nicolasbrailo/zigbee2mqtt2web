@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+<script>
+JSON.stringify = JSON.stringify || function (obj) {
+    var t = typeof (obj);
+    if (t != "object" || obj === null) {
+        // simple data type
+        if (t == "string") obj = '"'+obj+'"';
+        return String(obj);
+    }
+    else {
+        // recurse array or object
+        var n, v, json = [], arr = (obj && obj.constructor == Array);
+        for (n in obj) {
+            v = obj[n]; t = typeof(v);
+            if (t == "string") v = '"'+v+'"';
+            else if (t == "object" && v !== null) v = JSON.stringify(v);
+            json.push((arr ? "" : '"' + n + '":') + String(v));
+        }
+        return (arr ? "[" : "{") + String(json) + (arr ? "]" : "}");
+    }
+};
+
+var wget = function(url) {
+    var d = $.Deferred();
+    $.ajax({
+      type: 'GET',
+      dataType: 'json',
+      url: url,
+      success: function(msg){ d.resolve(msg); },
+      error: function(request, server_status, error){ d.resolve(null); },
+    });
+    return d;
+}
+
+class Lamp {
+    constructor(name, supported_actions, status) {
+        this.name = name;
+        this.supported_actions = supported_actions;
+        this.status = status;
+    }
+
+    get_list_item_ctrl() {
+        var ctrl1 =  this.onoff_small_ctrl() || "";
+        var ctrl2 = this.brightness_small_ctrl() || "";
+        return $('<li>').append(ctrl1).append(this.name).append(ctrl2);
+    }
+
+
+    onoff_small_ctrl() {
+        if (! this.supported_actions.includes('turn_on')) {
+            return null;
+        }
+
+        return $('<input>').attr('type', 'checkbox')
+                           .attr('class', 'lamp_ison_checkbox')
+                           .attr('checked', this.status.is_on);
+    }
+
+    brightness_small_ctrl() {
+        if (! this.supported_actions.includes('set_brightness')) {
+            return null;
+        }
+
+        return $('<input>').attr('type', 'range')
+                           .attr('min', 0)
+                           .attr('max', 100)
+                           .attr('value', (this.status.brightness*100))
+                           .attr('class', 'lamp_brightness_slider');
+    }
+}
+
+class ThingsApp {
+    constructor() {
+        this.base_url = "http://127.0.0.1:2000/";
+        this.things = [];
+        this.unknown_things= [];
+
+        this.ready = $.Deferred();
+        this.things_ready = $.Deferred();
+        this.unknown_things_ready = $.Deferred();
+
+        var self = this;
+
+        $.when(self.things_ready).then(function(){
+            $.when(self.unknown_things_ready).then(function(){
+                self.ready.resolve();
+            });
+        });
+
+        $.when(wget(this.base_url + "things/get_world_status")).then(function(things) {
+            self.things = things;
+
+            self.lamps = [];
+            var lamps = self.get_things_of_type('lamp');
+            for (var name in lamps) {
+                self.lamps.push(new Lamp(name,
+                                         lamps[name].supported_actions,
+                                         lamps[name].status))
+            }
+
+            self.things_ready.resolve();
+        });
+
+        $.when(wget(this.base_url + "things/unknown_things")).then(function(things) {
+            self.unknown_things = things;
+            self.unknown_things_ready.resolve();
+        });
+    };
+
+    get_things_of_type(type_filter) {
+        if (!type_filter) return this.things;
+
+        var things = {}
+        for (var thing_name in this.things) {
+            var thing = this.things[thing_name];
+            if (thing.thing_types.includes(type_filter)) {
+                things[thing_name] = thing;
+            }
+        }
+
+        return things;
+    }
+}
+
+
+var things_app = new ThingsApp();
+
+
+$(document).ready(function(){
+    $.when(things_app.ready).then(function() {
+        $.each(things_app.lamps, function(_, lamp) {
+            console.log(lamp);
+            $('#lamps').append(lamp.get_list_item_ctrl());
+        });
+    });
+});
+</script>
+
+</head>
+
+<body>
+
+Lamps
+<ul id="lamps">
+</ul>
+</body>
+
+</html>
+
