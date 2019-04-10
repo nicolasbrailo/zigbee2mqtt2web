@@ -37,13 +37,20 @@
 }
 
 .lamp_set_brightness_slider {
-    /* !important overrides bootstrap styles */
-    vertical-align:middle !important;
-    width: calc(100% - 200px) !important;
-    display: inline-block !important;
-    float: right;
     margin: 0;
     padding: 0:
+}
+
+@media (min-width: 600px) {
+    /* Big screens: show brightness slider inline. Small screens: show slider
+       in own line, to give user more space */
+    .lamp_set_brightness_slider {
+        /* !important overrides bootstrap styles */
+        vertical-align:middle !important;
+        width: calc(100% - 200px) !important;
+        display: inline-block !important;
+        float: right;
+    }
 }
 
 /*********************************/
