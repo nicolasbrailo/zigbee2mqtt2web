@@ -2,13 +2,23 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
 
+    <!-- https://getbootstrap.com/docs/3.4/customize/ -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/bootstrap-theme.min.css">
+
 <style>
+#lamps {
+    margin: 0px;
+    padding: 0px;
+}
+
 .lamp_li {
     list-style-type: none;
     border: 1px black solid;
-    width: 350px;
+    width: 100%;
     padding-top: 6px;
     padding-bottom: 6px;
 }
@@ -20,21 +30,24 @@
 }
 
 .lamp_open_panel_ctrl {
-    text-decoration: none;
-    display: inline-block;
+    /*display: inline-block;*/
     width: 150px;
     margin: 0;
     padding: 0:
 }
 
 .lamp_set_brightness_slider {
-    vertical-align:middle;
-    width: 150px;
+    /* !important overrides bootstrap styles */
+    vertical-align:middle !important;
+    width: calc(100% - 200px) !important;
+    display: inline-block !important;
+    float: right;
     margin: 0;
     padding: 0:
 }
 
 /*********************************/
+
 #networkstatus {
 }
 
@@ -190,20 +203,26 @@ class Lamp {
         var class_name = 'lamp_set_brightness_slider';
         var element_id = class_name + this.html_id;
         this.id_brightness_small_ctrl = element_id;
-        var e = $('<input>').attr('type', 'range')
-                            .attr('class', class_name)
-                            .attr('id', element_id)
-                            .attr('min', 0)
-                            .attr('max', 100)
-                            .attr('value', (this.status.brightness));
+
+
+        var slider = $('<input>').attr('type', 'range')
+                                 .attr('class', class_name + ' form-control-range')
+                                 .attr('id', element_id)
+                                 .attr('min', 0)
+                                 .attr('max', 100)
+                                 .attr('value', (this.status.brightness));
 
         var self = this;
-        $(document).on('click', '#'+element_id, function(){ 
+        var cb = function(){ 
             var brightness_pct = $('#'+element_id).val();
             self.set_brightness(brightness_pct); 
-        });
+        }
 
-        return e;
+        // Click for browsers, touchend for mobile
+        $(document).on('click', '#'+element_id, cb);
+        $(document).on('touchend', '#'+element_id, cb);
+
+        return slider;
     }
 }
 
@@ -277,7 +296,8 @@ class ThingsApp {
 }
 
 
-var things_app = new ThingsApp("http://127.0.0.1:2000/");
+//var things_app = new ThingsApp("http://127.0.0.1:2000/");
+var things_app = new ThingsApp("/");
 $(document).ready(function(){
     $.when(things_app.ready).then(function() {
         things_app.build_lamps_ui('#lamps');
@@ -290,17 +310,19 @@ $(document).ready(function(){
 
 <body>
 
-<h1>Lamps</h1>
-<ul id="lamps"></ul>
+<div class="container-fluid">
+    <h2>Lamps</h2>
+    <ul id="lamps"></ul>
 
-<h1>Network status</h1>
-<table id="networkstatus">
-<tr>
-    <td>Thing</td>
-    <td>Link quality</td>
-    <td>Battery</td>
-</tr>
-</table>
+    <h2>Network status</h2>
+    <table id="networkstatus">
+    <tr>
+        <td>Thing</td>
+        <td>Link quality</td>
+        <td>Battery</td>
+    </tr>
+    </table>
+</div>
 
 </body>
 
