@@ -292,8 +292,15 @@ class ThingsApp {
         });
     }
 
-    build_network_status_ui(netstatus_table_id) {
-        $.each(this.things, function(name, thing) {
+    build_media_players_ui(ctrl_id) {
+        $.each(this.get_things_of_type('media_player'), function(name, thing) {
+            var row = $('<tr>').append($('<td>').text(name));
+            $(ctrl_id).append(row);
+        });
+    }
+
+    build_mqtt_network_status_ui(netstatus_table_id) {
+        $.each(this.get_things_of_type('mqtt'), function(name, thing) {
             var row = $('<tr>').append($('<td>').text(name))
                                .append($('<td>').text(thing.status.link_quality || "Unknown"))
                                .append($('<td>').text(thing.status.battery_level || "Unknown"));
@@ -308,7 +315,8 @@ var things_app = new ThingsApp("/");
 $(document).ready(function(){
     $.when(things_app.ready).then(function() {
         things_app.build_lamps_ui('#lamps');
-        things_app.build_network_status_ui('#networkstatus');
+        things_app.build_mqtt_network_status_ui('#networkstatus');
+        things_app.build_media_players_ui('#media_players');
     });
 });
 </script>
@@ -321,7 +329,14 @@ $(document).ready(function(){
     <h2>Lamps</h2>
     <ul id="lamps"></ul>
 
-    <h2>Network status</h2>
+    <h2>Media players</h2>
+    <table id="media_players">
+    <tr>
+        <td>Thing</td>
+    </tr>
+    </table>
+
+    <h2>MQTT Network status</h2>
     <table id="networkstatus">
     <tr>
         <td>Thing</td>

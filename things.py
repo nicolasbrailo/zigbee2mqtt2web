@@ -1,13 +1,12 @@
 import json
 
-class MqttThing(object):
-    def __init__(self, mqtt_id, pretty_name):
-        self.mqtt_id = mqtt_id
+class Thing(object):
+    def __init__(self, thing_id, pretty_name):
+        self.thing_id = thing_id
         self.pretty_name = pretty_name
-        self.link_quality = None
 
     def get_id(self):
-        return self.mqtt_id
+        return self.thing_id
 
     def get_pretty_name(self):
         return self.pretty_name
@@ -16,8 +15,23 @@ class MqttThing(object):
         return {'thing_types': self.thing_types(),
                 'supported_actions': self.supported_actions()}
 
+    def json_status(self):
+        raise Exception("Subclass responsibility")
+
     def thing_types(self):
-        return []
+        raise Exception("Subclass responsibility")
+
+    def supported_actions(self):
+        raise Exception("Subclass responsibility")
+
+
+class MqttThing(Thing):
+    def __init__(self, mqtt_id, pretty_name):
+        super().__init__(mqtt_id, pretty_name)
+        self.link_quality = None
+
+    def thing_types(self):
+        return ['mqtt']
 
     def supported_actions(self):
         return []

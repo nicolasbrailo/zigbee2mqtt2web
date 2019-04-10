@@ -1,7 +1,13 @@
 import json
 from thing_registry import ThingRegistry
 from mqtt_proxy import MqttProxy
-from things import Lamp, DimmableLamp, Button
+from things import Thing, Lamp, DimmableLamp, Button
+from thing_chromecast import ThingChromecast
+
+thing_registry = ThingRegistry()
+
+for cc in ThingChromecast.scan_network('192.168.2.101'):
+    thing_registry.register_thing(cc)
 
 class MyIkeaButton(Button):
     def __init__(self, mqtt_id, pretty_name, btn1, btn2):
@@ -25,7 +31,6 @@ class MyIkeaButton(Button):
             else:
                 self.btn2.set_brightness(20)
 
-thing_registry = ThingRegistry()
 mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', thing_registry)
 
 thing_registry.register_thing(DimmableLamp('0xd0cf5efffe30c9bd', 'DeskLamp', mqtt))
@@ -96,7 +101,63 @@ def flask_endpoint_things_status(name_or_id):
 
 
 
+## TODO: Move flask bindings to own object
+
+@flask_app.route('/things/<name_or_id>/play')
+def flask_endpoint_things_play(name_or_id):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.play()
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/pause')
+def flask_endpoint_things_pause(name_or_id):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.pause()
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/stop')
+def flask_endpoint_things_stop(name_or_id):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.stop()
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/mute')
+def flask_endpoint_things_mute(name_or_id):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.mute()
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/unmute')
+def flask_endpoint_things_unmute(name_or_id):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.unmute()
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/volume_up')
+def flask_endpoint_things_volume_up(name_or_id):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.volume_up()
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/volume_down')
+def flask_endpoint_things_volume_down(name_or_id):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.volume_down()
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/set_volume/<vol>')
+def flask_endpoint_things_set_volume(name_or_id, vol):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.set_volume(vol)
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/youtube/<video_id>')
+def flask_endpoint_things_youtube(name_or_id, video_id):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.youtube(video_id)
+    return json.dumps(obj.json_status())
  
+
 # @flask_app.route('/things/<name_or_id>/toggle')
 # def flask_endpoint_things_toggle(name_or_id):
 #     obj = thing_registry.get_by_name_or_id(name_or_id)
