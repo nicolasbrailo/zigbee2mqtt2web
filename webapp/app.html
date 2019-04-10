@@ -261,17 +261,16 @@ class ThingsApp {
 
     build_lamps_ui(lamps_list_element_id) {
         $.each(this.lamps, function(_, lamp) {
-            console.log("Created lamp ", lamp);
+            console.log("Discovered lamp ", lamp);
             $(lamps_list_element_id).append(lamp.get_list_item_ctrl());
         });
     }
 
     build_network_status_ui(netstatus_table_id) {
         $.each(this.things, function(name, thing) {
-            console.log(name, thing);
             var row = $('<tr>').append($('<td>').text(name))
                                .append($('<td>').text(thing.status.link_quality || "Unknown"))
-                               .append($('<td>').text(thing.status.battery || "Unknown"));
+                               .append($('<td>').text(thing.status.battery_level || "Unknown"));
             $(netstatus_table_id + ' > tbody:last-child').append(row);
         });
     }
