@@ -1,10 +1,11 @@
 import json
-from thing_registry import MqttProxy, ThingRegistry
-from things import Thing, BatteryPoweredThing, Lamp, DimmableLamp, Button
+from thing_registry import ThingRegistry
+from mqtt_proxy import MqttProxy
+from things import Lamp, DimmableLamp, Button
 
 class MyIkeaButton(Button):
-    def __init__(self, pretty_name, btn1, btn2):
-        super().__init__(pretty_name)
+    def __init__(self, mqtt_id, pretty_name, btn1, btn2):
+        super().__init__(mqtt_id, pretty_name)
         self.btn1 = btn1
         self.btn2 = btn2
 
@@ -24,17 +25,17 @@ class MyIkeaButton(Button):
             else:
                 self.btn2.set_brightness(20)
 
-mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/')
-thing_registry = ThingRegistry(mqtt)
-ll = DimmableLamp('Kitchen - Left', thing_registry)
-lr = DimmableLamp('Kitchen - Right', thing_registry)
+thing_registry = ThingRegistry()
+mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', thing_registry)
 
-thing_registry.register_thing('0xd0cf5efffe30c9bd', DimmableLamp('DeskLamp', thing_registry))
-thing_registry.register_thing('0x000d6ffffef34561', ll)
-thing_registry.register_thing('0x0017880104b8c734', lr)
-thing_registry.register_thing('0xd0cf5efffe7b6279', DimmableLamp('FloorLamp', thing_registry))
-thing_registry.register_thing('0x0017880104efbfdd', Button('HueButton'))
-thing_registry.register_thing('0xd0cf5efffeffac46', MyIkeaButton('IkeaButton', ll, lr))
+thing_registry.register_thing(DimmableLamp('0xd0cf5efffe30c9bd', 'DeskLamp', mqtt))
+thing_registry.register_thing(DimmableLamp('0x000d6ffffef34561', 'Kitchen - Left', mqtt))
+thing_registry.register_thing(DimmableLamp('0x0017880104b8c734', 'Kitchen - Right', mqtt))
+thing_registry.register_thing(DimmableLamp('0xd0cf5efffe7b6279', 'FloorLamp', mqtt))
+thing_registry.register_thing(Button(      '0x0017880104efbfdd', 'HueButton'))
+thing_registry.register_thing(MyIkeaButton('0xd0cf5efffeffac46', 'IkeaButton',
+                                           thing_registry.get_by_name_or_id('Kitchen - Left'),
+                                           thing_registry.get_by_name_or_id('Kitchen - Right')))
 
 mqtt.bg_run()
 

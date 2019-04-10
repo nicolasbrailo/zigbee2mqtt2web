@@ -1,9 +1,16 @@
 import json
 
-class Thing(object):
-    def __init__(self, pretty_name):
+class MqttThing(object):
+    def __init__(self, mqtt_id, pretty_name):
+        self.mqtt_id = mqtt_id
         self.pretty_name = pretty_name
         self.link_quality = None
+
+    def get_id(self):
+        return self.mqtt_id
+
+    def get_pretty_name(self):
+        return self.pretty_name
 
     def describe_capabilities(self):
         return {'thing_types': self.thing_types(),
@@ -18,14 +25,18 @@ class Thing(object):
     def json_status(self):
         return {'link_quality': self.link_quality}
         
-    def on_message(self, topic, msg):
+    def consume_message(self, topic, msg):
+        """ Return True if message was understood """
+
         if 'linkquality' in msg:
             self.link_quality = msg['linkquality']
+            return True
+        return False
 
 
-class BatteryPoweredThing(Thing):
-    def __init__(self, pretty_name):
-        super().__init__(pretty_name)
+class BatteryPoweredThing(MqttThing):
+    def __init__(self, mqtt_id, pretty_name):
+        super().__init__(mqtt_id, pretty_name)
         self.battery_level = None
 
     def thing_types(self):
@@ -38,16 +49,17 @@ class BatteryPoweredThing(Thing):
         s.update({'battery_level': self.battery_level})
         return s
         
-    def on_message(self, topic, msg):
-        super().on_message(topic, msg)
+    def consume_message(self, topic, msg):
+        x = super().consume_message(topic, msg)
         if 'battery' in msg:
             self.battery_level = msg['battery']
+        return x or 'battery' in msg
 
-class Lamp(Thing):
-    def __init__(self, pretty_name, mqtt):
-        super().__init__(pretty_name)
+class Lamp(MqttThing):
+    def __init__(self, mqtt_id, pretty_name, mqtt_broadcaster):
+        super().__init__(mqtt_id, pretty_name)
         self.is_on = None
-        self.mqtt = mqtt
+        self.mqtt_broadcaster = mqtt_broadcaster
 
     def thing_types(self):
         s = super().thing_types()
@@ -67,17 +79,21 @@ class Lamp(Thing):
     def mqtt_status(self):
         return {'state': 'ON' if self.is_on else 'OFF'}
 
-    def on_message(self, topic, msg):
-        super().on_message(topic, msg)
-
+    def consume_message(self, topic, msg):
         if topic.lower().endswith('/config'):
             # Received tconfig when 1st connecting. No use for it so far:
             # since everything is setup by hand the capabilities of each device
             # are already known
             self.config = msg
+            return True
+
+        s = super().consume_message(topic, msg)
 
         if 'state' in msg:
             self.is_on = (msg['state'] == 'ON')
+            return True
+
+        return s
 
     def turn_on(self, broadcast_update=True):
         self.is_on = True
@@ -95,13 +111,14 @@ class Lamp(Thing):
             self.turn_on()
 
     def broadcast_new_state(self):
-        self.mqtt.send_message_to_thing(self.pretty_name, json.dumps(self.mqtt_status()))
+        topic = self.get_id() + '/set'
+        self.mqtt_broadcaster.broadcast(topic, json.dumps(self.mqtt_status()))
 
 
 class DimmableLamp(Lamp):
-    def __init__(self, pretty_name, mqtt):
-        super().__init__(pretty_name, mqtt)
-        self.brightness = None # 0-100, mqtt => 0-255
+    def __init__(self, mqtt_id, pretty_name, mqtt_broadcaster):
+        super().__init__(mqtt_id, pretty_name, mqtt_broadcaster)
+        self.brightness = None # 0-100, phys => 0-255
         self.brightness_change_delta_pct = 20
 
     def thing_types(self):
@@ -128,11 +145,14 @@ class DimmableLamp(Lamp):
             s['brightness'] = None
         return s
 
-    def on_message(self, topic, msg):
-        super().on_message(topic, msg)
+    def consume_message(self, topic, msg):
+        s = super().consume_message(topic, msg)
 
         if 'brightness' in msg:
             self.brightness = int(int(msg['brightness']) / 255 * 100)
+            return True
+
+        return s
 
     def set_brightness(self, pct):
         if pct < 0 or pct > 100:
@@ -167,29 +187,29 @@ class DimmableLamp(Lamp):
 
 
 class Button(BatteryPoweredThing):
-    def __init__(self, pretty_name):
-        super().__init__(pretty_name)
+    def __init__(self, mqtt_id, pretty_name):
+        super().__init__(mqtt_id, pretty_name)
 
     def thing_types(self):
         s = super().thing_types()
         s.extend(['button'])
         return s
 
-    def on_message(self, topic, msg):
-        super().on_message(topic, msg)
-
+    def consume_message(self, topic, msg):
         if topic.lower().endswith('/config'):
             # Received thing config when 1st connecting. No use for it so far:
             # since everything is setup by hand the capabilities of each device
             # are already known
             self.config = msg
-            return
+            return True
+
+        s = super().consume_message(topic, msg)
 
         if 'action' in msg:
             self.handle_action(msg['action'], msg)
-            return
+            return True
 
-        print("RCV UNKNOWN BUTTON MSG: ", topic, msg)
+        return False
 
     def handle_action(self, action, msg):
         print(self.pretty_name, ": default handler for action ", action)
