@@ -1,0 +1,90 @@
+
+.media_player_ctrl {
+    border: 1px black solid;
+}
+
+.media_player_ctrl .media_icon {
+    float: left;
+    max-width: 80px;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    margin: 10px;
+    border-radius: 500px;
+}
+
+.media_player_ctrl .media_player_name {
+    margin: 0;
+}
+
+.media_player_ctrl .media_title {
+    margin: 0;
+}
+
+.media_player_ctrl .mini_control {
+    width: 100%;
+    clear: both;
+}
+
+.media_player_ctrl .mini_control .volumeslider {
+    width: calc(90% - 150px);
+    min-width: 150px;
+    display: inline-block;
+}
+
+.media_player_ctrl .mini_control input[type="checkbox"] {
+    display:none;
+}
+
+.media_player_ctrl .mini_control input[type="checkbox"] + label {
+    background:url('../media_player_icons/volume_unmuted.png') no-repeat scroll 0 0 transparent;
+    background-size: 100% 100%;
+    height: 50px;
+    width: 50px;
+    display: inline-block;
+    border: none;
+    margin: 0px;
+    padding: 0px;
+}
+
+.media_player_ctrl .mini_control input[type="checkbox"]:checked + label {
+    background:url('../media_player_icons/volume_muted.png') no-repeat scroll 0 0 transparent;
+    background-size: 100% 100%;
+    height: 50px;
+    width: 50px;
+    display: inline-block;
+    border: none;
+    margin: 0px;
+    padding: 0px;
+}
+
+.media_player_ctrl .control_button {
+    background-color: transparent;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+    font-size: 0px;
+    height: 50px;
+    width:  50px;
+    border: none;
+    margin: 0px;
+    padding: 0px;
+}
+
+.media_player_ctrl .btn_play { background-image: url(../media_player_icons/play.png); }
+.media_player_ctrl .btn_stop { background-image: url(../media_player_icons/stop.png); }
+.media_player_ctrl .btn_prev { background-image: url(../media_player_icons/prev.png); }
+.media_player_ctrl .btn_next { background-image: url(../media_player_icons/next.png); }
+
+.media_player_ctrl .extended_control {
+    clear: both;
+    width: 100%;
+}
+
+.media_player_ctrl .extended_control .timeslider {
+    width: calc(90% - 300px); /* slider width - width btns */
+    min-width: 150px;
+    display: inline-block;
+}
+
+

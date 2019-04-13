@@ -1,0 +1,39 @@
+
+.lamp_li {
+    list-style-type: none;
+    border: 1px black solid;
+    width: 100%;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.lamp_is_on_checkbox {
+    width: 40px;
+    margin: 0;
+    padding: 0:
+}
+
+.lamp_open_panel_ctrl {
+    /*display: inline-block;*/
+    width: 150px;
+    margin: 0;
+    padding: 0:
+}
+
+.lamp_set_brightness_slider {
+    margin: 0;
+    padding: 0:
+}
+
+@media (min-width: 600px) {
+    /* Big screens: show brightness slider inline. Small screens: show slider
+       in own line, to give user more space */
+    .lamp_set_brightness_slider {
+        /* !important overrides bootstrap styles */
+        vertical-align:middle !important;
+        width: calc(100% - 200px) !important;
+        display: inline-block !important;
+        float: right;
+    }
+}
+

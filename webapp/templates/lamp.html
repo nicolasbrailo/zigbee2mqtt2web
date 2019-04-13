@@ -1,7 +1,7 @@
 
 <li class="lamp_li">
     {{#if supports_onoff}}
-    <input type="checkbox" class="lamp_is_on_checkbox" id="lamp_is_on_checkbox{{id}}"
+    <input type="checkbox" class="lamp_is_on_checkbox" id="lamp_is_on_checkbox{{html_id}}"
                            {{#if is_on}}checked="checked"{{/if}} />
     {{/if}}
 
@@ -13,12 +13,12 @@
 
     {{#if supports_brightness}}
     <input type="range" class="lamp_set_brightness_slider form-control-range"
-                        id="lamp_set_brightness_slider{{id}}" min="0" max="100"
+                        id="lamp_set_brightness_slider{{html_id}}" min="0" max="100"
                                                                       value="{{brightness}}" />
     {{/if}}
 
     {{#if has_extended_cfg}}
-    <div class="lamp_detailed_panel_ctrl" id="lamp_detailed_panel_ctrl{{id}}" style="display: none;">
+    <div class="lamp_detailed_panel_ctrl" id="lamp_detailed_panel_ctrl{{html_id}}" style="display: none;">
         <p>HOLA MUNDO</p>
     </div>
     {{/if}}

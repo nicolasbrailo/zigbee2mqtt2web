@@ -1,32 +1,32 @@
 
-<div class="media_player_ctrl" id="media_player_{{player_id}}_ctrl">
-    <img class="media_icon" src="{{player.media.icon}}" />
-    <p class="media_player_name">{{player.name}} | {{player.app}} | {{player.media.player_state}}</p>
-    <p class="media_title">{{player.media.title}}</p>
+<div class="media_player_ctrl" id="media_player_{{html_id}}_ctrl">
+    <img class="media_icon" src="{{status.media.icon}}" />
+    <p class="media_player_name">{{status.name}} | {{status.app}} | {{status.media.player_state}}</p>
+    <p class="media_title">{{status.media.title}}</p>
     <div class="mini_control">
-        <button class="control_button btn_play" id="media_player_{{player_id}}_play">Play</button>
-        <button class="control_button btn_stop" id="media_player_{{player_id}}_stop">Stop</button>
+        <button class="control_button btn_play" id="media_player_{{html_id}}_play">Play</button>
+        <button class="control_button btn_stop" id="media_player_{{html_id}}_stop">Stop</button>
         <input type="checkbox"
-                id="media_player_{{player_id}}_mute" 
-                {{#if player.media.volume_muted}} checked {{/if}}
+                id="media_player_{{html_id}}_mute" 
+                {{#if status.media.volume_muted}} checked {{/if}}
             />
-            <label for="media_player_{{player_id}}_mute"></label>
+            <label for="media_player_{{html_id}}_mute"></label>
         <input type="range" class="volumeslider" min=0 max=100
-            id="media_player_{{player_id}}_volume"
-            value={{player.media.volume_level}} />
+            id="media_player_{{html_id}}_volume"
+            value={{status.media.volume_level}} />
     </div>
     <div class="extended_control">
         <button class="control_button btn_prev"
-            id="media_player_{{player_id}}_prev">Prev</button>
+            id="media_player_{{html_id}}_prev">Prev</button>
         <input type="range" class="timeslider" 
-                id="media_player_{{player_id}}_playtime"
-                min=0 max={{player.media.duration}}
-                value={{player.media.current_time}} />
-            <label for="media_player_{{player_id}}_playtime">
-                {{#media_player_formatSeconds player.media.duration}}{{/media_player_formatSeconds}}
+                id="media_player_{{html_id}}_playtime"
+                min=0 max={{status.media.duration}}
+                value={{status.media.current_time}} />
+            <label for="media_player_{{html_id}}_playtime">
+                {{#media_player_formatSeconds status.media.duration}}{{/media_player_formatSeconds}}
             </label>
         <button class="control_button btn_next"
-            id="media_player_{{player_id}}_next">Next</button>
+            id="media_player_{{html_id}}_next">Next</button>
     </div>
 </div>
 

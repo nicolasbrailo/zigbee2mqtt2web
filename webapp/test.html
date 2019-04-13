@@ -12,98 +12,6 @@
     <!-- Handlebars -->
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.1.1/handlebars.min.js"></script>
 
-<style>
-
-.media_player_ctrl {
-    border: 1px black solid;
-}
-
-.media_player_ctrl .media_icon {
-    float: left;
-    max-width: 80px;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    margin: 10px;
-    border-radius: 500px;
-}
-
-.media_player_ctrl .media_player_name {
-    margin: 0;
-}
-
-.media_player_ctrl .media_title {
-    margin: 0;
-}
-
-.media_player_ctrl .mini_control {
-    width: 100%;
-    clear: both;
-}
-
-.media_player_ctrl .mini_control .volumeslider {
-    width: calc(90% - 150px);
-    min-width: 150px;
-    display: inline-block;
-}
-
-.media_player_ctrl .mini_control input[type="checkbox"] {
-    display:none;
-}
-
-.media_player_ctrl .mini_control input[type="checkbox"] + label {
-    background:url('media_player_icons/volume_unmuted.png') no-repeat scroll 0 0 transparent;
-    background-size: 100% 100%;
-    height: 50px;
-    width: 50px;
-    display: inline-block;
-    border: none;
-    margin: 0px;
-    padding: 0px;
-}
-
-.media_player_ctrl .mini_control input[type="checkbox"]:checked + label {
-    background:url('media_player_icons/volume_muted.png') no-repeat scroll 0 0 transparent;
-    background-size: 100% 100%;
-    height: 50px;
-    width: 50px;
-    display: inline-block;
-    border: none;
-    margin: 0px;
-    padding: 0px;
-}
-
-.media_player_ctrl .control_button {
-    background-color: transparent;
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
-    background-position: 50% 50%;
-    font-size: 0px;
-    height: 50px;
-    width:  50px;
-    border: none;
-    margin: 0px;
-    padding: 0px;
-}
-
-.media_player_ctrl .btn_play { background-image: url(media_player_icons/play.png); }
-.media_player_ctrl .btn_stop { background-image: url(media_player_icons/stop.png); }
-.media_player_ctrl .btn_prev { background-image: url(media_player_icons/prev.png); }
-.media_player_ctrl .btn_next { background-image: url(media_player_icons/next.png); }
-
-.media_player_ctrl .extended_control {
-    clear: both;
-    width: 100%;
-}
-
-.media_player_ctrl .extended_control .timeslider {
-    width: calc(90% - 300px); /* slider width - width btns */
-    min-width: 150px;
-    display: inline-block;
-}
-
-
-</style>
 
 <script>
 var wget = function(url) {
@@ -161,6 +69,18 @@ class ThingsApp {
 
         return things;
     }
+
+    get_mapped_things(type_filter, map_class) {
+        var things = this.get_things_of_type(type_filter);
+        var mapped_things = [];
+        for (name in things) {
+            mapped_things.push(new map_class(this.base_url, name,
+                                         things[name].supported_actions,
+                                         things[name].status))
+        }
+
+        return mapped_things;
+    }
 }
 
 
@@ -188,12 +108,36 @@ class TemplatedThing {
     }
 
     constructor(things_server_url, name, supported_actions, status) {
+        var klass = Object.getPrototypeOf(this).constructor;
+        if (klass.template_ready.state() != 'resolved') {
+            console.error("Template system not initialized");
+        }
+
         this.action_base_url = things_server_url + 'things/' + name;
         this.name = name;
         // HTML ids can't contain whitespaces
         this.html_id = name.split(' ').join('_');
         this.supported_actions = supported_actions;
         this.update_status(status);
+
+        console.log("Created thing ", this);
+    }
+
+    request_action(action_url) {
+        var url = this.action_base_url + action_url
+        var self = this;
+        $.when(wget(url)).then(function(thing_status) {
+            self.update_status(thing_status);
+        });
+    }
+
+    create_ui() {
+        var klass = Object.getPrototypeOf(this).constructor;
+        return klass.render_template(this);
+    }
+
+    update_status(new_status) {
+        console.error("Subclass responisbility");
     }
 }
 
@@ -208,9 +152,18 @@ class MediaPlayer extends TemplatedThing {
     constructor(things_server_url, name, supported_actions, status) {
         super(things_server_url, name, supported_actions, status);
 
-        if (MediaPlayer.template_ready.state() != 'resolved') {
-            console.error("Template system not initialized");
-        }
+        // Register object UI callbacks
+        var self = this;
+        // Div ID: '#media_player_'+this.html_id+'_ctrl'
+        $(document).on('click',    '#media_player_'+this.html_id+'_play',     function(){ self.on_play(); });
+        $(document).on('click',    '#media_player_'+this.html_id+'_stop',     function(){ self.on_stop(); });
+        $(document).on('click',    '#media_player_'+this.html_id+'_mute',     function(){ self.on_mute(); }); 
+        $(document).on('click',    '#media_player_'+this.html_id+'_prev',     function(){ self.on_prev(); });
+        $(document).on('click',    '#media_player_'+this.html_id+'_next',     function(){ self.on_next(); });
+        $(document).on('click',    '#media_player_'+this.html_id+'_volume',   function(){ self.on_volume(); });
+        $(document).on('touchend', '#media_player_'+this.html_id+'_volume',   function(){ self.on_volume(); });
+        $(document).on('click',    '#media_player_'+this.html_id+'_playtime', function(){ self.on_playtime(); });
+        $(document).on('touchend', '#media_player_'+this.html_id+'_playtime', function(){ self.on_playtime(); });
     }
 
     update_status(new_status) {
@@ -252,37 +205,6 @@ class MediaPlayer extends TemplatedThing {
         this.status = new_status;
     }
 
-    create_ui() {
-        this.register_callbacks();
-        return MediaPlayer.render_template({'player_id': this.html_id, 'player': this.status});
-    }
-
-    register_callbacks() {
-        if (this.callbacks_registered) return;
-
-        var self = this;
-        // Div ID: '#media_player_'+this.html_id+'_ctrl'
-        $(document).on('click',    '#media_player_'+this.html_id+'_play',     function(){ self.on_play(); });
-        $(document).on('click',    '#media_player_'+this.html_id+'_stop',     function(){ self.on_stop(); });
-        $(document).on('click',    '#media_player_'+this.html_id+'_mute',     function(){ self.on_mute(); }); 
-        $(document).on('click',    '#media_player_'+this.html_id+'_prev',     function(){ self.on_prev(); });
-        $(document).on('click',    '#media_player_'+this.html_id+'_next',     function(){ self.on_next(); });
-        $(document).on('click',    '#media_player_'+this.html_id+'_volume',   function(){ self.on_volume(); });
-        $(document).on('touchend', '#media_player_'+this.html_id+'_volume',   function(){ self.on_volume(); });
-        $(document).on('click',    '#media_player_'+this.html_id+'_playtime', function(){ self.on_playtime(); });
-        $(document).on('touchend', '#media_player_'+this.html_id+'_playtime', function(){ self.on_playtime(); });
-
-        this.callbacks_registered = true;
-    }
-
-    request_action(action_url) {
-        var url = this.action_base_url + action_url
-        var self = this;
-        $.when(wget(url)).then(function(thing_status) {
-            self.update_status(thing_status);
-        });
-    }
-
     on_play()     { this.request_action('/play'); }
     on_stop()     { this.request_action('/stop'); }
     on_mute()     { this.request_action('/mute'); } 
@@ -296,63 +218,102 @@ class Lamp extends TemplatedThing {
     constructor(things_server_url, name, supported_actions, status) {
         super(things_server_url, name, supported_actions, status);
 
-        if (Lamp.template_ready.state() != 'resolved') {
-            console.error("Template system not initialized");
-        }
-
         this.supports_onoff = supported_actions.includes('turn_on') &&
                                 supported_actions.includes('turn_off');
         this.supports_brightness = supported_actions.includes('set_brightness');
         this.has_extended_cfg = true;
+
+        // Register object UI callbacks
+        var self = this;
+        $(document).on('click', '#lamp_is_on_checkbox'+this.html_id,
+            function(){ self.update_on_state_from_ui(); });
+
+        $(document).on('click', '#lamp_set_brightness_slider'+this.html_id,
+            function(){ self.update_brigthness_from_ui(); });
+        $(document).on('touchend', '#lamp_set_brightness_slider'+this.html_id,
+            function(){ self.update_brigthness_from_ui(); });
     }
 
     update_status(stat) {
         this.is_on = stat.is_on;
         this.brightness = stat.brightness;
-        console.log(this);
     }
 
-    create_ui() {
-        // this.register_callbacks();
-        return Lamp.render_template(this);
+    update_on_state_from_ui() {
+        var should_be_on = $('#lamp_is_on_checkbox'+this.html_id).is(':checked');
+        this.request_action((should_be_on? '/turn_on' : '/turn_off'));
+    }
+
+    update_brigthness_from_ui() {
+        var brightness_pct = $('#lamp_set_brightness_slider'+this.html_id).val();
+        this.request_action('/set_brightness/' + brightness_pct);
     }
 }
 
-MediaPlayer.init_template('templates/media_player.html');
-Lamp.init_template('templates/lamp.html');
+class MqttDeviceInfo extends TemplatedThing {
+    constructor(things_server_url, name, supported_actions, status) {
+        super("", name, [], status);
+    }
 
-//var things_app = new ThingsApp("http://127.0.0.1:2000/");
-var things_app = new ThingsApp("/");
-$(document).ready(function(){
-    var media_players = [];
-    var lamps = [];
-    var self = {base_url: '/'};
-    $.when(things_app.ready).then(function() {
-        $.when(Lamp.template_ready).then(function(tmpl) {
-            $.when(MediaPlayer.template_ready).then(function(tmpl) {
-                var lampnames = things_app.get_things_of_type("lamp");
-                for (name in lampnames) {
-                    lamps.push(new Lamp(self.base_url, name,
-                                                 lampnames[name].supported_actions,
-                                                 lampnames[name].status))
-                }
+    update_status(stat) {
+        this.link_quality = stat.link_quality;
+        this.battery_level = stat.battery_level;
+    }
+}
 
-                for (i in lamps) {
-                    $('#lamps_list').append(lamps[i].create_ui());
-                }
+var init_all_templates = function() {
+    var fileref = document.createElement("link");
+    fileref.rel = "stylesheet";
+    fileref.type = "text/css";
+    fileref.href = "templates/lamp.css";
+    document.getElementsByTagName("head")[0].appendChild(fileref)
+    Lamp.init_template('templates/lamp.html');
 
+    var fileref = document.createElement("link");
+    fileref.rel = "stylesheet";
+    fileref.type = "text/css";
+    fileref.href = "templates/media_player.css";
+    document.getElementsByTagName("head")[0].appendChild(fileref)
+    MediaPlayer.init_template('templates/media_player.html');
 
-                var players = things_app.get_things_of_type("media_player");
-                for (name in players) {
-                    media_players.push(new MediaPlayer(self.base_url, name,
-                                                 players[name].supported_actions,
-                                                 players[name].status))
-                }
+    var fileref = document.createElement("link");
+    fileref.rel = "stylesheet";
+    fileref.type = "text/css";
+    fileref.href = "templates/mqtt_device.css";
+    MqttDeviceInfo.init_template('templates/mqtt_device.html');
 
-                for (pl in media_players) {
-                    $('#media_players_list').append(media_players[pl].create_ui());
-                }
+    var all_done = $.Deferred();
+    $.when(Lamp.template_ready).then(function() {
+        $.when(MediaPlayer.template_ready).then(function() {
+            $.when(MqttDeviceInfo.template_ready).then(function() {
+                all_done.resolve();
             });
+        });
+    });
+
+    return all_done;
+}
+
+var things_app = new ThingsApp("/");
+var templates_ready = init_all_templates();
+$(document).ready(function(){
+    var self = {base_url: '/'};
+    $.when(templates_ready).then(function() {
+        $.when(things_app.ready).then(function() {
+            var lamps = things_app.get_mapped_things("lamp", Lamp);
+            for (i in lamps) {
+                $('#lamps_list').append(lamps[i].create_ui());
+            }
+
+            var media_players = things_app.get_mapped_things("media_player", MediaPlayer);
+            for (i in media_players) {
+                $('#media_players_list').append(media_players[i].create_ui());
+            }
+
+            var mqtt_things = things_app.get_mapped_things("mqtt", MqttDeviceInfo);
+            for (i in mqtt_things) {
+                $('#mqtt_network_status').append(mqtt_things[i].create_ui());
+            }
         });
     });
 });
@@ -368,6 +329,10 @@ $(document).ready(function(){
 
     <h2>Media players</h2>
     <ul id="media_players_list" />
+    </ul>
+
+    <h2>Mqtt network status</h2>
+    <ul id="mqtt_network_status" />
     </ul>
 </div>
 </body>
