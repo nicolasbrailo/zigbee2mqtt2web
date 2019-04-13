@@ -164,180 +164,211 @@ class ThingsApp {
 }
 
 
+class TemplatedThing {
+    static init_template(url) {
+        var subclass = this;
+        subclass.template_ready = $.Deferred();
+        $.ajax({
+            url: url,
+            cache: false,
+            type: 'get',
+            dataType: 'html',
+            success: function(tmpl) {
+                if (!Handlebars || !Handlebars.registerHelper) {
+                    console.error("Handlebars plugin not found");
+                }
+
+                subclass.render_template = Handlebars.compile(tmpl);
+                subclass.template_ready.resolve(); 
+                if (subclass.on_template_ready) {
+                    subclass.on_template_ready();
+                }
+            }
+        });
+    }
+
+    constructor(things_server_url, name, supported_actions, status) {
+        this.action_base_url = things_server_url + 'things/' + name;
+        this.name = name;
+        // HTML ids can't contain whitespaces
+        this.html_id = name.split(' ').join('_');
+        this.supported_actions = supported_actions;
+        this.update_status(status);
+    }
+}
+
+class MediaPlayer extends TemplatedThing {
+    static on_template_ready(tmpl) {
+        Handlebars.registerHelper('media_player_formatSeconds', function(seconds, options) {
+            // Map seconds to HH:MM:SS
+            return (new Date(seconds * 1000).toISOString()).substr(11, 8);
+        });
+    }
+
+    constructor(things_server_url, name, supported_actions, status) {
+        super(things_server_url, name, supported_actions, status);
+
+        if (MediaPlayer.template_ready.state() != 'resolved') {
+            console.error("Template system not initialized");
+        }
+    }
+
+    update_status(new_status) {
+        // Build minimal required defaults
+        if (!new_status.name) {
+            console.error("Unusable media player state: ", new_status);
+            throw new Error("Unusable media player state");
+        }
+
+        new_status.media = new_status.media || {};
+        new_status.media.player_state = new_status.media.player_state || "Unknown state";
+        // Adjust duration and current_time
+        new_status.media.duration = Math.floor(new_status.media.duration || 0);
+        new_status.media.current_time = Math.floor(new_status.media.current_time || new_status.media.duration);
+        // Adjust volume scale
+        new_status.media.volume_level = (new_status.media.volume_level || 0) * 100;
+
+        // Pick an icon from all available, or use default icon if none is present
+        {
+            if (new_status.media.icon) {
+                // Backend service provided icon, use that one
+            } else if (new_status.media.media_metadata && new_status.media.media_metadata.images) {
+                // Icons available from media, pick first non-null (if any)
+                $.each(new_status.media.media_metadata.images, function(_, icon) {
+                    if (icon) {
+                        new_status.media.icon = icon.url;
+                        return false;
+                    }
+                });
+            }
+            
+            if (!new_status.media.icon) {
+                // No icon found. Use default
+                new_status.media.icon = 'media_player_icons/chromecast.png'
+            }
+        }
+
+        // TODO: Trigger UI update
+        this.status = new_status;
+    }
+
+    create_ui() {
+        this.register_callbacks();
+        return MediaPlayer.render_template({'player_id': this.html_id, 'player': this.status});
+    }
+
+    register_callbacks() {
+        if (this.callbacks_registered) return;
+
+        var self = this;
+        // Div ID: '#media_player_'+this.html_id+'_ctrl'
+        $(document).on('click',    '#media_player_'+this.html_id+'_play',     function(){ self.on_play(); });
+        $(document).on('click',    '#media_player_'+this.html_id+'_stop',     function(){ self.on_stop(); });
+        $(document).on('click',    '#media_player_'+this.html_id+'_mute',     function(){ self.on_mute(); }); 
+        $(document).on('click',    '#media_player_'+this.html_id+'_prev',     function(){ self.on_prev(); });
+        $(document).on('click',    '#media_player_'+this.html_id+'_next',     function(){ self.on_next(); });
+        $(document).on('click',    '#media_player_'+this.html_id+'_volume',   function(){ self.on_volume(); });
+        $(document).on('touchend', '#media_player_'+this.html_id+'_volume',   function(){ self.on_volume(); });
+        $(document).on('click',    '#media_player_'+this.html_id+'_playtime', function(){ self.on_playtime(); });
+        $(document).on('touchend', '#media_player_'+this.html_id+'_playtime', function(){ self.on_playtime(); });
+
+        this.callbacks_registered = true;
+    }
+
+    request_action(action_url) {
+        var url = this.action_base_url + action_url
+        var self = this;
+        $.when(wget(url)).then(function(thing_status) {
+            self.update_status(thing_status);
+        });
+    }
+
+    on_play()     { this.request_action('/play'); }
+    on_stop()     { this.request_action('/stop'); }
+    on_mute()     { this.request_action('/mute'); } 
+    on_prev()     { this.request_action('/prev'); }
+    on_next()     { this.request_action('/next'); }
+    on_volume()   { }//this._request_action('/play'); }
+    on_playtime() { }//this._request_action('/play'); }
+}
+
+class Lamp extends TemplatedThing {
+    constructor(things_server_url, name, supported_actions, status) {
+        super(things_server_url, name, supported_actions, status);
+
+        if (Lamp.template_ready.state() != 'resolved') {
+            console.error("Template system not initialized");
+        }
+
+        this.supports_onoff = supported_actions.includes('turn_on') &&
+                                supported_actions.includes('turn_off');
+        this.supports_brightness = supported_actions.includes('set_brightness');
+        this.has_extended_cfg = true;
+    }
+
+    update_status(stat) {
+        this.is_on = stat.is_on;
+        this.brightness = stat.brightness;
+        console.log(this);
+    }
+
+    create_ui() {
+        // this.register_callbacks();
+        return Lamp.render_template(this);
+    }
+}
+
+MediaPlayer.init_template('templates/media_player.html');
+Lamp.init_template('templates/lamp.html');
+
 //var things_app = new ThingsApp("http://127.0.0.1:2000/");
 var things_app = new ThingsApp("/");
 $(document).ready(function(){
+    var media_players = [];
+    var lamps = [];
+    var self = {base_url: '/'};
     $.when(things_app.ready).then(function() {
-        console.log("READY");
-    });
+        $.when(Lamp.template_ready).then(function(tmpl) {
+            $.when(MediaPlayer.template_ready).then(function(tmpl) {
+                var lampnames = things_app.get_things_of_type("lamp");
+                for (name in lampnames) {
+                    lamps.push(new Lamp(self.base_url, name,
+                                                 lampnames[name].supported_actions,
+                                                 lampnames[name].status))
+                }
 
-    Handlebars.registerHelper('formatSeconds', function(seconds, options) {
-        // Map seconds to HH:MM:SS
-        return new Date(seconds * 1000).toISOString().substr(11, 8);
-    });
+                for (i in lamps) {
+                    $('#lamps_list').append(lamps[i].create_ui());
+                }
 
-    var media_player = {"name": "Baticueva TV",
-                 "uuid": "f4b933f8-dbbe-be56-c8a1-e89871e4e12a",
-                 "uri": "192.168.2.101:8009",
-                 "app": "YouTube",
-                 "volume_level": 1.0,
-                 "media": {"adjusted_current_time": 83.354,
-                 "album_artist": null,
-                 "album_name": null,
-                 "artist": null,
-                 "content_id": "X-Utrjsc2ao",
-                 "content_type": "x-youtube/video",
-                 "current_time": 83.354,
-                 "duration": 268.261,
-                 "images": [["https://i.ytimg.com/vi/X-Utrjsc2ao/hqdefault.jpg", null, null]],
-                 "media_is_generic": true,
-                 "media_is_movie": false,
-                 "media_is_musictrack": false,
-                 "media_is_photo": false,
-                 "media_is_tvshow": false,
-                 "media_metadata": {"metadataType": 0,
-                 "title": "The Olympians \"Sirens Of Jupiter\"",
-                 "subtitle": "DaptoneRecords",
-                 "images": [{"url": "https://i.ytimg.com/vi/X-Utrjsc2ao/hqdefault.jpg"}]},
-                 "metadata_type": 0,
-                 "playback_rate": 1,
-                 "player_is_idle": false,
-                 "player_is_paused": true,
-                 "player_is_playing": false,
-                 "player_state": "PAUSED",
-                 "series_title": null,
-                 "title": "The Olympians \"Sirens Of Jupiter\"",
-                 "volume_level": 1,
-                 "volume_muted": false}}
 
-    // Build minimal required defaults
-    if (!media_player.name) {
-        // TODO: unusable, error
-    }
+                var players = things_app.get_things_of_type("media_player");
+                for (name in players) {
+                    media_players.push(new MediaPlayer(self.base_url, name,
+                                                 players[name].supported_actions,
+                                                 players[name].status))
+                }
 
-    media_player.media = media_player.media || {};
-    media_player.media.player_state = media_player.media.player_state || "Unknown state";
-    media_player.html_id = media_player.name.split(' ').join('_');
-
-    // Pick an icon from all available, or use default icon if none is present
-    {
-        if (media_player.media.icon) {
-            // Backend service provided icon, use that one
-        } else if (media_player.media.media_metadata && media_player.media.media_metadata.images) {
-            // Icons available from media, pick first non-null (if any)
-            $.each(media_player.media.media_metadata.images, function(_, icon) {
-                if (icon) {
-                    media_player.media.icon = icon.url;
-                    return false;
+                for (pl in media_players) {
+                    $('#media_players_list').append(media_players[pl].create_ui());
                 }
             });
-        }
-        
-        if (!media_player.media.icon) {
-            // No icon found. Use default
-            media_player.media.icon = 'media_player_icons/chromecast.png'
-        }
-    }
-
-    // Adjust volume scale
-    media_player.volume_level = (media_player.volume_level || 0) * 100;
-
-    // Adjust duration and current_time
-    media_player.duration = Math.floor(media_player.duration || 0);
-    media_player.current_time = Math.floor(media_player.current_time || media_player.duration);
-
-
-
-    var source   = document.getElementById("template-media-player-ctrl" ).innerHTML;
-    var template = Handlebars.compile(source);
-    $('#media_players_list').append(template({'player': media_player}));
-    
-    // Register CBs
-
-    // Div ID: '#media_player_'+media_player.html_id+'_ctrl'
-
-    $(document).on('click', '#media_player_'+media_player.html_id+'_play', function() { console.log("Play"); });
-    $(document).on('click', '#media_player_'+media_player.html_id+'_stop', function() { console.log("Stop"); });
-    $(document).on('click', '#media_player_'+media_player.html_id+'_mute', function() { console.log("Mute"); }); 
-    $(document).on('click', '#media_player_'+media_player.html_id+'_prev', function() { console.log("Prev"); });
-    $(document).on('click', '#media_player_'+media_player.html_id+'_next', function() { console.log("Next"); });
-
-    var reg_cb_slider = function(element_sel, cb) {
-        $(document).on('click', element_sel, cb);
-        $(document).on('touchend', element_sel, cb);
-    }
-
-    reg_cb_slider('#media_player_'+media_player.html_id+'_volume', function(){ console.log("Set VOL"); });
-    reg_cb_slider('#media_player_'+media_player.html_id+'_playtime', function(){ console.log("SET playtime"); });
-
-
+        });
+    });
 });
 </script>
 
 </head>
 
 <body>
-
-<!--
- "id": "f4b933f8-dbbe-be56-c8a1-e89871e4e12a"
- "uri": "192.168.2.101:8009"
- "media": {
-     "album_artist": null
-     "album_name": null
-     "artist": null
-     "content_id": "q4xKvHANqjk"
-     "content_type": "x-youtube/video"
-     "media_is_generic": true
-     "media_is_movie": false
-     "media_is_musictrack": false
-     "media_is_photo": false
-     "media_is_tvshow": false
-     "media_metadata": {"metadataType": 0
-     "metadata_type": 0
-     "playback_rate": 1
-     "player_is_idle": false
-     "player_is_paused": false
-     "player_is_playing": true
-     "player_state": "BUFFERING"
-     "series_title": null
--->
-
-<script id="template-media-player-ctrl" type="text/x-handlebars-template">
-    <div class="media_player_ctrl" id="media_player_{{player.html_id}}_ctrl">
-        <img class="media_icon" src="{{player.media.icon}}" />
-        <p class="media_player_name">{{player.name}} | {{player.app}} | {{player.media.player_state}}</p>
-        <p class="media_title">{{player.media.title}}</p>
-        <div class="mini_control">
-            <button class="control_button btn_play" id="media_player_{{player.html_id}}_play">Play</button>
-            <button class="control_button btn_stop" id="media_player_{{player.html_id}}_stop">Stop</button>
-            <input type="checkbox"
-                    id="media_player_{{player.html_id}}_mute" 
-                    {{#if player.media.volume_muted}} checked {{/if}}
-                />
-                <label for="media_player_{{player.html_id}}_mute"></label>
-            <input type="range" class="volumeslider" min=0 max=100
-                id="media_player_{{player.html_id}}_volume"
-                value={{player.volume_level}} />
-        </div>
-        <div class="extended_control">
-            <button class="control_button btn_prev"
-                id="media_player_{{player.html_id}}_prev">Prev</button>
-            <input type="range" class="timeslider" 
-                    id="media_player_{{player.html_id}}_playtime"
-                    min=0 max={{player.media.duration}}
-                    value={{player.media.current_time}} />
-                <label for="media_player_{{player.html_id}}_playtime">
-                    {{#formatSeconds player.media.duration}}{{/formatSeconds}}
-                </label>
-            <button class="control_button btn_next"
-                id="media_player_{{player.html_id}}_next">Next</button>
-        </div>
-    </div>
-</script>
-
 <div class="container-fluid">
+    <h2>Lamps</h2>
+    <ul id="lamps_list">
+    </ul>
+
     <h2>Media players</h2>
     <ul id="media_players_list" />
+    </ul>
 </div>
 </body>
 </html>
