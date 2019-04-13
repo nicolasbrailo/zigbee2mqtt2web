@@ -6,6 +6,10 @@ from pychromecast.controllers.youtube import YouTubeController
 
 class ThingChromecast(Thing):
     @staticmethod
+    def set_flask_bindings():
+        pass
+
+    @staticmethod
     def scan_network(debug_force_ip=None):
         """ Get all Chromecasts in the network. If debug_force_ip is set
         then the net won't be scanned, only one CC will be returned (useful
@@ -76,14 +80,18 @@ class ThingChromecast(Thing):
                 'volume_down', 'set_volume', 'youtube']
 
     def json_status(self):
-        self.cc.media_controller.update_status()
-        return {
+        stat = {
                     'name': self.get_pretty_name(),
                     'uuid': self.get_id(),
                     'uri': self.cc.uri,
                     'app': self.get_app(),
                     'volume_level': self.get_volume(),
-                    'media': {
+                    'media': None,
+               }
+
+        try:
+            self.cc.media_controller.update_status()
+            stat['media'] = {
                         'adjusted_current_time': self.cc.media_controller.status.adjusted_current_time,
                         'album_artist': self.cc.media_controller.status.album_artist,
                         'album_name': self.cc.media_controller.status.album_name,
@@ -109,6 +117,9 @@ class ThingChromecast(Thing):
                         'title': self.cc.media_controller.status.title,
                         'volume_level': self.cc.media_controller.status.volume_level,
                         'volume_muted': self.cc.media_controller.status.volume_muted,
-                    }
-               }
+                   }
+        except:
+            pass
+
+        return stat
 

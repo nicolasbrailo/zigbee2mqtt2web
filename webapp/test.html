@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+    <!-- https://getbootstrap.com/docs/3.4/customize/ -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/bootstrap-theme.min.css">
+    
+    <!-- Handlebars -->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.1.1/handlebars.min.js"></script>
+
+<style>
+
+.media_player_ctrl {
+    border: 1px black solid;
+}
+
+.media_player_ctrl .media_icon {
+    float: left;
+    max-width: 80px;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    margin: 10px;
+    border-radius: 500px;
+}
+
+.media_player_ctrl .media_player_name {
+    margin: 0;
+}
+
+.media_player_ctrl .media_title {
+    margin: 0;
+}
+
+.media_player_ctrl .mini_control {
+    width: 100%;
+    clear: both;
+}
+
+.media_player_ctrl .mini_control .volumeslider {
+    width: calc(90% - 150px);
+    min-width: 150px;
+    display: inline-block;
+}
+
+.media_player_ctrl .mini_control input[type="checkbox"] {
+    display:none;
+}
+
+.media_player_ctrl .mini_control input[type="checkbox"] + label {
+    background:url('media_player_icons/volume_unmuted.png') no-repeat scroll 0 0 transparent;
+    background-size: 100% 100%;
+    height: 50px;
+    width: 50px;
+    display: inline-block;
+    border: none;
+    margin: 0px;
+    padding: 0px;
+}
+
+.media_player_ctrl .mini_control input[type="checkbox"]:checked + label {
+    background:url('media_player_icons/volume_muted.png') no-repeat scroll 0 0 transparent;
+    background-size: 100% 100%;
+    height: 50px;
+    width: 50px;
+    display: inline-block;
+    border: none;
+    margin: 0px;
+    padding: 0px;
+}
+
+.media_player_ctrl .control_button {
+    background-color: transparent;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+    font-size: 0px;
+    height: 50px;
+    width:  50px;
+    border: none;
+    margin: 0px;
+    padding: 0px;
+}
+
+.media_player_ctrl .btn_play { background-image: url(media_player_icons/play.png); }
+.media_player_ctrl .btn_stop { background-image: url(media_player_icons/stop.png); }
+.media_player_ctrl .btn_prev { background-image: url(media_player_icons/prev.png); }
+.media_player_ctrl .btn_next { background-image: url(media_player_icons/next.png); }
+
+.media_player_ctrl .extended_control {
+    clear: both;
+    width: 100%;
+}
+
+.media_player_ctrl .extended_control .timeslider {
+    width: calc(90% - 300px); /* slider width - width btns */
+    min-width: 150px;
+    display: inline-block;
+}
+
+
+</style>
+
+<script>
+var wget = function(url) {
+    var d = $.Deferred();
+    $.ajax({
+      type: 'GET',
+      dataType: 'json',
+      url: url,
+      success: function(msg){ d.resolve(msg); },
+      error: function(request, server_status, error){ d.resolve(null); },
+    });
+    return d;
+}
+
+
+class ThingsApp {
+    constructor(base_url) {
+        this.base_url = base_url;
+        this.things = [];
+        this.unknown_things= [];
+
+        this.ready = $.Deferred();
+        this.things_ready = $.Deferred();
+        this.unknown_things_ready = $.Deferred();
+
+        var self = this;
+
+        $.when(self.things_ready).then(function(){
+            $.when(self.unknown_things_ready).then(function(){
+                self.ready.resolve();
+            });
+        });
+
+        $.when(wget(this.base_url + "things/get_world_status")).then(function(things) {
+            self.things = things;
+            self.things_ready.resolve();
+        });
+
+        $.when(wget(this.base_url + "things/unknown_things")).then(function(things) {
+            self.unknown_things = things;
+            self.unknown_things_ready.resolve();
+        });
+    };
+
+    get_things_of_type(type_filter) {
+        if (!type_filter) return this.things;
+
+        var things = {}
+        for (var thing_name in this.things) {
+            var thing = this.things[thing_name];
+            if (thing.thing_types.includes(type_filter)) {
+                things[thing_name] = thing;
+            }
+        }
+
+        return things;
+    }
+}
+
+
+//var things_app = new ThingsApp("http://127.0.0.1:2000/");
+var things_app = new ThingsApp("/");
+$(document).ready(function(){
+    $.when(things_app.ready).then(function() {
+        console.log("READY");
+    });
+
+    Handlebars.registerHelper('formatSeconds', function(seconds, options) {
+        // Map seconds to HH:MM:SS
+        return new Date(seconds * 1000).toISOString().substr(11, 8);
+    });
+
+    var media_player = {"name": "Baticueva TV",
+                 "uuid": "f4b933f8-dbbe-be56-c8a1-e89871e4e12a",
+                 "uri": "192.168.2.101:8009",
+                 "app": "YouTube",
+                 "volume_level": 1.0,
+                 "media": {"adjusted_current_time": 83.354,
+                 "album_artist": null,
+                 "album_name": null,
+                 "artist": null,
+                 "content_id": "X-Utrjsc2ao",
+                 "content_type": "x-youtube/video",
+                 "current_time": 83.354,
+                 "duration": 268.261,
+                 "images": [["https://i.ytimg.com/vi/X-Utrjsc2ao/hqdefault.jpg", null, null]],
+                 "media_is_generic": true,
+                 "media_is_movie": false,
+                 "media_is_musictrack": false,
+                 "media_is_photo": false,
+                 "media_is_tvshow": false,
+                 "media_metadata": {"metadataType": 0,
+                 "title": "The Olympians \"Sirens Of Jupiter\"",
+                 "subtitle": "DaptoneRecords",
+                 "images": [{"url": "https://i.ytimg.com/vi/X-Utrjsc2ao/hqdefault.jpg"}]},
+                 "metadata_type": 0,
+                 "playback_rate": 1,
+                 "player_is_idle": false,
+                 "player_is_paused": true,
+                 "player_is_playing": false,
+                 "player_state": "PAUSED",
+                 "series_title": null,
+                 "title": "The Olympians \"Sirens Of Jupiter\"",
+                 "volume_level": 1,
+                 "volume_muted": false}}
+
+    // Build minimal required defaults
+    if (!media_player.name) {
+        // TODO: unusable, error
+    }
+
+    media_player.media = media_player.media || {};
+    media_player.media.player_state = media_player.media.player_state || "Unknown state";
+    media_player.html_id = media_player.name.split(' ').join('_');
+
+    // Pick an icon from all available, or use default icon if none is present
+    {
+        if (media_player.media.icon) {
+            // Backend service provided icon, use that one
+        } else if (media_player.media.media_metadata && media_player.media.media_metadata.images) {
+            // Icons available from media, pick first non-null (if any)
+            $.each(media_player.media.media_metadata.images, function(_, icon) {
+                if (icon) {
+                    media_player.media.icon = icon.url;
+                    return false;
+                }
+            });
+        }
+        
+        if (!media_player.media.icon) {
+            // No icon found. Use default
+            media_player.media.icon = 'media_player_icons/chromecast.png'
+        }
+    }
+
+    // Adjust volume scale
+    media_player.volume_level = (media_player.volume_level || 0) * 100;
+
+    // Adjust duration and current_time
+    media_player.duration = Math.floor(media_player.duration || 0);
+    media_player.current_time = Math.floor(media_player.current_time || media_player.duration);
+
+
+
+    var source   = document.getElementById("template-media-player-ctrl" ).innerHTML;
+    var template = Handlebars.compile(source);
+    $('#media_players_list').append(template({'player': media_player}));
+    
+    // Register CBs
+
+    // Div ID: '#media_player_'+media_player.html_id+'_ctrl'
+
+    $(document).on('click', '#media_player_'+media_player.html_id+'_play', function() { console.log("Play"); });
+    $(document).on('click', '#media_player_'+media_player.html_id+'_stop', function() { console.log("Stop"); });
+    $(document).on('click', '#media_player_'+media_player.html_id+'_mute', function() { console.log("Mute"); }); 
+    $(document).on('click', '#media_player_'+media_player.html_id+'_prev', function() { console.log("Prev"); });
+    $(document).on('click', '#media_player_'+media_player.html_id+'_next', function() { console.log("Next"); });
+
+    var reg_cb_slider = function(element_sel, cb) {
+        $(document).on('click', element_sel, cb);
+        $(document).on('touchend', element_sel, cb);
+    }
+
+    reg_cb_slider('#media_player_'+media_player.html_id+'_volume', function(){ console.log("Set VOL"); });
+    reg_cb_slider('#media_player_'+media_player.html_id+'_playtime', function(){ console.log("SET playtime"); });
+
+
+});
+</script>
+
+</head>
+
+<body>
+
+<!--
+ "id": "f4b933f8-dbbe-be56-c8a1-e89871e4e12a"
+ "uri": "192.168.2.101:8009"
+ "media": {
+     "album_artist": null
+     "album_name": null
+     "artist": null
+     "content_id": "q4xKvHANqjk"
+     "content_type": "x-youtube/video"
+     "media_is_generic": true
+     "media_is_movie": false
+     "media_is_musictrack": false
+     "media_is_photo": false
+     "media_is_tvshow": false
+     "media_metadata": {"metadataType": 0
+     "metadata_type": 0
+     "playback_rate": 1
+     "player_is_idle": false
+     "player_is_paused": false
+     "player_is_playing": true
+     "player_state": "BUFFERING"
+     "series_title": null
+-->
+
+<script id="template-media-player-ctrl" type="text/x-handlebars-template">
+    <div class="media_player_ctrl" id="media_player_{{player.html_id}}_ctrl">
+        <img class="media_icon" src="{{player.media.icon}}" />
+        <p class="media_player_name">{{player.name}} | {{player.app}} | {{player.media.player_state}}</p>
+        <p class="media_title">{{player.media.title}}</p>
+        <div class="mini_control">
+            <button class="control_button btn_play" id="media_player_{{player.html_id}}_play">Play</button>
+            <button class="control_button btn_stop" id="media_player_{{player.html_id}}_stop">Stop</button>
+            <input type="checkbox"
+                    id="media_player_{{player.html_id}}_mute" 
+                    {{#if player.media.volume_muted}} checked {{/if}}
+                />
+                <label for="media_player_{{player.html_id}}_mute"></label>
+            <input type="range" class="volumeslider" min=0 max=100
+                id="media_player_{{player.html_id}}_volume"
+                value={{player.volume_level}} />
+        </div>
+        <div class="extended_control">
+            <button class="control_button btn_prev"
+                id="media_player_{{player.html_id}}_prev">Prev</button>
+            <input type="range" class="timeslider" 
+                    id="media_player_{{player.html_id}}_playtime"
+                    min=0 max={{player.media.duration}}
+                    value={{player.media.current_time}} />
+                <label for="media_player_{{player.html_id}}_playtime">
+                    {{#formatSeconds player.media.duration}}{{/formatSeconds}}
+                </label>
+            <button class="control_button btn_next"
+                id="media_player_{{player.html_id}}_next">Next</button>
+        </div>
+    </div>
+</script>
+
+<div class="container-fluid">
+    <h2>Media players</h2>
+    <ul id="media_players_list" />
+</div>
+</body>
+</html>
