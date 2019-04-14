@@ -37,7 +37,7 @@
 }
 
 .media_player_ctrl .mini_control input[type="checkbox"] + label {
-    background:url('../media_player_icons/volume_unmuted.png') no-repeat scroll 0 0 transparent;
+    background:url('icons/volume_unmuted.png') no-repeat scroll 0 0 transparent;
     background-size: 100% 100%;
     height: 50px;
     width: 50px;
@@ -48,7 +48,7 @@
 }
 
 .media_player_ctrl .mini_control input[type="checkbox"]:checked + label {
-    background:url('../media_player_icons/volume_muted.png') no-repeat scroll 0 0 transparent;
+    background:url('icons/volume_muted.png') no-repeat scroll 0 0 transparent;
     background-size: 100% 100%;
     height: 50px;
     width: 50px;
@@ -71,10 +71,10 @@
     padding: 0px;
 }
 
-.media_player_ctrl .btn_play { background-image: url(../media_player_icons/play.png); }
-.media_player_ctrl .btn_stop { background-image: url(../media_player_icons/stop.png); }
-.media_player_ctrl .btn_prev { background-image: url(../media_player_icons/prev.png); }
-.media_player_ctrl .btn_next { background-image: url(../media_player_icons/next.png); }
+.media_player_ctrl .btn_play { background-image: url(icons/play.png); }
+.media_player_ctrl .btn_stop { background-image: url(icons/stop.png); }
+.media_player_ctrl .btn_prev { background-image: url(icons/prev.png); }
+.media_player_ctrl .btn_next { background-image: url(icons/next.png); }
 
 .media_player_ctrl .extended_control {
     clear: both;
