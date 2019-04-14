@@ -121,10 +121,10 @@ def flask_endpoint_things_set_brightness(name_or_id, brightness):
     obj.set_brightness(int(brightness))
     return json.dumps(obj.json_status())
 
-@flask_app.route('/things/<name_or_id>/set_rgb/<r>,<g>,<b>')
-def flask_endpoint_things_set_rgb(name_or_id, r, g, b):
+@flask_app.route('/things/<name_or_id>/set_rgb/<html_rgb_triple>')
+def flask_endpoint_things_set_rgb(name_or_id, html_rgb_triple):
     obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.set_rgb(int(r), int(g), int(b))
+    obj.set_rgb(html_rgb_triple)
     return json.dumps(obj.json_status())
 
 @flask_app.route('/things/<name_or_id>/status')

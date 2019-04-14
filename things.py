@@ -163,7 +163,13 @@ class DimmableLamp(Lamp):
         s = super().consume_message(topic, msg)
 
         if 'brightness' in msg:
-            self.brightness = int(int(msg['brightness']) / 255 * 100)
+            new_brightness = int(int(msg['brightness']) / 255 * 100)
+            if self.brightness is not None and \
+                    abs(new_brightness - self.brightness) <= 1:
+                # Probably a rounding error between float/int, ignore
+                pass
+            else:
+                self.brightness = new_brightness
             return True
 
         return s
@@ -224,7 +230,12 @@ class ColorDimmableLamp(DimmableLamp):
 
     def json_status(self):
         s = super().json_status()
-        s['rgb'] = self.rgb
+        if self.rgb:
+            r,g,b = self.rgb
+            html_triple = format(r<<16 | g<<8 | b, '06x')
+            s['rgb'] = html_triple
+        else:
+            s['rgb'] = None
         return s
 
     def consume_message(self, topic, msg):
@@ -236,8 +247,8 @@ class ColorDimmableLamp(DimmableLamp):
 
         return s
 
-    def set_rgb(self, r, g, b):
-        self.rgb = (r, g, b)
+    def set_rgb(self, html_rgb_triple):
+        self.rgb = bytes.fromhex(html_rgb_triple)
         self.broadcast_new_state()
 
 

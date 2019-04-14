@@ -140,18 +140,15 @@ http://www.babelcolor.com/download/A%20review%20of%20RGB%20color%20spaces.pdf
 
     # Convert RGB to %, then gamma correct
     rgb_gamma_pct = tuple([gamma_correct(x/255.0) for x in rgb_color])
-    print(rgb_gamma_pct)
 
     # Do magic to get XYZ (aka "Wide RGB D65 conversion formula")
     r,g,b = rgb_gamma_pct
     x = r * 0.649926 + g * 0.103455 + b * 0.197109
     y = r * 0.234327 + g * 0.743075 + b * 0.022598
     z = r * 0.000000 + g * 0.053077 + b * 1.035763
-    print(x, y, z)
 
     # Get X,Y
     xy = (x/(x+y+z), y/(x+y+z))
-    print(xy)
 
     return xy
 

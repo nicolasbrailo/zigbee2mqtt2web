@@ -5,10 +5,10 @@
                            {{#if is_on}}checked="checked"{{/if}} />
     {{/if}}
 
-    {{#if has_extended_cfg}}
-        <a class="lamp_open_panel_ctrl" id="lamp_open_panel_ctrlDeskLamp" href="#">{{name}}</a>
+    {{#if has_color}}
+        <a class="lamp_open_panel_ctrl" id="lamp_open_panel_ctrl{{html_id}}" href="#">{{name}}</a>
     {{else}}
-        <p>{{name}}</p>
+        {{name}}
     {{/if}}
 
     {{#if supports_brightness}}
@@ -17,9 +17,9 @@
                                                                       value="{{brightness}}" />
     {{/if}}
 
-    {{#if has_extended_cfg}}
+    {{#if has_color}}
     <div class="lamp_detailed_panel_ctrl" id="lamp_detailed_panel_ctrl{{html_id}}" style="display: none;">
-        <p>HOLA MUNDO</p>
+        Lamp color: <input type="color" id="lamp_set_rgb{{html_id}}" value="255,0,0">
     </div>
     {{/if}}
 </li>
