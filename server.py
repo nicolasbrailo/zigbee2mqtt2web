@@ -4,10 +4,11 @@
 # * Local sensors
 # * Small viewer CC
 # * Deploy
+# * RM thing.thing_type -> replace only with supported_actions
 
 
 import json
-from things import Thing, Lamp, DimmableLamp, Button
+from things import Thing, Lamp, DimmableLamp, ColorDimmableLamp, Button
 
 class MyIkeaButton(Button):
     def __init__(self, mqtt_id, pretty_name, btn1, btn2):
@@ -39,7 +40,7 @@ thing_registry = ThingRegistry()
 mqtt_logger = MqttLogger(thing_registry)
 mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', [thing_registry, mqtt_logger])
 
-thing_registry.register_thing(DimmableLamp('0xd0cf5efffe30c9bd', 'DeskLamp', mqtt))
+thing_registry.register_thing(ColorDimmableLamp('0xd0cf5efffe30c9bd', 'DeskLamp', mqtt))
 thing_registry.register_thing(DimmableLamp('0x000d6ffffef34561', 'Kitchen - Left', mqtt))
 thing_registry.register_thing(DimmableLamp('0x0017880104b8c734', 'Kitchen - Right', mqtt))
 thing_registry.register_thing(DimmableLamp('0xd0cf5efffe7b6279', 'FloorLamp', mqtt))
@@ -118,6 +119,12 @@ def flask_endpoint_things_turn_off(name_or_id):
 def flask_endpoint_things_set_brightness(name_or_id, brightness):
     obj = thing_registry.get_by_name_or_id(name_or_id)
     obj.set_brightness(int(brightness))
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/set_rgb/<r>,<g>,<b>')
+def flask_endpoint_things_set_rgb(name_or_id, r, g, b):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.set_rgb(int(r), int(g), int(b))
     return json.dumps(obj.json_status())
 
 @flask_app.route('/things/<name_or_id>/status')

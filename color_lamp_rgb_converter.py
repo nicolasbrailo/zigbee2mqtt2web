@@ -156,20 +156,3 @@ http://www.babelcolor.com/download/A%20review%20of%20RGB%20color%20spaces.pdf
     return xy
 
 
-import json
-from mqtt_proxy import MqttProxy
-
-mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', [])
-
-color = rgb_to_xy((51, 204, 51))
-color = rgb_to_xy((100, 0, 1))
-mqtt.broadcast('0xd0cf5efffe30c9bd/set', json.dumps({
-                        'state': 'ON',
-                        'brightness': 40,
-                        "color_mode":1,
-                        "color":{"x":color[0],"y":color[1]}
-                }))
-
-
-
-

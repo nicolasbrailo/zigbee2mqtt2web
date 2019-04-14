@@ -199,6 +199,47 @@ class DimmableLamp(Lamp):
 
         self.set_brightness(new_brightness)
 
+from color_lamp_rgb_converter import rgb_to_xy
+class ColorDimmableLamp(DimmableLamp):
+    def __init__(self, mqtt_id, pretty_name, mqtt_broadcaster):
+        super().__init__(mqtt_id, pretty_name, mqtt_broadcaster)
+        self.rgb = None
+
+    def thing_types(self):
+        s = super().thing_types()
+        s.extend(['color'])
+        return s
+
+    def supported_actions(self):
+        s = super().supported_actions()
+        s.extend(['set_rgb'])
+        return s
+
+    def mqtt_status(self):
+        s = super().mqtt_status()
+        if self.rgb is not None:
+            xy = rgb_to_xy(self.rgb)
+            s['color'] = {'x': xy[0], 'y': xy[1]}
+        return s
+
+    def json_status(self):
+        s = super().json_status()
+        s['rgb'] = self.rgb
+        return s
+
+    def consume_message(self, topic, msg):
+        s = super().consume_message(topic, msg)
+
+        if 'color' in msg:
+            # TODO: XY to RGB not supported
+            return True
+
+        return s
+
+    def set_rgb(self, r, g, b):
+        self.rgb = (r, g, b)
+        self.broadcast_new_state()
+
 
 class Button(BatteryPoweredThing):
     def __init__(self, mqtt_id, pretty_name):
