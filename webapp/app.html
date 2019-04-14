@@ -12,6 +12,11 @@
     <!-- Handlebars -->
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.1.1/handlebars.min.js"></script>
 
+    <!-- All things -->
+    <script type="text/javascript" src="things/templated_thing.js"></script>
+    <script type="text/javascript" src="things/lamp/model.js"></script>
+    <script type="text/javascript" src="things/media_player/model.js"></script>
+    <script type="text/javascript" src="things/mqtt_device_info/model.js"></script>
 
 <script>
 var wget = function(url) {
@@ -84,89 +89,10 @@ class ThingsApp {
 }
 
 
-class TemplatedThing {
-    static init_template(url) {
-        var subclass = this;
-        subclass.template_ready = $.Deferred();
-        $.ajax({
-            url: url,
-            cache: false,
-            type: 'get',
-            dataType: 'html',
-            success: function(tmpl) {
-                if (!Handlebars || !Handlebars.registerHelper) {
-                    console.error("Handlebars plugin not found");
-                }
-
-                subclass.render_template = Handlebars.compile(tmpl);
-                subclass.template_ready.resolve(); 
-                if (subclass.on_template_ready) {
-                    subclass.on_template_ready();
-                }
-            }
-        });
-    }
-
-    constructor(things_server_url, name, supported_actions, status) {
-        var klass = Object.getPrototypeOf(this).constructor;
-        if (klass.template_ready.state() != 'resolved') {
-            console.error("Template system not initialized");
-        }
-
-        this.action_base_url = things_server_url + 'things/' + name;
-        this.name = name;
-        // HTML ids can't contain whitespaces
-        this.html_id = name.split(' ').join('_');
-        this.supported_actions = supported_actions;
-        this.update_status(status);
-
-        console.log("Created thing ", this);
-    }
-
-    request_action(action_url) {
-        var url = this.action_base_url + action_url
-        var self = this;
-        $.when(wget(url)).then(function(thing_status) {
-            self.update_status(thing_status);
-        });
-    }
-
-    create_ui() {
-        var klass = Object.getPrototypeOf(this).constructor;
-        return klass.render_template(this);
-    }
-
-    update_status(new_status) {
-        console.error("Subclass responisbility");
-    }
-}
-
-</script>
-<script type="text/javascript" src="lamp/model.js"></script>
-<script type="text/javascript" src="media_player/model.js"></script>
-<script type="text/javascript" src="mqtt_device_info/model.js"></script>
-<script>
-
 var init_all_templates = function() {
-    var fileref = document.createElement("link");
-    fileref.rel = "stylesheet";
-    fileref.type = "text/css";
-    fileref.href = "lamp/style.css";
-    document.getElementsByTagName("head")[0].appendChild(fileref)
-    Lamp.init_template('lamp/view.html');
-
-    var fileref = document.createElement("link");
-    fileref.rel = "stylesheet";
-    fileref.type = "text/css";
-    fileref.href = "media_player/style.css";
-    document.getElementsByTagName("head")[0].appendChild(fileref)
-    MediaPlayer.init_template('media_player/view.html');
-
-    var fileref = document.createElement("link");
-    fileref.rel = "stylesheet";
-    fileref.type = "text/css";
-    fileref.href = "mqtt_device_info/style.css";
-    MqttDeviceInfo.init_template('mqtt_device_info/view.html');
+    Lamp.init_template();
+    MediaPlayer.init_template();
+    MqttDeviceInfo.init_template();
 
     var all_done = $.Deferred();
     $.when(Lamp.template_ready).then(function() {

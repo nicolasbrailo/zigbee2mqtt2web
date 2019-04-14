@@ -1,5 +1,9 @@
 
 class Lamp extends TemplatedThing {
+    static get_thing_type() {
+        return "lamp";
+    }
+
     constructor(things_server_url, name, supported_actions, status) {
         super(things_server_url, name, supported_actions, status);
 

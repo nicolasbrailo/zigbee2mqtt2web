@@ -1,5 +1,9 @@
 
 class MediaPlayer extends TemplatedThing {
+    static get_thing_type() {
+        return "media_player";
+    }
+
     static on_template_ready(tmpl) {
         Handlebars.registerHelper('media_player_formatSeconds', function(seconds, options) {
             // Map seconds to HH:MM:SS
@@ -55,7 +59,7 @@ class MediaPlayer extends TemplatedThing {
             
             if (!new_status.media.icon) {
                 // No icon found. Use default
-                new_status.media.icon = 'media_player/icons/chromecast.png'
+                new_status.media.icon = 'things/media_player/icons/chromecast.png'
             }
         }
 
