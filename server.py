@@ -1,3 +1,11 @@
+import os
+pid = os.fork()
+if pid > 0:
+    print("Daemon started!")
+    os._exit(0)
+
+print("Daemon running!")
+
 # TODO
 # * Stream obj state update ui
 # * Spotify
@@ -282,7 +290,7 @@ def flask_endpoint_things_youtube(name_or_id, video_id):
 #     obj.brightness_up()
 #     return json.dumps(obj.json_status())
 
-flask_socketio.run(flask_app, host='0.0.0.0', port=2000, debug=True)
+flask_socketio.run(flask_app, host='0.0.0.0', port=2000, debug=False)
 
 print("STOPPING")
 mqtt.stop()
