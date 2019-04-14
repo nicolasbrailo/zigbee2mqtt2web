@@ -1,19 +1,20 @@
+{{#if has_media }}
 
 <div class="media_player_ctrl" id="media_player_{{html_id}}_ctrl">
-    <img class="media_icon" src="{{status.media.icon}}" />
-    <p class="media_player_name">{{status.name}} | {{status.app}} | {{status.media.player_state}}</p>
+    <img class="media_icon" src="{{player_icon}}" />
+    <p class="media_player_name">{{status.name}} | {{status.app}} | {{status.player_state}}</p>
     <p class="media_title">{{status.media.title}}</p>
     <div class="mini_control">
         <button class="control_button btn_play" id="media_player_{{html_id}}_play">Play</button>
         <button class="control_button btn_stop" id="media_player_{{html_id}}_stop">Stop</button>
         <input type="checkbox"
                 id="media_player_{{html_id}}_mute" 
-                {{#if status.media.volume_muted}} checked {{/if}}
+                {{#if status.volume_muted}} checked {{/if}}
             />
             <label for="media_player_{{html_id}}_mute"></label>
         <input type="range" class="volumeslider" min=0 max=100
             id="media_player_{{html_id}}_volume"
-            value={{status.media.volume_level}} />
+            value={{status.volume_pct}} />
     </div>
     <div class="extended_control">
         <button class="control_button btn_prev"
@@ -29,4 +30,27 @@
             id="media_player_{{html_id}}_next">Next</button>
     </div>
 </div>
+
+
+
+{{else}}
+
+
+<div class="media_player_ctrl" id="media_player_{{html_id}}_ctrl">
+    <img class="media_icon" src="{{player_icon}}" />
+    <p class="media_player_name">{{status.name}} | {{status.app}}</p>
+    <div class="mini_control">
+        <input type="checkbox"
+                id="media_player_{{html_id}}_mute" 
+                {{#if status.volume_muted}} checked {{/if}}
+            />
+            <label for="media_player_{{html_id}}_mute"></label>
+        <input type="range" class="volumeslider" min=0 max=100
+            id="media_player_{{html_id}}_volume"
+            value={{status.volume_pct}} />
+    </div>
+</div>
+
+
+{{/if}}
 

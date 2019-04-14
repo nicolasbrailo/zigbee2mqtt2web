@@ -29,50 +29,19 @@ class MediaPlayer extends TemplatedThing {
     }
 
     update_status(new_status) {
-        // Build minimal required defaults
-        if (!new_status.name) {
-            console.error("Unusable media player state: ", new_status);
-            throw new Error("Unusable media player state");
-        }
-
-        new_status.media = new_status.media || {};
-        new_status.media.player_state = new_status.media.player_state || "Unknown state";
-        // Adjust duration and current_time
-        new_status.media.duration = Math.floor(new_status.media.duration || 0);
-        new_status.media.current_time = Math.floor(new_status.media.current_time || new_status.media.duration);
-        // Adjust volume scale
-        new_status.media.volume_level = (new_status.media.volume_level || 0) * 100;
-
-        // Pick an icon from all available, or use default icon if none is present
-        {
-            if (new_status.media.icon) {
-                // Backend service provided icon, use that one
-            } else if (new_status.media.media_metadata && new_status.media.media_metadata.images) {
-                // Icons available from media, pick first non-null (if any)
-                $.each(new_status.media.media_metadata.images, function(_, icon) {
-                    if (icon) {
-                        new_status.media.icon = icon.url;
-                        return false;
-                    }
-                });
-            }
-            
-            if (!new_status.media.icon) {
-                // No icon found. Use default
-                new_status.media.icon = 'things/media_player/icons/chromecast.png'
-            }
-        }
-
-        // TODO: Trigger UI update
         this.status = new_status;
+        this.has_media = !(!new_status.media);
+        this.player_icon = (new_status.media && new_status.media.icon)?
+                                new_status.media.icon :
+                                'things/media_player/icons/chromecast.png';
     }
 
-    on_play()     { this.request_action('/play'); }
+    on_play()     { this.request_action('/playpause'); }
     on_stop()     { this.request_action('/stop'); }
-    on_mute()     { this.request_action('/mute'); } 
-    on_prev()     { this.request_action('/prev'); }
-    on_next()     { this.request_action('/next'); }
-    on_volume()   { this.request_action( '/set_volume/' + $('#media_player_'+this.html_id+'_volume').val()); }
-    on_playtime() { }//this._request_action('/play'); }
+    on_mute()     { this.request_action('/toggle_mute'); } 
+    on_prev()     { this.request_action('/play_prev_in_queue'); }
+    on_next()     { this.request_action('/play_next_in_queue'); }
+    on_volume()   { this.request_action( '/set_volume_pct/' + $('#media_player_'+this.html_id+'_volume').val()); }
+    on_playtime() { this.request_action( '/set_playtime/' + $('#media_player_'+this.html_id+'_playtime').val()); }
 }
 

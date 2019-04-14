@@ -31,20 +31,46 @@ class ThingChromecast(Thing):
         cc_object.start()
         print("Found Chromecast {}".format(pretty_name))
 
-    def play(self):
-        self.cc.media_controller.play()
+    def playpause(self):
+        try:
+            self.cc.media_controller.update_status()
+        except pychromecast.error.UnsupportedNamespace:
+            # No media running
+            return
 
-    def pause(self):
-        self.cc.media_controller.pause()
+        if self.cc.media_controller.is_paused:
+            self.cc.media_controller.play()
+        elif self.cc.media_controller.is_playing:
+            self.cc.media_controller.pause()
+        else:
+            print("Error: CC {} is not playing nor paused. Status: {}".format(
+                        self.get_pretty_name(), self.cc.media_controller.status.player_state))
 
     def stop(self):
-        self.cc.media_controller.stop()
+        # A bit more agressive than stop, but stop on its own seems useless:
+        # cc will report its state as media still loaded but idle. Easier to kill
+        self.cc.quit_app()
 
-    def mute(self):
-        self.cc.set_volume_muted(True)
+    def play_next_in_queue(self):
+        try:
+            self.cc.media_controller.update_status()
+        except pychromecast.error.UnsupportedNamespace:
+            # No media running
+            return
 
-    def unmute(self):
-        self.cc.set_volume_muted(False)
+        self.cc.media_controller.skip()
+
+    def play_prev_in_queue(self):
+        try:
+            self.cc.media_controller.update_status()
+        except pychromecast.error.UnsupportedNamespace:
+            # No media running
+            return
+
+        self.cc.media_controller.rewind()
+
+    def toggle_mute(self):
+        self.cc.set_volume_muted(not self.cc.status.volume_muted)
 
     def volume_up(self):
         self.cc.volume_up()
@@ -52,20 +78,21 @@ class ThingChromecast(Thing):
     def volume_down(self):
         self.cc.volume_down()
 
-    def set_volume(self, vol):
+    def set_volume_pct(self, vol):
         self.cc.set_volume(int(vol) / 100)
 
-    def get_volume(self):
+    def set_playtime(self, t):
         try:
-            return self.cc.status.volume_level
-        except:
-            return None
+            self.cc.media_controller.update_status()
+        except pychromecast.error.UnsupportedNamespace:
+            # No media running
+            return
 
-    def get_app(self):
-        try:
-            return self.cc.status.status_text
-        except:
-            return None
+        pause_after_seek = self.cc.media_controller.is_paused
+        self.cc.media_controller.seek(t)
+        if pause_after_seek:
+            self.cc.media_controller.pause()
+
 
     def youtube(self, video_id):
         yt = YouTubeController()
@@ -76,50 +103,46 @@ class ThingChromecast(Thing):
         return ['media_player']
 
     def supported_actions(self):
-        return ['play', 'pause', 'stop', 'mute', 'unmute', 'volume_up',
-                'volume_down', 'set_volume', 'youtube']
+        return ['playpause', 'stop', 'play_next_in_queue', 'play_prev_in_queue',
+                'toggle_mute', 'volume_up', 'volume_down', 'set_volume_pct',
+                'youtube']
 
     def json_status(self):
-        stat = {
-                    'name': self.get_pretty_name(),
-                    'uuid': self.get_id(),
-                    'uri': self.cc.uri,
-                    'app': self.get_app(),
-                    'volume_level': self.get_volume(),
-                    'media': None,
-               }
+        if self.cc.status is None:
+            print("Warning: CC {} was disconected?".format(self.get_pretty_name()))
+            self.cc.start()
+
+        status = {
+                'name': self.get_pretty_name(),
+                'uuid': self.get_id(),
+                'uri': self.cc.uri,
+                'app': self.cc.status.display_name,
+                'volume_pct': int(100 * self.cc.status.volume_level),
+                'volume_muted': self.cc.status.volume_muted,
+                'player_state': 'Idle',
+                'media': None,
+            }
 
         try:
             self.cc.media_controller.update_status()
-            stat['media'] = {
-                        'adjusted_current_time': self.cc.media_controller.status.adjusted_current_time,
-                        'album_artist': self.cc.media_controller.status.album_artist,
-                        'album_name': self.cc.media_controller.status.album_name,
-                        'artist': self.cc.media_controller.status.artist,
-                        'content_id': self.cc.media_controller.status.content_id,
-                        'content_type': self.cc.media_controller.status.content_type,
-                        'current_time': self.cc.media_controller.status.current_time,
-                        'duration': self.cc.media_controller.status.duration,
-                        'images': self.cc.media_controller.status.images,
-                        'media_is_generic': self.cc.media_controller.status.media_is_generic,
-                        'media_is_movie': self.cc.media_controller.status.media_is_movie,
-                        'media_is_musictrack': self.cc.media_controller.status.media_is_musictrack,
-                        'media_is_photo': self.cc.media_controller.status.media_is_photo,
-                        'media_is_tvshow': self.cc.media_controller.status.media_is_tvshow,
-                        'media_metadata': self.cc.media_controller.status.media_metadata,
-                        'metadata_type': self.cc.media_controller.status.metadata_type,
-                        'playback_rate': self.cc.media_controller.status.playback_rate,
-                        'player_is_idle': self.cc.media_controller.status.player_is_idle,
-                        'player_is_paused': self.cc.media_controller.status.player_is_paused,
-                        'player_is_playing': self.cc.media_controller.status.player_is_playing,
-                        'player_state': self.cc.media_controller.status.player_state,
-                        'series_title': self.cc.media_controller.status.series_title,
-                        'title': self.cc.media_controller.status.title,
-                        'volume_level': self.cc.media_controller.status.volume_level,
-                        'volume_muted': self.cc.media_controller.status.volume_muted,
-                   }
+        except pychromecast.error.UnsupportedNamespace:
+            # No media running
+            return status
+
+        status['player_state'] = self.cc.media_controller.status.player_state
+        status['media'] = {
+                    'icon': None,
+                    'title': self.cc.media_controller.status.title,
+                    'duration': self.cc.media_controller.status.duration,
+                    'current_time': self.cc.media_controller.status.current_time,
+                }
+
+        icons = [img.url for img in self.cc.media_controller.status.images if img is not None]
+        try:
+            status['media']['icon'] = icons[0]
         except:
             pass
 
-        return stat
+        return status
+
 

@@ -137,16 +137,10 @@ def flask_endpoint_things_status(name_or_id):
 
 ## TODO: Move flask bindings to own object
 
-@flask_app.route('/things/<name_or_id>/play')
-def flask_endpoint_things_play(name_or_id):
+@flask_app.route('/things/<name_or_id>/playpause')
+def flask_endpoint_things_playpause(name_or_id):
     obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.play()
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/pause')
-def flask_endpoint_things_pause(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.pause()
+    obj.playpause()
     return json.dumps(obj.json_status())
 
 @flask_app.route('/things/<name_or_id>/stop')
@@ -155,17 +149,36 @@ def flask_endpoint_things_stop(name_or_id):
     obj.stop()
     return json.dumps(obj.json_status())
 
-@flask_app.route('/things/<name_or_id>/mute')
-def flask_endpoint_things_mute(name_or_id):
+@flask_app.route('/things/<name_or_id>/play_prev_in_queue')
+def flask_endpoint_things_play_prev_in_queue(name_or_id):
     obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.mute()
+    obj.play_prev_in_queue()
     return json.dumps(obj.json_status())
 
-@flask_app.route('/things/<name_or_id>/unmute')
-def flask_endpoint_things_unmute(name_or_id):
+@flask_app.route('/things/<name_or_id>/play_next_in_queue')
+def flask_endpoint_things_play_next_in_queue(name_or_id):
     obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.unmute()
+    obj.play_next_in_queue()
     return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/toggle_mute')
+def flask_endpoint_things_toggle_mute(name_or_id):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.toggle_mute()
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/set_volume_pct/<vol_pct>')
+def flask_endpoint_things_set_volume_pct(name_or_id, vol_pct):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.set_volume_pct(vol_pct)
+    return json.dumps(obj.json_status())
+
+@flask_app.route('/things/<name_or_id>/set_playtime/<time>')
+def flask_endpoint_things_set_playtime(name_or_id, time):
+    obj = thing_registry.get_by_name_or_id(name_or_id)
+    obj.set_playtime(time)
+    return json.dumps(obj.json_status())
+
 
 @flask_app.route('/things/<name_or_id>/volume_up')
 def flask_endpoint_things_volume_up(name_or_id):
@@ -179,25 +192,11 @@ def flask_endpoint_things_volume_down(name_or_id):
     obj.volume_down()
     return json.dumps(obj.json_status())
 
-@flask_app.route('/things/<name_or_id>/set_volume/<vol>')
-def flask_endpoint_things_set_volume(name_or_id, vol):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.set_volume(vol)
-    return json.dumps(obj.json_status())
-
 @flask_app.route('/things/<name_or_id>/youtube/<video_id>')
 def flask_endpoint_things_youtube(name_or_id, video_id):
     obj = thing_registry.get_by_name_or_id(name_or_id)
     obj.youtube(video_id)
     return json.dumps(obj.json_status())
- 
-
-
-#from flask_socketio import emit as websock_emit
-@flask_app.route('/foo')
-def flask_foo():
-    flask_socketio.emit('my-event', {"Foo": "Bar"})
-    return "OK"
  
 
 
