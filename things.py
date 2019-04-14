@@ -163,7 +163,13 @@ class DimmableLamp(Lamp):
         s = super().consume_message(topic, msg)
 
         if 'brightness' in msg:
-            self.brightness = int(int(msg['brightness']) / 255 * 100)
+            new_brightness = int(int(msg['brightness']) / 255 * 100)
+            if self.brightness is not None and \
+                    abs(new_brightness - self.brightness) <= 1:
+                # Probably a rounding error between float/int, ignore
+                pass
+            else:
+                self.brightness = new_brightness
             return True
 
         return s
@@ -198,6 +204,52 @@ class DimmableLamp(Lamp):
             new_brightness = 0
 
         self.set_brightness(new_brightness)
+
+from color_lamp_rgb_converter import rgb_to_xy
+class ColorDimmableLamp(DimmableLamp):
+    def __init__(self, mqtt_id, pretty_name, mqtt_broadcaster):
+        super().__init__(mqtt_id, pretty_name, mqtt_broadcaster)
+        self.rgb = None
+
+    def thing_types(self):
+        s = super().thing_types()
+        s.extend(['color'])
+        return s
+
+    def supported_actions(self):
+        s = super().supported_actions()
+        s.extend(['set_rgb'])
+        return s
+
+    def mqtt_status(self):
+        s = super().mqtt_status()
+        if self.rgb is not None:
+            xy = rgb_to_xy(self.rgb)
+            s['color'] = {'x': xy[0], 'y': xy[1]}
+        return s
+
+    def json_status(self):
+        s = super().json_status()
+        if self.rgb:
+            r,g,b = self.rgb
+            html_triple = format(r<<16 | g<<8 | b, '06x')
+            s['rgb'] = html_triple
+        else:
+            s['rgb'] = None
+        return s
+
+    def consume_message(self, topic, msg):
+        s = super().consume_message(topic, msg)
+
+        if 'color' in msg:
+            # TODO: XY to RGB not supported
+            return True
+
+        return s
+
+    def set_rgb(self, html_rgb_triple):
+        self.rgb = bytes.fromhex(html_rgb_triple)
+        self.broadcast_new_state()
 
 
 class Button(BatteryPoweredThing):
