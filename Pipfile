@@ -1,4 +1,4 @@
-# Foo
+# Pipfile.lock in gitignore to avoid problems with multiple deploy
 
 [[source]]
 name = "pypi"
