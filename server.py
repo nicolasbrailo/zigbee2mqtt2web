@@ -1,6 +1,7 @@
 # TODO
 # * Stream obj state update ui
 # * Spotify
+# * MV flask bindings
 # * Local sensors
 # * Small viewer CC
 # * Deploy

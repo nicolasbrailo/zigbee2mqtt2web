@@ -19,7 +19,8 @@
 
     {{#if has_color}}
     <div class="lamp_detailed_panel_ctrl" id="lamp_detailed_panel_ctrl{{html_id}}" style="display: none;">
-        Lamp color: <input type="color" id="lamp_set_rgb{{html_id}}" value="255,0,0">
+        Lamp color: <input type="color" id="lamp_set_rgb{{html_id}}"
+                                        {{#if rgb_color}}value="#{{rgb_color}}"{{/if}} >
     </div>
     {{/if}}
 </li>

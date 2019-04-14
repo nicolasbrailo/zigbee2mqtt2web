@@ -35,8 +35,10 @@ class Lamp extends TemplatedThing {
     }
 
     update_status(stat) {
+        console.log(stat);
         this.is_on = stat.is_on;
         this.brightness = stat.brightness;
+        this.rgb_color = stat.rgb;
     }
 
     update_on_state_from_ui() {
