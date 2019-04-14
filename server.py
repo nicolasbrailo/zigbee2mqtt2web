@@ -32,21 +32,23 @@ class MyIkeaButton(Button):
                 self.btn2.set_brightness(20)
 
 class MqttLogger(object):
-    def __init__(self):
-        self.l = None
+    def __init__(self, registry):
+        self.listener = None
+        self.registry = registry
 
     def register_listener(self, l):
-        self.l = l
+        self.listener = l
 
     def on_thing_message(self, thing_id, topic, parsed_msg):
-        if self.l is not None:
-            self.l.on_thing_message(thing_id, topic, parsed_msg)
+        if self.listener is not None:
+            thing = self.registry.get_by_name_or_id(thing_id)
+            self.listener.on_thing_message(thing.get_pretty_name(), topic, parsed_msg)
 
     def on_unknown_message(self, topic, payload):
-        if self.l is not None:
-            self.l.on_unknown_message(topic, payload)
+        if self.listener is not None:
+            self.listener.on_unknown_message(topic, payload)
 
-mqtt_logger = MqttLogger()
+mqtt_logger = MqttLogger(thing_registry)
 mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', [thing_registry, mqtt_logger])
 
 thing_registry.register_thing(DimmableLamp('0xd0cf5efffe30c9bd', 'DeskLamp', mqtt))
