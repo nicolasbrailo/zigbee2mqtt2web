@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+    <!-- https://getbootstrap.com/docs/3.4/customize/ -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/bootstrap-theme.min.css">
+    
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
+    <script type="text/javascript" charset="utf-8">
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        socket.on('connect', function() {
+            $('#mqtt_log').append("<li>Connected to server</li>");
+        });
+
+        socket.on('disconnect', function() {
+            $('#mqtt_log').append("<li>Disconnected to server, will try reconnecting</li>");
+        });
+
+        socket.on('mqtt-thing-message', function(msg) {
+            console.log("MQTT -> ", msg);
+        });
+
+        socket.on('not-understood-mqtt-message', function(msg) {
+            console.log("MQTT -> ", msg);
+        });
+    </script>
+</head>
+
+<body>
+<div class="container-fluid">
+    <h2>Realtime MQTT Log</h2>
+    <ul id="mqtt_log">
+    </ul>
+</div>
+</body>
+</html>
+

@@ -15,7 +15,7 @@ class MqttProxy(object):
     THING_ID_PREFIX = '0x'
     TOPIC_DELIM = '/'
 
-    def __init__(self, mqtt_ip, mqtt_port, mqtt_topic_prefix, message_handler):
+    def __init__(self, mqtt_ip, mqtt_port, mqtt_topic_prefix, message_handler_list):
         def on_connect(client, userdata, flags, rc):
             print("Connected to MQTT broker with result code "+str(rc))
             client.subscribe("#")
@@ -26,7 +26,7 @@ class MqttProxy(object):
         self.mqtt_ip = mqtt_ip
         self.mqtt_port = mqtt_port
         self.mqtt_topic_prefix = mqtt_topic_prefix
-        self.message_handler = message_handler
+        self.message_handler_list = message_handler_list
         self.ignore_topics = ['zigbee2mqtt/bridge/state', 'zigbee2mqtt/bridge/config']
 
         self.client = mqtt.Client()
@@ -52,7 +52,9 @@ class MqttProxy(object):
             if msg.topic in self.ignore_topics:
                 return
             else:
-                return self.message_handler.on_unknown_message(msg.topic, msg.payload)
+                for handler in self.message_handler_list:
+                    handler.on_unknown_message(msg.topic, msg.payload)
+                return
 
         id_start = msg.topic.find(self.TOPIC_DELIM + self.THING_ID_PREFIX) \
                         + len(self.TOPIC_DELIM)
@@ -72,7 +74,8 @@ class MqttProxy(object):
             # TODO: Repeated msgs -> Close subscription before disconnect?
             #print(msg.timestamp)
             #print(msg.timestamp, "Call thing msg", msg.payload)
-            self.message_handler.on_thing_message(thing_id, msg.topic, parsed_msg)
+            for handler in self.message_handler_list:
+                handler.on_thing_message(thing_id, msg.topic, parsed_msg)
         except Exception as ex:
             print('Found error while handling MQTT message: {}'.format(str(ex)))
 

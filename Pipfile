@@ -10,6 +10,7 @@ apscheduler = "*"
 flask = "*"
 paho-mqtt = "*"
 pychromecast = "*"
+flask-socketio = "*"
 
 [requires]
 python_version = "3.6"

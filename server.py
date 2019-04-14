@@ -31,7 +31,23 @@ class MyIkeaButton(Button):
             else:
                 self.btn2.set_brightness(20)
 
-mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', thing_registry)
+class MqttLogger(object):
+    def __init__(self):
+        self.l = None
+
+    def register_listener(self, l):
+        self.l = l
+
+    def on_thing_message(self, thing_id, topic, parsed_msg):
+        if self.l is not None:
+            self.l.on_thing_message(thing_id, topic, parsed_msg)
+
+    def on_unknown_message(self, topic, payload):
+        if self.l is not None:
+            self.l.on_unknown_message(topic, payload)
+
+mqtt_logger = MqttLogger()
+mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', [thing_registry, mqtt_logger])
 
 thing_registry.register_thing(DimmableLamp('0xd0cf5efffe30c9bd', 'DeskLamp', mqtt))
 thing_registry.register_thing(DimmableLamp('0x000d6ffffef34561', 'Kitchen - Left', mqtt))
@@ -46,7 +62,22 @@ mqtt.bg_run()
 
 
 from flask import Flask, send_from_directory
+from flask_socketio import SocketIO
+# TODO? app.config['SECRET_KEY'] = 'secret!'
 flask_app = Flask(__name__)
+flask_socketio = SocketIO(flask_app)
+
+class MqttToWebSocket(object):
+    def on_thing_message(self, thing_id, topic, parsed_msg):
+        flask_socketio.emit('mqtt-thing-message', 
+                {'thing': thing_id, 'topic': topic, 'msg': parsed_msg})
+
+    def on_unknown_message(self, topic, payload):
+        flask_socketio.emit('non-understood-mqtt-message',
+                {'topic': topic, 'msg': payload})
+
+mqtt_logger.register_listener(MqttToWebSocket())
+
 
 
 @flask_app.route('/webapp/<path:path>')
@@ -158,6 +189,15 @@ def flask_endpoint_things_youtube(name_or_id, video_id):
     return json.dumps(obj.json_status())
  
 
+
+#from flask_socketio import emit as websock_emit
+@flask_app.route('/foo')
+def flask_foo():
+    flask_socketio.emit('my-event', {"Foo": "Bar"})
+    return "OK"
+ 
+
+
 # @flask_app.route('/things/<name_or_id>/toggle')
 # def flask_endpoint_things_toggle(name_or_id):
 #     obj = thing_registry.get_by_name_or_id(name_or_id)
@@ -176,7 +216,7 @@ def flask_endpoint_things_youtube(name_or_id, video_id):
 #     obj.brightness_up()
 #     return json.dumps(obj.json_status())
 
-flask_app.run(host='0.0.0.0', port=2000, debug=True)
+flask_socketio.run(flask_app, host='0.0.0.0', port=2000, debug=True)
 
 print("STOPPING")
 mqtt.stop()

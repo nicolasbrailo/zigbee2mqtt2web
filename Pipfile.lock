@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "48baae59e7c23aa8ba6aa0f9fc685ebfef60b1f5add291fe0864cd432666ccfc"
+            "sha256": "e2005c5c39b5e33766a88f761c93884378f9a1cf5e4c971351508e24f873d694"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -59,6 +59,14 @@
             ],
             "index": "pypi",
             "version": "==1.0.2"
+        },
+        "flask-socketio": {
+            "hashes": [
+                "sha256:8d8f9f104db5ddff1b06ba322d8e158881d590144199c993fe26cf53218c7edd",
+                "sha256:f9b9c95c82b62381862fd3bc55cea7fcc08e787f6bb63fdc79a2f258df2bdc9a"
+            ],
+            "index": "pypi",
+            "version": "==3.3.2"
         },
         "idna": {
             "hashes": [
@@ -157,6 +165,20 @@
             ],
             "index": "pypi",
             "version": "==3.2.0"
+        },
+        "python-engineio": {
+            "hashes": [
+                "sha256:a89d2cff7f9b447d37c450c2666101d97043b4b22524bf4efaafcb9784c9f7f4",
+                "sha256:fd14357f0b854de729cc2dba960ceba1d20da973c91f289110807f0bb2f69935"
+            ],
+            "version": "==3.5.1"
+        },
+        "python-socketio": {
+            "hashes": [
+                "sha256:aa702157694d55a743fb6f1cc0bd1af58fbfda8a7d71d747d4b12d6dac29cab3",
+                "sha256:cd225eb0bb3b348665727cfaafad1e455ee13b8fd9ea9ff2691082b88b9a9444"
+            ],
+            "version": "==3.1.2"
         },
         "pytz": {
             "hashes": [
