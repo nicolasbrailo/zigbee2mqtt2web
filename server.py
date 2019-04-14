@@ -1,3 +1,11 @@
+# TODO
+# * Stream obj state update ui
+# * Spotify
+# * Local sensors
+# * Small viewer CC
+# * Deploy
+
+
 import json
 from things import Thing, Lamp, DimmableLamp, Button
 
@@ -46,7 +54,6 @@ mqtt.bg_run()
 
 from flask import Flask, send_from_directory
 from flask_socketio import SocketIO
-# TODO? app.config['SECRET_KEY'] = 'secret!'
 flask_app = Flask(__name__)
 flask_socketio = SocketIO(flask_app)
 
