@@ -1,13 +1,5 @@
 import json
-from thing_registry import ThingRegistry
-from mqtt_proxy import MqttProxy
 from things import Thing, Lamp, DimmableLamp, Button
-from thing_chromecast import ThingChromecast
-
-thing_registry = ThingRegistry()
-
-for cc in ThingChromecast.scan_network('192.168.2.101'):
-    thing_registry.register_thing(cc)
 
 class MyIkeaButton(Button):
     def __init__(self, mqtt_id, pretty_name, btn1, btn2):
@@ -31,23 +23,11 @@ class MyIkeaButton(Button):
             else:
                 self.btn2.set_brightness(20)
 
-class MqttLogger(object):
-    def __init__(self, registry):
-        self.listener = None
-        self.registry = registry
 
-    def register_listener(self, l):
-        self.listener = l
+from thing_registry import ThingRegistry
+from mqtt_proxy import MqttProxy, MqttLogger
 
-    def on_thing_message(self, thing_id, topic, parsed_msg):
-        if self.listener is not None:
-            thing = self.registry.get_by_name_or_id(thing_id)
-            self.listener.on_thing_message(thing.get_pretty_name(), topic, parsed_msg)
-
-    def on_unknown_message(self, topic, payload):
-        if self.listener is not None:
-            self.listener.on_unknown_message(topic, payload)
-
+thing_registry = ThingRegistry()
 mqtt_logger = MqttLogger(thing_registry)
 mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', [thing_registry, mqtt_logger])
 
@@ -81,6 +61,10 @@ class MqttToWebSocket(object):
 
 mqtt_logger.register_listener(MqttToWebSocket())
 
+
+from thing_chromecast import ThingChromecast
+for cc in ThingChromecast.scan_network('192.168.2.101'):
+    thing_registry.register_thing(cc)
 
 
 @flask_app.route('/webapp/<path:path>')
@@ -136,6 +120,17 @@ def flask_endpoint_things_status(name_or_id):
 
 
 ## TODO: Move flask bindings to own object
+
+@flask_app.route('/world/scan_chromecasts')
+def flask_endpoint_world_scan_chromecasts():
+    scan_result = {}
+    for cc in ThingChromecast.scan_network():
+        try:
+            thing_registry.register_thing(cc)
+            scan_result[cc.get_pretty_name()] = 'Found new device'
+        except KeyError:
+            scan_result[cc.get_pretty_name()] = 'Already registered'
+    return json.dumps(scan_result)
 
 @flask_app.route('/things/<name_or_id>/playpause')
 def flask_endpoint_things_playpause(name_or_id):

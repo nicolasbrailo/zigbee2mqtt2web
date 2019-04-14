@@ -3,6 +3,24 @@ import paho.mqtt.publish as publish
 import json
 import threading
 
+class MqttLogger(object):
+    def __init__(self, registry):
+        self.listener = None
+        self.registry = registry
+
+    def register_listener(self, l):
+        self.listener = l
+
+    def on_thing_message(self, thing_id, topic, parsed_msg):
+        if self.listener is not None:
+            thing = self.registry.get_by_name_or_id(thing_id)
+            self.listener.on_thing_message(thing.get_pretty_name(), topic, parsed_msg)
+
+    def on_unknown_message(self, topic, payload):
+        if self.listener is not None:
+            self.listener.on_unknown_message(topic, payload)
+
+
 class MqttProxy(object):
     """
     Bridge between thing's messages and mqtt

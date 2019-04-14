@@ -14,7 +14,7 @@ class ThingRegistry(object):
 
     def register_thing(self, obj):
         if obj.get_pretty_name() in self.name_to_id.keys():
-            raise Exception('Thing {} ({}) already registered'.format(obj.get_pretty_name(), obj.get_id()))
+            raise KeyError('Thing {} ({}) already registered'.format(obj.get_pretty_name(), obj.get_id()))
 
         self.known_things[obj.get_id()] = obj
         self.name_to_id[obj.get_pretty_name()] = obj.get_id()
