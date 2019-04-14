@@ -53,7 +53,7 @@ class ThingChromecast(Thing):
         self.cc.volume_down()
 
     def set_volume(self, vol):
-        self.cc.set_volume(vol)
+        self.cc.set_volume(int(vol) / 100)
 
     def get_volume(self):
         try:

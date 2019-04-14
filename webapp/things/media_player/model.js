@@ -72,7 +72,7 @@ class MediaPlayer extends TemplatedThing {
     on_mute()     { this.request_action('/mute'); } 
     on_prev()     { this.request_action('/prev'); }
     on_next()     { this.request_action('/next'); }
-    on_volume()   { }//this._request_action('/play'); }
+    on_volume()   { this.request_action( '/set_volume/' + $('#media_player_'+this.html_id+'_volume').val()); }
     on_playtime() { }//this._request_action('/play'); }
 }
 
