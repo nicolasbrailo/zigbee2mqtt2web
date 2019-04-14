@@ -30,7 +30,8 @@
             append_to_log(log, JSON.stringify(msg.msg));
         });
 
-        socket.on('not-understood-mqtt-message', function(msg) {
+        socket.on('non-understood-mqtt-message', function(msg) {
+            console.log(msg);
             append_to_log('Received non understood message', JSON.stringify(msg));
         });
     </script>

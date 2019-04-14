@@ -55,6 +55,7 @@ thing_registry.register_thing(DimmableLamp('0xd0cf5efffe30c9bd', 'DeskLamp', mqt
 thing_registry.register_thing(DimmableLamp('0x000d6ffffef34561', 'Kitchen - Left', mqtt))
 thing_registry.register_thing(DimmableLamp('0x0017880104b8c734', 'Kitchen - Right', mqtt))
 thing_registry.register_thing(DimmableLamp('0xd0cf5efffe7b6279', 'FloorLamp', mqtt))
+thing_registry.register_thing(DimmableLamp('0x000b57fffe144c56', 'AnotherLamp', mqtt))
 thing_registry.register_thing(Button(      '0x0017880104efbfdd', 'HueButton'))
 thing_registry.register_thing(MyIkeaButton('0xd0cf5efffeffac46', 'IkeaButton',
                                            thing_registry.get_by_name_or_id('Kitchen - Left'),
@@ -76,7 +77,7 @@ class MqttToWebSocket(object):
 
     def on_unknown_message(self, topic, payload):
         flask_socketio.emit('non-understood-mqtt-message',
-                {'topic': topic, 'msg': payload})
+                {'topic': topic, 'msg': str(payload.decode('utf-8'))})
 
 mqtt_logger.register_listener(MqttToWebSocket())
 

@@ -53,7 +53,10 @@ class MqttProxy(object):
                 return
             else:
                 for handler in self.message_handler_list:
-                    handler.on_unknown_message(msg.topic, msg.payload)
+                    try:
+                        handler.on_unknown_message(msg.topic, msg.payload)
+                    except Exception as ex:
+                        print('UnknownMsgHandler {} error while handling: {}'.format(str(handler), str(ex)))
                 return
 
         id_start = msg.topic.find(self.TOPIC_DELIM + self.THING_ID_PREFIX) \
@@ -70,14 +73,14 @@ class MqttProxy(object):
                     format(msg.topic, msg.payload))
             return
 
-        try:
-            # TODO: Repeated msgs -> Close subscription before disconnect?
-            #print(msg.timestamp)
-            #print(msg.timestamp, "Call thing msg", msg.payload)
-            for handler in self.message_handler_list:
+        # TODO: Repeated msgs -> Close subscription before disconnect?
+        #print(msg.timestamp)
+        #print(msg.timestamp, "Call thing msg", msg.payload)
+        for handler in self.message_handler_list:
+            try:
                 handler.on_thing_message(thing_id, msg.topic, parsed_msg)
-        except Exception as ex:
-            print('Found error while handling MQTT message: {}'.format(str(ex)))
+            except Exception as ex:
+                print('Handler {} found error while handling MQTT message: {}'.format(str(handler), str(ex)))
 
     def broadcast(self, topic, msg):
         topic = self.mqtt_topic_prefix + topic
