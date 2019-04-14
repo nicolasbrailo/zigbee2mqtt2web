@@ -33,6 +33,59 @@ class MyIkeaButton(Button):
             else:
                 self.btn2.set_brightness(20)
 
+class HueButton(Button):
+    def __init__(self, mqtt_id, pretty_name, world):
+        super().__init__(mqtt_id, pretty_name)
+        self.world = world
+
+    def handle_action(self, action, msg):
+        if action == 'up-press':
+            for thing in self.world.get_known_things_names():
+                kind = self.world.get_by_name_or_id(thing).thing_types()
+                if 'media_player' in kind:
+                    self.world.get_by_name_or_id(thing).volume_up()
+            return True
+
+        if action == 'down-press':
+            for thing in self.world.get_known_things_names():
+                kind = self.world.get_by_name_or_id(thing).thing_types()
+                if 'media_player' in kind:
+                    self.world.get_by_name_or_id(thing).volume_down()
+            return True
+
+        if action == 'off-hold':
+            # Shut down the world
+            for thing in self.world.get_known_things_names():
+                kind = self.world.get_by_name_or_id(thing).thing_types()
+                if 'lamp' in kind:
+                    self.world.get_by_name_or_id(thing).turn_off()
+                elif 'media_player' in kind:
+                    self.world.get_by_name_or_id(thing).stop()
+            return True
+
+        if action == 'off-press':
+            print("Scene: goto sleep")
+            self.world.get_by_name_or_id('DeskLamp').set_brightness(5)
+            self.world.get_by_name_or_id('BedroomLamp').turn_off()
+            self.world.get_by_name_or_id('Floorlamp').set_brightness(5)
+            self.world.get_by_name_or_id('Kitchen - Right').set_brightness(25)
+            self.world.get_by_name_or_id('Kitchen - Left').turn_off()
+            self.world.get_by_name_or_id('Baticueva TV').stop()
+            return True
+
+        if action == 'on-press':
+            print("Scene set")
+            self.world.get_by_name_or_id('DeskLamp').set_brightness(50)
+            self.world.get_by_name_or_id('DeskLamp').set_rgb('FFA000')
+            self.world.get_by_name_or_id('Floorlamp').set_brightness(100)
+            self.world.get_by_name_or_id('Kitchen - Right').set_brightness(80)
+            self.world.get_by_name_or_id('Kitchen - Left').set_brightness(80)
+            return True
+
+        print("No handler for action {} message {}".format(action, msg))
+        return False
+    
+
 
 from thing_registry import ThingRegistry
 from mqtt_proxy import MqttProxy, MqttLogger
@@ -44,9 +97,9 @@ mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', [thing_registry, mqtt_lo
 thing_registry.register_thing(ColorDimmableLamp('0xd0cf5efffe30c9bd', 'DeskLamp', mqtt))
 thing_registry.register_thing(DimmableLamp('0x000d6ffffef34561', 'Kitchen - Left', mqtt))
 thing_registry.register_thing(DimmableLamp('0x0017880104b8c734', 'Kitchen - Right', mqtt))
-thing_registry.register_thing(DimmableLamp('0xd0cf5efffe7b6279', 'FloorLamp', mqtt))
-thing_registry.register_thing(DimmableLamp('0x000b57fffe144c56', 'AnotherLamp', mqtt))
-thing_registry.register_thing(Button(      '0x0017880104efbfdd', 'HueButton'))
+thing_registry.register_thing(DimmableLamp('0xd0cf5efffe7b6279', 'Floorlamp', mqtt))
+thing_registry.register_thing(DimmableLamp('0x000b57fffe144c56', 'BedroomLamp', mqtt))
+thing_registry.register_thing(HueButton(   '0x0017880104efbfdd', 'HueButton', thing_registry))
 thing_registry.register_thing(MyIkeaButton('0xd0cf5efffeffac46', 'IkeaButton',
                                            thing_registry.get_by_name_or_id('Kitchen - Left'),
                                            thing_registry.get_by_name_or_id('Kitchen - Right')))
