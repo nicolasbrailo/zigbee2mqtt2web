@@ -1,0 +1,7 @@
+
+#mqtt_network_status td {
+    border: 1px solid black;
+    min-width: 100px;
+    text-align: center;
+}
+
