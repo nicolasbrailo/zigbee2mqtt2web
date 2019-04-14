@@ -111,11 +111,13 @@ class Lamp(MqttThing):
 
     def turn_on(self, broadcast_update=True):
         self.is_on = True
-        self.broadcast_new_state()
+        if broadcast_update:
+            self.broadcast_new_state()
 
     def turn_off(self, broadcast_update=True):
         self.is_on = False
-        self.broadcast_new_state()
+        if broadcast_update:
+            self.broadcast_new_state()
 
     def toggle(self):
         if self.is_on == True:
