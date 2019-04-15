@@ -1,10 +1,10 @@
-import os
-pid = os.fork()
-if pid > 0:
-    print("Daemon started!")
-    os._exit(0)
-
-print("Daemon running!")
+#import os
+#pid = os.fork()
+#if pid > 0:
+#    print("Daemon started!")
+#    os._exit(0)
+#
+#print("Daemon running!")
 
 # TODO
 # * Stream obj state update ui
@@ -75,10 +75,10 @@ class HueButton(Button):
         if action == 'off-press':
             print("Scene: goto sleep")
             self.world.get_by_name_or_id('DeskLamp').set_brightness(5)
-            self.world.get_by_name_or_id('BedroomLamp').turn_off()
+            self.world.get_by_name_or_id('Livingroom Lamp').turn_off()
             self.world.get_by_name_or_id('Floorlamp').set_brightness(5)
-            self.world.get_by_name_or_id('Kitchen - Right').set_brightness(25)
-            self.world.get_by_name_or_id('Kitchen - Left').turn_off()
+            self.world.get_by_name_or_id('Kitchen Counter - Right').set_brightness(25)
+            self.world.get_by_name_or_id('Kitchen Counter - Left').turn_off()
             self.world.get_by_name_or_id('Baticueva TV').stop()
             return True
 
@@ -103,15 +103,15 @@ thing_registry = ThingRegistry()
 mqtt_logger = MqttLogger(thing_registry)
 mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', [thing_registry, mqtt_logger])
 
-thing_registry.register_thing(ColorDimmableLamp('0xd0cf5efffe30c9bd', 'DeskLamp', mqtt))
-thing_registry.register_thing(DimmableLamp('0x000d6ffffef34561', 'Kitchen - Left', mqtt))
-thing_registry.register_thing(DimmableLamp('0x0017880104b8c734', 'Kitchen - Right', mqtt))
-thing_registry.register_thing(DimmableLamp('0xd0cf5efffe7b6279', 'Floorlamp', mqtt))
-thing_registry.register_thing(DimmableLamp('0x000b57fffe144c56', 'BedroomLamp', mqtt))
-thing_registry.register_thing(HueButton(   '0x0017880104efbfdd', 'HueButton', thing_registry))
-thing_registry.register_thing(MyIkeaButton('0xd0cf5efffeffac46', 'IkeaButton',
-                                           thing_registry.get_by_name_or_id('Kitchen - Left'),
-                                           thing_registry.get_by_name_or_id('Kitchen - Right')))
+thing_registry.register_thing(ColorDimmableLamp('DeskLamp', 'DeskLamp', mqtt))
+thing_registry.register_thing(DimmableLamp('Kitchen Counter - Left', 'Kitchen Counter - Left', mqtt))
+thing_registry.register_thing(DimmableLamp('Kitchen Counter - Right', 'Kitchen Counter - Right', mqtt))
+thing_registry.register_thing(DimmableLamp('Floorlamp', 'Floorlamp', mqtt))
+thing_registry.register_thing(DimmableLamp('Livingroom Lamp', 'Livingroom Lamp', mqtt))
+thing_registry.register_thing(HueButton(   'HueButton', 'HueButton', thing_registry))
+thing_registry.register_thing(MyIkeaButton('IkeaButton', 'IkeaButton',
+                                           thing_registry.get_by_name_or_id('Kitchen Counter - Left'),
+                                           thing_registry.get_by_name_or_id('Kitchen Counter - Right')))
 
 mqtt.bg_run()
 
