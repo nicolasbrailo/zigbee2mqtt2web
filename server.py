@@ -84,13 +84,55 @@ class HueButton(Button):
             self.world.get_by_name_or_id('DeskLamp').set_brightness(50)
             self.world.get_by_name_or_id('DeskLamp').set_rgb('FFA000')
             self.world.get_by_name_or_id('Floorlamp').set_brightness(100)
-            self.world.get_by_name_or_id('Kitchen - Right').set_brightness(80)
-            self.world.get_by_name_or_id('Kitchen - Left').set_brightness(80)
+            self.world.get_by_name_or_id('Kitchen Counter - Right').set_brightness(80)
+            self.world.get_by_name_or_id('Kitchen Counter - Left').set_brightness(80)
             return True
 
         print("No handler for action {} message {}".format(action, msg))
         return False
     
+
+class SceneHandler(object):
+    def __init__(self, world):
+        self.world = world
+
+    def living_room_evening(self):
+        self.world.get_by_name_or_id('DeskLamp').set_brightness(60)
+        self.world.get_by_name_or_id('DeskLamp').set_rgb('ED7F0C')
+        self.world.get_by_name_or_id('Floorlamp').set_brightness(100)
+        self.world.get_by_name_or_id('Livingroom Lamp').set_brightness(100)
+
+    def dinner(self):
+        self.world.get_by_name_or_id('DeskLamp').set_brightness(30)
+        self.world.get_by_name_or_id('Floorlamp').set_brightness(100)
+        self.world.get_by_name_or_id('Livingroom Lamp').turn_off()
+        self.world.get_by_name_or_id('Kitchen Counter - Right').set_brightness(50)
+        self.world.get_by_name_or_id('Kitchen Counter - Left').set_brightness(80)
+        self.world.get_by_name_or_id('Baticueva TV').stop()
+
+    def sleepy(self):
+        self.world.get_by_name_or_id('DeskLamp').set_brightness(20)
+        self.world.get_by_name_or_id('Floorlamp').set_brightness(20)
+        self.world.get_by_name_or_id('Livingroom Lamp').turn_off()
+        self.world.get_by_name_or_id('Kitchen Counter - Right').set_brightness(40)
+        self.world.get_by_name_or_id('Kitchen Counter - Left').turn_off()
+        self.world.get_by_name_or_id('Baticueva TV').stop()
+        try:
+            self.world.get_by_name_or_id('Spotify').stop()
+        except:
+            pass
+
+    def world_off(self):
+        self.world.get_by_name_or_id('DeskLamp').turn_off()
+        self.world.get_by_name_or_id('Floorlamp').turn_off()
+        self.world.get_by_name_or_id('Livingroom Lamp').turn_off()
+        self.world.get_by_name_or_id('Kitchen Counter - Right').turn_off()
+        self.world.get_by_name_or_id('Kitchen Counter - Left').turn_off()
+        self.world.get_by_name_or_id('Baticueva TV').stop()
+        try:
+            self.world.get_by_name_or_id('Spotify').stop()
+        except:
+            pass
 
 
 from thing_registry import ThingRegistry
@@ -99,6 +141,7 @@ from mqtt_proxy import MqttProxy, MqttLogger
 thing_registry = ThingRegistry()
 mqtt_logger = MqttLogger(thing_registry)
 mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', [thing_registry, mqtt_logger])
+scenes = SceneHandler(thing_registry)
 
 thing_registry.register_thing(ColorDimmableLamp('DeskLamp', 'DeskLamp', mqtt))
 thing_registry.register_thing(DimmableLamp('Kitchen Counter - Left', 'Kitchen Counter - Left', mqtt))
@@ -151,6 +194,23 @@ except ThingSpotify.TokenNeedsRefresh as ex:
     print("Spotify token needs a refresh. Please GOTO {}".format(ex.refresh_url))
     exit(0)
 
+
+@flask_app.route('/scenes/living_room_evening')
+def flask_endpoint_scenes_1():
+    scenes.living_room_evening()
+    return "OK"
+@flask_app.route('/scenes/dinner')
+def flask_endpoint_scenes_2():
+    scenes.dinner()
+    return "OK"
+@flask_app.route('/scenes/sleepy')
+def flask_endpoint_scenes_3():
+    scenes.sleepy()
+    return "OK"
+@flask_app.route('/scenes/world_off')
+def flask_endpoint_scenes_4():
+    scenes.world_off()
+    return "OK"
 
 
 @flask_app.route('/webapp/<path:path>')

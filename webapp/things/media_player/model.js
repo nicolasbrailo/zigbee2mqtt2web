@@ -32,7 +32,7 @@ class MediaPlayer extends TemplatedThing {
         $(document).on('click', '#media_player_'+this.html_id+'_extended_control_open',
             function(){ $('#media_player_'+self.html_id+'_extended_control').toggle(); });
 
-        this.periodic_update_status();
+        // TODO this.periodic_update_status();
     }
 
     update_status(new_status) {
