@@ -8,10 +8,9 @@
 
 # TODO
 # * Stream obj state update ui
-# * Spotify UI
+# * Smart update (instead of N seconds -> when media is about to end)
 # * MV flask bindings
 # * Local sensors
-# * Small viewer CC
 # * RM thing.thing_type -> replace only with supported_actions
 
 
@@ -147,7 +146,7 @@ from thing_spotify import ThingSpotify
 
 try:
     tok = ThingSpotify.get_cached_token(cfg)
-    thing_registry.register_thing(ThingSpotify(tok))
+    #thing_registry.register_thing(ThingSpotify(tok))
 except ThingSpotify.TokenNeedsRefresh as ex:
     print("Spotify token needs a refresh. Please GOTO {}".format(ex.refresh_url))
     exit(0)

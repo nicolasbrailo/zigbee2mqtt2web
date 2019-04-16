@@ -31,6 +31,8 @@ class MediaPlayer extends TemplatedThing {
 
         $(document).on('click', '#media_player_'+this.html_id+'_extended_control_open',
             function(){ $('#media_player_'+self.html_id+'_extended_control').toggle(); });
+
+        this.periodic_update_status();
     }
 
     update_status(new_status) {
@@ -46,6 +48,18 @@ class MediaPlayer extends TemplatedThing {
         var show_panel = $('#media_player_'+this.html_id+'_extended_control').is(':visible');
         $('#media_player_'+this.html_id+'_ctrl').replaceWith(this.create_ui());
         if (show_panel) $('#media_player_'+this.html_id+'_extended_control').show();
+    }
+
+    periodic_update_status() {
+        if (this.stop_periodic_updates) return;
+
+        var update_freq_ms = 5000;
+        var self = this;
+        this.status_updater_task = setTimeout(function(){
+            clearTimeout(self.status_updater_task);
+            self.request_action('/status');
+            self.periodic_update_status();
+        }, update_freq_ms);
     }
 
     on_play()     { this.request_action('/playpause'); }
