@@ -74,10 +74,10 @@ class ThingSpotify(Thing):
         self._sp.previous_track()
 
     def set_playtime(self, t):
-        if self._is_active():
+        if not self._is_active():
             return
 
-        self._sp.seek_track(t)
+        self._sp.seek_track(t * 1000)
 
     def volume_up(self):
         vol = self._get_volume_pct() + 10

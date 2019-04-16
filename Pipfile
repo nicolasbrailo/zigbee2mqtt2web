@@ -13,12 +13,13 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-apscheduler = {version="*", index="piwheels"}
-flask = {version="*", index="piwheels"}
-paho-mqtt = {version="*", index="piwheels"}
-pychromecast = {version="*", index="piwheels"}
-flask-socketio = {version="*", index="piwheels"}
-requests = {version="*", index="piwheels"}
+apscheduler = {index = "piwheels",version = "*"}
+flask = {index = "piwheels",version = "*"}
+paho-mqtt = {index = "piwheels",version = "*"}
+pychromecast = {index = "piwheels",version = "*"}
+flask-socketio = {index = "piwheels",version = "*"}
+requests = {index = "piwheels",version = "*"}
+spotipy = {git = "https://github.com/plamere/spotipy.git"}
 
 [requires]
 python_version = "3.5"
