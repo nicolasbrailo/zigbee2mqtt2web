@@ -2,21 +2,42 @@
 
 <div class="media_player_ctrl" id="media_player_{{html_id}}_ctrl">
     <img class="media_icon" src="{{player_icon}}" />
-    <p class="media_player_name">{{status.name}} | {{status.app}} | {{status.player_state}}</p>
-    <p class="media_title">{{status.media.title}}</p>
-    <div class="mini_control">
-        <button class="control_button btn_play" id="media_player_{{html_id}}_play">Play</button>
-        <button class="control_button btn_stop" id="media_player_{{html_id}}_stop">Stop</button>
-        <input type="checkbox"
-                id="media_player_{{html_id}}_mute" 
-                {{#if status.volume_muted}} checked {{/if}}
-            />
-            <label for="media_player_{{html_id}}_mute"></label>
-        <input type="range" class="volumeslider" min=0 max=100
-            id="media_player_{{html_id}}_volume"
-            value={{status.volume_pct}} />
+
+    <div class="media_player_small_control">
+        <div class="media_player_info">
+            <p>{{status.name}}</p>
+            {{#if status.app}}<p> | {{status.app}}</p>{{/if}}
+            {{#if status.state}}<p> | {{status.state}}</p>{{/if}}
+        </div>
+
+        <div class="media_player_media_info">
+            <p class="media_title">{{status.media.title}}</p>
+        </div>
+
+        <div class="mini_control">
+            <button class="control_button btn_play" id="media_player_{{html_id}}_play">Play</button>
+            <button class="control_button btn_stop" id="media_player_{{html_id}}_stop">Stop</button>
+
+            <div class="btn_mute">
+                <input type="checkbox" 
+                        id="media_player_{{html_id}}_mute" 
+                        {{#if status.volume_muted}} checked {{/if}}
+                    />
+                    <label for="media_player_{{html_id}}_mute"></label>
+            </div>
+            <input type="range" class="volumeslider" min=0 max=100
+                id="media_player_{{html_id}}_volume"
+                value={{status.volume_pct}} />
+
+            <div class="btn_extended_control_open">
+                <input type="checkbox"
+                        id="media_player_{{html_id}}_extended_control_open"/>
+                    <label for="media_player_{{html_id}}_extended_control_open"></label>
+            </div>
+        </div>
     </div>
-    <div class="extended_control">
+
+    <div class="media_player_extended_control">
         <button class="control_button btn_prev"
             id="media_player_{{html_id}}_prev">Prev</button>
         <input type="range" class="timeslider" 
@@ -40,11 +61,13 @@
     <img class="media_icon" src="{{player_icon}}" />
     <p class="media_player_name">{{status.name}} | {{status.app}}</p>
     <div class="mini_control">
-        <input type="checkbox"
-                id="media_player_{{html_id}}_mute" 
-                {{#if status.volume_muted}} checked {{/if}}
-            />
-            <label for="media_player_{{html_id}}_mute"></label>
+        <div class="btn_mute">
+            <input type="checkbox"
+                    id="media_player_{{html_id}}_mute" 
+                    {{#if status.volume_muted}} checked {{/if}}
+                />
+                <label for="media_player_{{html_id}}_mute"></label>
+        </div>
         <input type="range" class="volumeslider" min=0 max=100
             id="media_player_{{html_id}}_volume"
             value={{status.volume_pct}} />
