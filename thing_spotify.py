@@ -149,7 +149,7 @@ class ThingSpotify(Thing):
                 'uri': None,
                 'active_device': self._get_active_device()['name'],
                 'available_devices': self._get_available_devices(),
-                'app': "Spotify",
+                'app': None,
                 'volume_pct': vol,
                 'volume_muted': (vol == 0),
                 'player_state': 'Playing' if track['is_playing'] else 'Idle',

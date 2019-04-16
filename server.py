@@ -54,11 +54,10 @@ class HueButton(Button):
             return True
 
         if action == 'down-press':
-            self.world.get_by_name_or_id('DeskLamp').set_brightness(10)
-            #for thing in self.world.get_known_things_names():
-            #    kind = self.world.get_by_name_or_id(thing).thing_types()
-            #    if 'media_player' in kind:
-            #        self.world.get_by_name_or_id(thing).volume_down()
+            for thing in self.world.get_known_things_names():
+                kind = self.world.get_by_name_or_id(thing).thing_types()
+                if 'media_player' in kind:
+                    self.world.get_by_name_or_id(thing).volume_down()
             return True
 
         if action == 'off-hold':
@@ -146,10 +145,10 @@ try:
     thing_registry.register_thing(ThingSpotify(tok))
 except ThingSpotify.TokenNeedsRefresh as ex:
     print("Spotify token needs a refresh. Please GOTO {}".format(ex.refresh_url))
+    exit(0)
 
 # TODO
-# refresh_url = ""
-# ThingSpotify.update_token_from_url(cfg, refresh_url)
+# ThingSpotify.update_token_from_url(cfg, cfg['spotify_last_redir_url'])
 # exit(0)
 
 
