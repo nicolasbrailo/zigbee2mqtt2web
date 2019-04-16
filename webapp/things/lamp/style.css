@@ -15,7 +15,7 @@
 
 .lamp_open_panel_ctrl {
     /*display: inline-block;*/
-    width: 150px;
+    width: 250px;
     margin: 0;
     padding: 0:
 }
@@ -31,7 +31,7 @@
     .lamp_set_brightness_slider {
         /* !important overrides bootstrap styles */
         vertical-align:middle !important;
-        width: calc(100% - 200px) !important;
+        width: calc(100% - 300px) !important;
         display: inline-block !important;
         float: right;
     }
