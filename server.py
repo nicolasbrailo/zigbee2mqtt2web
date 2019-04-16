@@ -8,11 +8,10 @@
 
 # TODO
 # * Stream obj state update ui
-# * Spotify
+# * Spotify UI
 # * MV flask bindings
 # * Local sensors
 # * Small viewer CC
-# * Deploy
 # * RM thing.thing_type -> replace only with supported_actions
 
 
@@ -137,6 +136,22 @@ from thing_chromecast import ThingChromecast
 for cc in ThingChromecast.scan_network('192.168.2.101'):
     thing_registry.register_thing(cc)
 
+import json
+with open('config.json', 'r') as fp:
+    cfg = json.loads(fp.read())
+
+from thing_spotify import ThingSpotify
+try:
+    tok = ThingSpotify.get_cached_token(cfg)
+    thing_registry.register_thing(ThingSpotify(tok))
+except ThingSpotify.TokenNeedsRefresh as ex:
+    print("Spotify token needs a refresh. Please GOTO {}".format(ex.refresh_url))
+
+# TODO
+# refresh_url = ""
+# ThingSpotify.update_token_from_url(cfg, refresh_url)
+# exit(0)
+
 
 @flask_app.route('/webapp/<path:path>')
 def flask_endpoint_webapp_root(path):
@@ -242,13 +257,13 @@ def flask_endpoint_things_toggle_mute(name_or_id):
 @flask_app.route('/things/<name_or_id>/set_volume_pct/<vol_pct>')
 def flask_endpoint_things_set_volume_pct(name_or_id, vol_pct):
     obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.set_volume_pct(vol_pct)
+    obj.set_volume_pct(int(vol_pct))
     return json.dumps(obj.json_status())
 
 @flask_app.route('/things/<name_or_id>/set_playtime/<time>')
 def flask_endpoint_things_set_playtime(name_or_id, time):
     obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.set_playtime(time)
+    obj.set_playtime(int(time))
     return json.dumps(obj.json_status())
 
 

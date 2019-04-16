@@ -6,7 +6,7 @@ from spotipy.oauth2 import SpotifyOAuth
 class ThingSpotify(Thing):
 
     class TokenNeedsRefresh(Exception):
-        def __init__(url):
+        def __init__(self, url):
             self.refresh_url = url
 
     @staticmethod
@@ -18,9 +18,9 @@ class ThingSpotify(Thing):
         """ Call get_cached_token to try and receive a cached auth token. Will throw TokenNeedsRefresh
         if token is invalid. Goto url in exception.refresh_url to get a new token from Spotify (user
         will need to do that manually: it requires user approval """
-        auth = SpotifyOAuth(cfg.spotify_client_id, cfg.spotify_client_secret,
-                                cfg.spotify_redirect_uri, scope=ThingSpotify._get_spotify_scopes(),
-                                cache_path=cfg.spotipy_cache)
+        auth = SpotifyOAuth(cfg['spotify_client_id'], cfg['spotify_client_secret'],
+                                cfg['spotify_redirect_uri'], scope=ThingSpotify._get_spotify_scopes(),
+                                cache_path=cfg['spotipy_cache'])
 
         tok = auth.get_cached_token()
         if tok:
@@ -29,12 +29,12 @@ class ThingSpotify(Thing):
         raise ThingSpotify.TokenNeedsRefresh(auth.get_authorize_url())
 
     @staticmethod
-    def get_token_from_redir_url(cfg, refresh_redir_url):
+    def update_token_from_url(cfg, refresh_redir_url):
         """ If get_cached_token failed, call get_token_from_redir_url with the result of the url
         redirect that comes from calling the new authorize url """
-        auth = SpotifyOAuth(cfg.spotify_client_id, cfg.spotify_client_secret,
-                                cfg.spotify_redirect_uri, scope=ThingSpotify._get_spotify_scopes(),
-                                cache_path=cfg.spotipy_cache)
+        auth = SpotifyOAuth(cfg['spotify_client_id'], cfg['spotify_client_secret'],
+                                cfg['spotify_redirect_uri'], scope=ThingSpotify._get_spotify_scopes(),
+                                cache_path=cfg['spotipy_cache'])
 
         code = auth.parse_response_code(refresh_redir_url)
         tok = auth.get_access_token(code)
