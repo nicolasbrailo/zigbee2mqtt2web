@@ -31,7 +31,7 @@ class MqttProxy(object):
     def __init__(self, mqtt_ip, mqtt_port, mqtt_topic_prefix, message_handler_list):
         def on_connect(client, userdata, flags, rc):
             print("Connected to MQTT broker with result code "+str(rc))
-            client.subscribe("#")
+            client.subscribe("#", qos=1)
 
         def on_unsubscribe(client, userdata, msg_id):
             client.disconnect()
@@ -97,7 +97,7 @@ class MqttProxy(object):
 
     def broadcast(self, topic, msg):
         topic = self.mqtt_topic_prefix + topic
-        publish.single(hostname=self.mqtt_ip, port=self.mqtt_port, topic=topic, payload=msg)
+        publish.single(qos=1, hostname=self.mqtt_ip, port=self.mqtt_port, topic=topic, payload=msg)
 
 
 
