@@ -19,34 +19,23 @@ class Lamp extends TemplatedThing {
             function(){ $('#lamp_detailed_panel_ctrl'+self.html_id).toggle(); });
 
         $(document).on('click', '#lamp_is_on_checkbox'+this.html_id,
-            function(){ self.update_on_state_from_ui(); self.foo()});
+            function(){ self.update_on_state_from_ui(); });
 
         $(document).on('click', '#lamp_set_brightness_slider'+this.html_id,
-            function(){ self.update_brigthness_from_ui();self.foo() });
+            function(){ self.update_brigthness_from_ui(); });
         $(document).on('touchend', '#lamp_set_brightness_slider'+this.html_id,
-            function(){ self.update_brigthness_from_ui(); self.foo()});
+            function(){ self.update_brigthness_from_ui(); });
 
         $(document).on('change', '#lamp_set_rgb'+this.html_id,
-            function(){ self.update_color_from_ui();self.foo()});
-
-        function throttle(min_wait, func) {
-            var timeout;
-            return function() {
-                if (timeout) return;
-                var context = this, args = arguments;
-                var later = function() { clearTimeout(timeout); timeout = null; };
-                timeout = setTimeout(later, min_wait);
-                func.apply(context, args);
-            };
-        };
-
+            function(){ self.update_color_from_ui(); });
         $(document).on('input', '#lamp_set_rgb'+this.html_id,
-            throttle(500, function(){ self.update_color_from_ui(); }));
+            function(){ self.throttled_update_color_from_ui(); });
     }
 
-    foo() {
-        // TODO: Will close an open extended pane
+    updateUI() {
+        var show_panel = $('#lamp_detailed_panel_ctrl'+this.html_id).is(':visible');
         $('#lamp_view'+this.html_id).replaceWith(this.create_ui());
+        if (show_panel) $('#lamp_detailed_panel_ctrl'+this.html_id).show();
     }
 
     update_status(stat) {
@@ -58,19 +47,36 @@ class Lamp extends TemplatedThing {
     update_on_state_from_ui() {
         var should_be_on = $('#lamp_is_on_checkbox'+this.html_id).is(':checked');
         this.is_on = should_be_on;
+        this.updateUI();
         this.request_action((should_be_on? '/turn_on' : '/turn_off'));
     }
 
     update_brigthness_from_ui() {
         var brightness_pct = $('#lamp_set_brightness_slider'+this.html_id).val();
         this.brightness = brightness_pct;
+        this.updateUI();
         this.request_action('/set_brightness/' + brightness_pct);
     }
 
     update_color_from_ui() {
-        var color = $('#lamp_set_rgb'+this.html_id).val();
+        var color = $('#lamp_set_rgb'+this.html_id).val().substring(1);
         this.rgb_color = color;
-        this.request_action('/set_rgb/' + color.substring(1));
+        this.updateUI();
+        this.request_action('/set_rgb/' + color);
+    }
+
+    throttled_update_color_from_ui() {
+        if (this.timeout_active) return;
+
+        var throttle_time = 250;
+        var self = this;
+        this.timeout_active = setTimeout(function(){
+                clearTimeout(self.timeout_active);
+                self.timeout_active = null; 
+            }, throttle_time);
+
+        var color = $('#lamp_set_rgb'+this.html_id).val().substring(1);
+        this.request_action('/set_rgb/' + color);
     }
 }
 
