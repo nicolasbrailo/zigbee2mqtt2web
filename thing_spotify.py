@@ -47,6 +47,7 @@ class ThingSpotify(Thing):
     def __init__(self, tok):
         super().__init__("Spotify", "Spotify")
         self._sp = Spotify(auth=tok)
+        self.unmuted_vol_pct = 0
 
     def thing_types(self):
         return ['media_player']
@@ -80,25 +81,34 @@ class ThingSpotify(Thing):
         self._sp.seek_track(t * 1000)
 
     def volume_up(self):
+        if not self._is_active():
+            return
+
         vol = self._get_volume_pct() + 10
         if vol > 100:
             vol = 100
         self.set_volume_pct(vol)
 
     def volume_down(self):
+        if not self._is_active():
+            return
+
         vol = self._get_volume_pct() - 10
         if vol < 0:
             vol = 0
         self.set_volume_pct(vol)
 
     def set_volume_pct(self, pct):
+        if not self._is_active():
+            return
         self._sp.volume(pct)
 
     def toggle_mute(self):
+        if not self._is_active():
+            return
         vol = self._get_volume_pct()
         if vol == 0:
-            if self.unmuted_vol_pct is not None:
-                self.set_volume_pct(self.unmuted_vol_pct)
+            self.set_volume_pct(self.unmuted_vol_pct)
         else:
             self.unmuted_vol_pct = vol
             self.set_volume_pct(0)
@@ -117,17 +127,42 @@ class ThingSpotify(Thing):
 
     def _get_active_device(self):
         l = [x for x in self._sp.devices()['devices'] if x['is_active'] == True]
+
+        if len(l) == 0:
+            return None
+
         assert(len(l) == 1)
         return l[0]
 
     def _get_volume_pct(self):
-        return self._get_active_device()['volume_percent']
+        dev = self._get_active_device()
+        if dev is None:
+            return 0
+        return dev['volume_percent']
 
     def _is_active(self):
-        return self._sp.current_user_playing_track()['is_playing']
+        track = self._sp.current_user_playing_track()
+        return (track is not None) and track['is_playing']
 
     def json_status(self):
+        vol = self._get_volume_pct()
+        dev = self._get_active_device()
+        status = {
+                'name': self.get_pretty_name(),
+                'uuid': self.get_id(),
+                'uri': None,
+                'active_device': dev['name'] if dev is not None else None,
+                'available_devices': self._get_available_devices(),
+                'app': None,
+                'volume_pct': vol,
+                'volume_muted': (vol == 0),
+                'player_state': 'Playing' if self._is_active() else 'Idle',
+                'media': None,
+                }
+        
         track = self._sp.current_user_playing_track()
+        if track is None:
+            return status
 
         # Get all cover images sorted by image size
         imgs = [(img['height'] * img['width'], img['url'])
@@ -141,24 +176,12 @@ class ThingSpotify(Thing):
             if area >= 90000:
                 break
 
-        vol = self._get_volume_pct()
-
-        return {
-                'name': self.get_pretty_name(),
-                'uuid': self.get_id(),
-                'uri': None,
-                'active_device': self._get_active_device()['name'],
-                'available_devices': self._get_available_devices(),
-                'app': None,
-                'volume_pct': vol,
-                'volume_muted': (vol == 0),
-                'player_state': 'Playing' if track['is_playing'] else 'Idle',
-                'media': {
+        status['media'] = {
                     'icon': selected_img,
                     'title': track['item']['name'],
                     'duration': track['item']['duration_ms'] / 1000,
                     'current_time': track['progress_ms'] / 1000,
-                    'extra_metadata': {
+                    'spotify_metadata': {
                         'artist': ', '.join([x['name'] for x in track['item']['album']['artists']]),
                         'album_link': track['item']['album']['external_urls']['spotify'],
                         'album_name': track['item']['album']['name'],
@@ -166,6 +189,7 @@ class ThingSpotify(Thing):
                         'current_track': track['item']['track_number'],
                     }
                 }
-            }
+
+        return status
 
 

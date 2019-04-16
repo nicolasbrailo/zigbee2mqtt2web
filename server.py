@@ -140,6 +140,11 @@ with open('config.json', 'r') as fp:
     cfg = json.loads(fp.read())
 
 from thing_spotify import ThingSpotify
+
+# TODO
+#ThingSpotify.update_token_from_url(cfg, cfg['spotify_last_redir_url'])
+#exit(0)
+
 try:
     tok = ThingSpotify.get_cached_token(cfg)
     thing_registry.register_thing(ThingSpotify(tok))
@@ -147,9 +152,6 @@ except ThingSpotify.TokenNeedsRefresh as ex:
     print("Spotify token needs a refresh. Please GOTO {}".format(ex.refresh_url))
     exit(0)
 
-# TODO
-# ThingSpotify.update_token_from_url(cfg, cfg['spotify_last_redir_url'])
-# exit(0)
 
 
 @flask_app.route('/webapp/<path:path>')

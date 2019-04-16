@@ -1,10 +1,14 @@
 .media_player_ctrl {
     border: 1px black solid;
+    clear: both;
+    display: block;
+    width: 100%;
+    overflow: hidden;
 }
 
 .media_player_ctrl .media_icon {
     float: left;
-    max-width: 100px;
+    max-width: 80px;
     max-height: 100%;
     width: auto;
     height: auto;
@@ -18,13 +22,12 @@
 }
 
 .media_player_small_control .media_player_media_info {
-    line-height: 0px;
+    line-height: 5px;
     clear: left;
 }
 
 .media_player_ctrl .media_player_info p {
-    float: left;
-    padding-left: 10px;
+    display: inline;
 }
 
 .media_player_ctrl .mini_control {
@@ -104,7 +107,6 @@
     padding: 0px;
 }
 
-
 .media_player_ctrl .control_button {
     vertical-align: top; /* Required to align buttons with checkboxes and sliders */
     background-color: transparent;
@@ -125,10 +127,19 @@
 .media_player_ctrl .btn_next { background-image: url(icons/next.png); }
 
 
+.media_player_ctrl .media_player_extended_control {
+    display: none;
+    width: 100%;
+}
+
 .media_player_ctrl .media_player_extended_control .timeslider {
-    width: calc(90% - 300px); /* slider width - width btns */
+    width: calc(90% - 100px); /* slider width - width btns */
     min-width: 150px;
     display: inline-block;
+}
+
+.media_player_ctrl .media_player_extended_control .media_player_extended_control_positionbox {
+    text-align: center;
 }
 
 @media (min-width: 200px) {

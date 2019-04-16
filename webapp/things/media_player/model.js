@@ -14,6 +14,8 @@ class MediaPlayer extends TemplatedThing {
     constructor(things_server_url, name, supported_actions, status) {
         super(things_server_url, name, supported_actions, status);
 
+        this.has_extended_control = true;
+
         // Register object UI callbacks
         var self = this;
         // Div ID: '#media_player_'+this.html_id+'_ctrl'
@@ -26,9 +28,13 @@ class MediaPlayer extends TemplatedThing {
         $(document).on('touchend', '#media_player_'+this.html_id+'_volume',   function(){ self.on_volume(); });
         $(document).on('click',    '#media_player_'+this.html_id+'_playtime', function(){ self.on_playtime(); });
         $(document).on('touchend', '#media_player_'+this.html_id+'_playtime', function(){ self.on_playtime(); });
+
+        $(document).on('click', '#media_player_'+this.html_id+'_extended_control_open',
+            function(){ $('#media_player_'+self.html_id+'_extended_control').toggle(); });
     }
 
     update_status(new_status) {
+        console.log(new_status);
         this.status = new_status;
         this.has_media = !(!new_status.media);
         this.player_icon = (new_status.media && new_status.media.icon)?
