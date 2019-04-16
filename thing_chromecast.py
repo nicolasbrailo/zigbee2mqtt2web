@@ -105,7 +105,7 @@ class ThingChromecast(Thing):
     def supported_actions(self):
         return ['playpause', 'stop', 'play_next_in_queue', 'play_prev_in_queue',
                 'toggle_mute', 'volume_up', 'volume_down', 'set_volume_pct',
-                'youtube']
+                'set_playtime', 'youtube']
 
     def json_status(self):
         if self.cc.status is None:
