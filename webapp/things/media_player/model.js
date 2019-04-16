@@ -34,12 +34,18 @@ class MediaPlayer extends TemplatedThing {
     }
 
     update_status(new_status) {
-        console.log(new_status);
         this.status = new_status;
         this.has_media = !(!new_status.media);
         this.player_icon = (new_status.media && new_status.media.icon)?
                                 new_status.media.icon :
                                 'things/media_player/icons/chromecast.png';
+        this.updateUI();
+    }
+
+    updateUI() {
+        var show_panel = $('#media_player_'+this.html_id+'_extended_control').is(':visible');
+        $('#media_player_'+this.html_id+'_ctrl').replaceWith(this.create_ui());
+        if (show_panel) $('#media_player_'+this.html_id+'_extended_control').show();
     }
 
     on_play()     { this.request_action('/playpause'); }
