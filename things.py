@@ -19,7 +19,10 @@ class Thing(object):
         raise Exception("Subclass responsibility")
 
     def supported_actions(self):
-        raise Exception("Subclass responsibility")
+        return ['json_status']
+
+    def say_hi(self, x, y):
+        return "HOLA " + x + y
 
 
 class MqttThing(Thing):
@@ -28,7 +31,9 @@ class MqttThing(Thing):
         self.link_quality = None
 
     def supported_actions(self):
-        return ['mqtt_status']
+        s = super().supported_actions()
+        s.extend(['mqtt_status'])
+        return s
 
     def mqtt_status(self):
         return self.json_status()
@@ -159,6 +164,7 @@ class DimmableLamp(Lamp):
         return s
 
     def set_brightness(self, pct):
+        pct = int(pct)
         if pct < 0 or pct > 100:
             raise Exception('Unexpected brightness %: {} (should be 0-100)'.format(pct))
 
@@ -203,8 +209,11 @@ class ColorDimmableLamp(DimmableLamp):
     def mqtt_status(self):
         s = super().mqtt_status()
         if self.rgb is not None:
-            xy = rgb_to_xy(self.rgb)
-            s['color'] = {'x': xy[0], 'y': xy[1]}
+            try:
+                xy = rgb_to_xy(self.rgb)
+                s['color'] = {'x': xy[0], 'y': xy[1]}
+            except ZeroDivisionError:
+                print("Invalid color selected for {}, ignoring".format(self.pretty_name()))
         return s
 
     def json_status(self):

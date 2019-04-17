@@ -49,7 +49,7 @@ class TemplatedThing {
             console.error("Subclass must define update_status()");
         }
 
-        this.action_base_url = things_server_url + 'things/' + name;
+        this.action_base_url = things_server_url + 'thing/' + name;
         this.name = name;
         // HTML ids can't contain whitespaces
         this.html_id = name.split(' ').join('_');

@@ -9,8 +9,9 @@
 # TODO
 # * Stream obj state update ui
 # * Smart update (instead of N seconds -> when media is about to end)
-# * MV flask bindings
 # * Local sensors
+# * MK proper logger for sys srvc
+# * Integrate as service + parseargs
 
 
 import json
@@ -137,7 +138,10 @@ class SceneHandler(object):
 from thing_registry import ThingRegistry
 from mqtt_proxy import MqttProxy, MqttLogger
 
-thing_registry = ThingRegistry()
+from flask import Flask, send_from_directory
+flask_app = Flask(__name__)
+
+thing_registry = ThingRegistry(flask_app)
 mqtt_logger = MqttLogger(thing_registry)
 mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', [thing_registry, mqtt_logger])
 scenes = SceneHandler(thing_registry)
@@ -155,9 +159,7 @@ thing_registry.register_thing(MyIkeaButton('IkeaButton', 'IkeaButton',
 mqtt.bg_run()
 
 
-from flask import Flask, send_from_directory
 from flask_socketio import SocketIO
-flask_app = Flask(__name__)
 flask_socketio = SocketIO(flask_app)
 
 class MqttToWebSocket(object):
@@ -238,40 +240,6 @@ def flask_endpoint_get_world_status():
     return json.dumps(actions)
 
 
-# Thing actions
-
-@flask_app.route('/things/<name_or_id>/light_on')
-def flask_endpoint_things_light_on(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.light_on()
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/light_off')
-def flask_endpoint_things_light_off(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.light_off()
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/set_brightness/<brightness>')
-def flask_endpoint_things_set_brightness(name_or_id, brightness):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.set_brightness(int(brightness))
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/set_rgb/<html_rgb_triple>')
-def flask_endpoint_things_set_rgb(name_or_id, html_rgb_triple):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.set_rgb(html_rgb_triple)
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/status')
-def flask_endpoint_things_status(name_or_id):
-    return json.dumps(thing_registry.get_by_name_or_id(name_or_id).json_status())
-
-
-
-## TODO: Move flask bindings to own object
-
 @flask_app.route('/world/scan_chromecasts')
 def flask_endpoint_world_scan_chromecasts():
     scan_result = {}
@@ -282,87 +250,6 @@ def flask_endpoint_world_scan_chromecasts():
         except KeyError:
             scan_result[cc.get_pretty_name()] = 'Already registered'
     return json.dumps(scan_result)
-
-@flask_app.route('/things/<name_or_id>/playpause')
-def flask_endpoint_things_playpause(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.playpause()
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/stop')
-def flask_endpoint_things_stop(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.stop()
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/play_prev_in_queue')
-def flask_endpoint_things_play_prev_in_queue(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.play_prev_in_queue()
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/play_next_in_queue')
-def flask_endpoint_things_play_next_in_queue(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.play_next_in_queue()
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/toggle_mute')
-def flask_endpoint_things_toggle_mute(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.toggle_mute()
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/set_volume_pct/<vol_pct>')
-def flask_endpoint_things_set_volume_pct(name_or_id, vol_pct):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.set_volume_pct(int(vol_pct))
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/set_playtime/<time>')
-def flask_endpoint_things_set_playtime(name_or_id, time):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.set_playtime(int(time))
-    return json.dumps(obj.json_status())
-
-
-@flask_app.route('/things/<name_or_id>/volume_up')
-def flask_endpoint_things_volume_up(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.volume_up()
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/volume_down')
-def flask_endpoint_things_volume_down(name_or_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.volume_down()
-    return json.dumps(obj.json_status())
-
-@flask_app.route('/things/<name_or_id>/youtube/<video_id>')
-def flask_endpoint_things_youtube(name_or_id, video_id):
-    obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.youtube(video_id)
-    return json.dumps(obj.json_status())
- 
-
-
-# @flask_app.route('/things/<name_or_id>/toggle')
-# def flask_endpoint_things_toggle(name_or_id):
-#     obj = thing_registry.get_by_name_or_id(name_or_id)
-#     obj.toggle()
-#     return json.dumps(obj.json_status())
-# 
-# @flask_app.route('/things/<name_or_id>/brightness_down')
-# def flask_endpoint_things_brightness_down(name_or_id):
-#     obj = thing_registry.get_by_name_or_id(name_or_id)
-#     obj.brightness_down()
-#     return json.dumps(obj.json_status())
-# 
-# @flask_app.route('/things/<name_or_id>/brightness_up')
-# def flask_endpoint_things_brightness_up(name_or_id):
-#     obj = thing_registry.get_by_name_or_id(name_or_id)
-#     obj.brightness_up()
-#     return json.dumps(obj.json_status())
 
 flask_socketio.run(flask_app, host='0.0.0.0', port=2000, debug=False)
 

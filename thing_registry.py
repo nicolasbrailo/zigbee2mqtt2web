@@ -7,10 +7,45 @@ class ThingRegistry(object):
     so it can map an mqtt message to the object which should receive it
     """
 
-    def __init__(self):
+    def __init__(self, flask_app):
+        self.flask_app = flask_app
         self.known_things = {}
         self.name_to_id = {}
         self.unknown_things = set()
+
+        thing_endpoint = 'thing/<thing_name>/<action>'
+        flask_app.add_url_rule('/'+thing_endpoint, thing_endpoint, self.ws_thing_action_handler)
+        flask_app.add_url_rule('/'+thing_endpoint+'/<path:args>', thing_endpoint+'+args', self.ws_thing_action_handler)
+
+    def ws_thing_action_handler(self, thing_name, action, args=None):
+        """ Flask handler: try to find a thing called $thing_name, and invoke
+        $action on the found object (if any) """
+
+        try:
+            obj = self.get_by_name_or_id(thing_name)
+        except KeyError:
+            return "No object called {}".format(thing_name), 404
+
+        method = getattr(obj, action, None)
+        if method is None:
+            return "No method {} on object {}".format(action, thing_name), 405
+
+        parsed_args = []
+        if args is not None:
+            parsed_args = args.split('/')
+
+        try:
+            ret = method(*parsed_args)
+            # If the method yielded a value, use it as a return value. Otherwise
+            # default to json_status
+            if ret is not None:
+                return ret
+        except TypeError:
+            return "Calling {}.{}({}) yields a type error (are you sure the arguments are correct?)"\
+                        .format(thing_name, action, parsed_args), 405
+
+        return json.dumps(obj.json_status())
+
 
     def register_thing(self, obj):
         if obj.get_pretty_name() in self.name_to_id.keys():
