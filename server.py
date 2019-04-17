@@ -7,8 +7,6 @@
 #print("Daemon running!")
 
 # TODO
-# * Stream obj state update ui
-# * Smart update (instead of N seconds -> when media is about to end)
 # * Local sensors
 # * MK proper logger for sys srvc
 # * Integrate as service + parseargs

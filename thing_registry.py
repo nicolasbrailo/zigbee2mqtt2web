@@ -57,14 +57,18 @@ class ThingRegistry(object):
         try:
             ret = method(*parsed_args)
             # If the method yielded a value, use it as a return value. Otherwise
-            # default to json_status
-            if ret is not None:
+            # default to json_status (if json_status itself was called then a
+            # direct return is not possible, as json_status returns a dict and not
+            # something flask can interpret. In this case, do some magic to return
+            # the right thing)
+            if ret is not None and action != "json_status":
                 return ret
+
+            return json.dumps(obj.json_status())
+
         except TypeError:
             return "Calling {}.{}({}) yields a type error (are you sure the arguments are correct?)"\
                         .format(thing_name, action, parsed_args), 405
-
-        return json.dumps(obj.json_status())
 
 
 
