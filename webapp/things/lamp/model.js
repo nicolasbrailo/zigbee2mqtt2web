@@ -64,6 +64,7 @@ class Lamp extends TemplatedThing {
     update_brigthness_from_ui() {
         var brightness_pct = $('#lamp_set_brightness_slider'+this.html_id).val();
         this.brightness = brightness_pct;
+        this.is_on = (brightness_pct > 0);
         this.updateUI();
         this.request_action('/set_brightness/' + brightness_pct);
     }
