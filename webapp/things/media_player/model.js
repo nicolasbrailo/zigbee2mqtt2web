@@ -21,6 +21,11 @@ class MediaPlayer extends TemplatedThing {
             // Map seconds to HH:MM:SS
             return (new Date(seconds * 1000).toISOString()).substr(11, 8);
         });
+
+        Handlebars.registerHelper('selectIfEq', function(a, b) {
+            if (a==b) return "selected";
+            return "";
+        });
     }
 
     constructor(things_server_url, name, supported_actions, status) {
@@ -41,6 +46,7 @@ class MediaPlayer extends TemplatedThing {
         $(document).on('touchend', '#media_player_'+this.html_id+'_volume',   function(){ self.on_volume(); });
         $(document).on('click',    '#media_player_'+this.html_id+'_playtime', function(){ self.on_playtime(); });
         $(document).on('touchend', '#media_player_'+this.html_id+'_playtime', function(){ self.on_playtime(); });
+        $(document).on('change',   '#media_player_'+this.html_id+'_device', function(){ self.on_device_change(); });
 
         $(document).on('click', '#media_player_'+this.html_id+'_extended_control_open',
             function(){ $('#media_player_'+self.html_id+'_extended_control').toggle(); });
@@ -49,7 +55,6 @@ class MediaPlayer extends TemplatedThing {
     }
 
     update_status(new_status) {
-        console.log(new_status)
         this.status = new_status;
         this.has_media = !(!new_status.media);
         this.player_icon = (new_status.media && new_status.media.icon)?
@@ -62,12 +67,14 @@ class MediaPlayer extends TemplatedThing {
         var show_panel = $('#media_player_'+this.html_id+'_extended_control').is(':visible');
         $('#media_player_'+this.html_id+'_ctrl').replaceWith(this.create_ui());
         if (show_panel) $('#media_player_'+this.html_id+'_extended_control').show();
+
+        if (this.status.active_device) {
+            $('#media_player_'+this.html_id+'_device').val(this.status.active_device);
+        }
     }
 
     periodic_update_status() {
         if (this.stop_periodic_updates) return;
-        console.log("Updating ", this.name);
-
         var self = this;
         this.status_updater_task = setTimeout(function(){
             clearTimeout(self.status_updater_task);
@@ -76,12 +83,13 @@ class MediaPlayer extends TemplatedThing {
         }, self.ui_update_freq_ms);
     }
 
-    on_play()     { this.request_action('/playpause'); }
-    on_stop()     { this.request_action('/stop'); }
-    on_mute()     { this.request_action('/toggle_mute'); } 
-    on_prev()     { this.request_action('/play_prev_in_queue'); }
-    on_next()     { this.request_action('/play_next_in_queue'); }
-    on_volume()   { this.request_action( '/set_volume_pct/' + $('#media_player_'+this.html_id+'_volume').val()); }
-    on_playtime() { this.request_action( '/set_playtime/' + $('#media_player_'+this.html_id+'_playtime').val()); }
+    on_play()          { this.request_action('/playpause'); }
+    on_stop()          { this.request_action('/stop'); }
+    on_mute()          { this.request_action('/toggle_mute'); } 
+    on_prev()          { this.request_action('/play_prev_in_queue'); }
+    on_next()          { this.request_action('/play_next_in_queue'); }
+    on_volume()        { this.request_action('/set_volume_pct/' + $('#media_player_'+this.html_id+'_volume').val()); }
+    on_playtime()      { this.request_action('/set_playtime/' + $('#media_player_'+this.html_id+'_playtime').val()); }
+    on_device_change() { this.request_action('/play_in_device/' + $('#media_player_'+this.html_id+'_device').val()); }
 }
 

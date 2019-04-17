@@ -7,6 +7,7 @@
 #print("Daemon running!")
 
 # TODO
+# * Extract zigbee2mqtt2flask
 # * Local sensors
 # * MK proper logger for sys srvc
 # * Integrate as service + parseargs

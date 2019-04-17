@@ -73,9 +73,11 @@
         </li>
         <li>
             Playing in: 
-            <select id="">
+            <select id="media_player_{{html_id}}_device">
                 {{#each status.available_devices}}
-                    <option value="{{this}}">{{this}}</option>
+                    <option 
+                        {{#selectIfEq this ../status.active_device}}{{/selectIfEq}}
+                        value="{{this}}">{{this}}</option>
                 {{/each}}
             </select>
         </li>
