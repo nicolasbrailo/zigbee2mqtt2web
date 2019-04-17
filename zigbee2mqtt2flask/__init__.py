@@ -1,15 +1,23 @@
 from .thing_registry import ThingRegistry
 from .mqtt_proxy import MqttProxy
 
+from flask import send_from_directory
+
 class Zigbee2Mqtt2Flask(object):
     """ Interface between Zigbee/Mqtt and Flask: objects implementing the Thing
     interface can be registered in Zigbee2Mqtt2Flask and their interface will
     be available in endpoints in flask_app. See Zigbee2Mqtt2Flask.things for
     examples. """
 
-    def __init__(self, flask_app, mqtt_ip, mqtt_port, mqtt_topic_prefix):
-        self.thing_registry = ThingRegistry(flask_app)
+    def __init__(self, flask_app, flask_endpoint_prefix, mqtt_ip, mqtt_port, mqtt_topic_prefix):
+        self.thing_registry = ThingRegistry(flask_app, flask_endpoint_prefix)
         self.mqtt = MqttProxy(mqtt_ip, mqtt_port, mqtt_topic_prefix, [self.thing_registry])
+
+        print("Registered {} for webapp endpoint".format('/' + flask_endpoint_prefix + '/webapp/<path:path>'))
+        @flask_app.route('/' + flask_endpoint_prefix + '/webapp/<path:path>')
+        def flask_endpoint_webapp_root(path):
+            return send_from_directory('zigbee2mqtt2flask/webapp', path)
+
 
     def start_mqtt_connection(self):
         """ Start listening for mqtt messages in a background thread. Recommended

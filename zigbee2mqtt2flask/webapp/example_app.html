@@ -6,24 +6,24 @@
     <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
 
     <!-- https://getbootstrap.com/docs/3.4/customize/ -->
-    <link rel="stylesheet" href="css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="/ZMF/webapp/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/ZMF/webapp/css/bootstrap-theme.min.css">
     
     <!-- Handlebars -->
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.1.1/handlebars.min.js"></script>
 
     <!-- All things -->
-    <script type="text/javascript" src="things/app.js"></script>
-    <script type="text/javascript" src="things/templated_thing.js"></script>
-    <script type="text/javascript" src="things/lamp/model.js"></script>
-    <script type="text/javascript" src="things/media_player/model.js"></script>
-    <script type="text/javascript" src="things/mqtt_device_info/model.js"></script>
+    <script type="text/javascript" src="/ZMF/webapp/things/app.js"></script>
+    <script type="text/javascript" src="/ZMF/webapp/things/templated_thing.js"></script>
+    <script type="text/javascript" src="/ZMF/webapp/things/lamp/model.js"></script>
+    <script type="text/javascript" src="/ZMF/webapp/things/media_player/model.js"></script>
+    <script type="text/javascript" src="/ZMF/webapp/things/mqtt_device_info/model.js"></script>
 
 <script>
 
 
-var things_app = new ThingsApp("/");
-var templates_ready = ThingsApp.init_all_templates();
+var things_app = new ThingsApp("/ZMF/");
+var templates_ready = ThingsApp.init_all_templates("/ZMF/webapp/");
 
 $(document).ready(function(){
     $.when(templates_ready).then(function() {
@@ -59,22 +59,6 @@ $(document).ready(function(){
     <ul id="media_players_list" style="margin: 0; padding: 0;" />
     </ul>
 
-    <h2>Scenes</h2>
-    <ul>
-        <li><a href="/scenes/living_room_evening">Livingroom evening setting</a></li>
-        <li><a href="/scenes/dinner">Dinner</a></li>
-        <li><a href="/scenes/sleepy">Sleepyness</a></li>
-        <li><a href="/scenes/world_off">SHUT DOWN THE WORLD</a></li>
-        <li><a href="/scenes/test">TEST</a></li>
-    </ul>
-
-    <h2>Media player quick actions</h2>
-    <ul>
-        <li><a href="/thing/Baticueva TV/youtube/VMl0GbiVEyA">Pepe</a></li>
-        <li><a href="/thing/Baticueva TV/youtube/B1svxwMuLf4">Pepe largo</a></li>
-        <li><a href="/thing/Baticueva TV/youtube/q4xKvHANqjk">Test</a></li>
-    </ul>
-
     <h2>Mqtt network status</h2>
     <table id="mqtt_network_status" />
     <tr>
@@ -83,7 +67,6 @@ $(document).ready(function(){
         <td>Link quality</td>
     </tr>
     </table>
-    <a href="mqtt_log.html">Goto realtime log</a>
 </div>
 </body>
 </html>

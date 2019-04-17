@@ -7,18 +7,28 @@ class ThingRegistry(object):
     so it can map an mqtt message to the object which should receive it
     """
 
-    def __init__(self, flask_app):
+    def __init__(self, flask_app, endpoint_prefix):
         self.flask_app = flask_app
         self.known_things = {}
         self.name_to_id = {}
         self.unknown_things = set()
 
-        thing_endpoint = 'thing/<thing_name>/<action>'
-        flask_app.add_url_rule('/'+thing_endpoint, thing_endpoint, self.ws_thing_action_handler)
-        flask_app.add_url_rule('/'+thing_endpoint+'/<path:args>', thing_endpoint+'+args', self.ws_thing_action_handler)
-        flask_app.add_url_rule('/world/known_things', '/world/known_things', self.ws_all_known_things)
-        flask_app.add_url_rule('/world/unknown_things', '/world/unknown_things', self.ws_all_unknown_things)
-        flask_app.add_url_rule('/world/status', '/world/status', self.ws_world_status)
+        thing_ep          = endpoint_prefix + '/thing/<thing_name>/<action>'
+        known_things_ep   = endpoint_prefix + '/world/known_things'
+        unknown_things_ep = endpoint_prefix + '/world/unknown_things'
+        world_status_ep   = endpoint_prefix + '/world/status'
+
+        flask_app.add_url_rule('/'+thing_ep,                thing_ep,          self.ws_thing_action_handler)
+        flask_app.add_url_rule('/'+thing_ep+'/<path:args>', thing_ep+'+args',  self.ws_thing_action_handler)
+        flask_app.add_url_rule('/'+known_things_ep,         known_things_ep,   self.ws_all_known_things)
+        flask_app.add_url_rule('/'+unknown_things_ep,       unknown_things_ep, self.ws_all_unknown_things)
+        flask_app.add_url_rule('/'+world_status_ep,         world_status_ep,   self.ws_world_status)
+
+        print("Registered endpoint {} for things API".format(thing_ep))
+        print("Registered endpoint {}/* for things API with arguments".format(thing_ep))
+        print("Registered endpoint {} for known things API".format(known_things_ep))
+        print("Registered endpoint {} for unknown things API".format(unknown_things_ep))
+        print("Registered endpoint {} for world status API".format(world_status_ep))
 
     # Flask endpoint handlers
 

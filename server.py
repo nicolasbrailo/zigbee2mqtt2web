@@ -117,7 +117,7 @@ from flask import Flask, send_from_directory
 flask_app = Flask(__name__)
 
 
-world = Zigbee2Mqtt2Flask(flask_app, '192.168.2.100', 1883, 'zigbee2mqtt/')
+world = Zigbee2Mqtt2Flask(flask_app, 'ZMF', '192.168.2.100', 1883, 'zigbee2mqtt/')
 
 scenes = SceneHandler(world)
 
@@ -182,9 +182,12 @@ def flask_endpoint_scenes_5():
     return "OK"
 
 
-@flask_app.route('/webapp/<path:path>')
-def flask_endpoint_webapp_root(path):
-    return send_from_directory('webapp', path)
+@flask_app.route('/foo')
+def flask_endpoint_sdasdsa():
+    return send_from_directory('.', './idx.html')
+@flask_app.route('/foo2')
+def flask_endpoint_sdassddsa():
+    return send_from_directory('.', './idx2.html')
 
 @flask_app.route('/world/scan_chromecasts')
 def flask_endpoint_world_scan_chromecasts():

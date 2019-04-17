@@ -3,7 +3,7 @@ class TemplatedThing {
     /**
      * Fetches view and style resources for its subclass
      */
-    static init_template() {
+    static init_template(base_url) {
         var subclass = this;
 
         if (! subclass.get_thing_path_name ) {
@@ -14,12 +14,12 @@ class TemplatedThing {
         var fileref = document.createElement("link");
         fileref.rel = "stylesheet";
         fileref.type = "text/css";
-        fileref.href = "things/"+ subclass.get_thing_path_name() + "/style.css";
+        fileref.href = base_url + "things/"+ subclass.get_thing_path_name() + "/style.css";
         document.getElementsByTagName("head")[0].appendChild(fileref)
 
         subclass.template_ready = $.Deferred();
 
-        var view_url = "things/"+ subclass.get_thing_path_name() + "/view.html";
+        var view_url = base_url + "things/"+ subclass.get_thing_path_name() + "/view.html";
         $.ajax({
             url: view_url,
             cache: false,

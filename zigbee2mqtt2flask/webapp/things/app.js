@@ -13,10 +13,10 @@ var wget = function(url) {
 
 
 class ThingsApp {
-    static init_all_templates() {
-        Lamp.init_template();
-        MediaPlayer.init_template();
-        MqttDeviceInfo.init_template();
+    static init_all_templates(webapp_base_url) {
+        Lamp.init_template(webapp_base_url);
+        MediaPlayer.init_template(webapp_base_url);
+        MqttDeviceInfo.init_template(webapp_base_url);
 
         var all_done = $.Deferred();
         $.when(Lamp.template_ready).then(function() {
@@ -30,8 +30,8 @@ class ThingsApp {
         return all_done;
     }
 
-    constructor(base_url) {
-        this.base_url = base_url;
+    constructor(api_base_url) {
+        this.api_base_url = api_base_url;
         this.things = [];
         this.unknown_things= [];
 
@@ -47,12 +47,12 @@ class ThingsApp {
             });
         });
 
-        $.when(wget(this.base_url + "world/status")).then(function(things) {
+        $.when(wget(this.api_base_url + "world/status")).then(function(things) {
             self.things = things;
             self.things_ready.resolve();
         });
 
-        $.when(wget(this.base_url + "world/unknown_things")).then(function(things) {
+        $.when(wget(this.api_base_url + "world/unknown_things")).then(function(things) {
             self.unknown_things = things;
             self.unknown_things_ready.resolve();
         });
@@ -66,7 +66,7 @@ class ThingsApp {
             var thing = this.things[thing_name];
             var is_a_duck = thing_class.matches_interface(thing.supported_actions); 
             if (is_a_duck) {
-                var mapped_thing = new thing_class(this.base_url, thing_name,
+                var mapped_thing = new thing_class(this.api_base_url, thing_name,
                                              this.things[thing_name].supported_actions,
                                              this.things[thing_name].status)
                 matching_things.push(mapped_thing);
