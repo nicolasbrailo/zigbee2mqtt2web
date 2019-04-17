@@ -30,12 +30,12 @@ class ThingsApp {
             });
         });
 
-        $.when(wget(this.base_url + "things/get_world_status")).then(function(things) {
+        $.when(wget(this.base_url + "world/status")).then(function(things) {
             self.things = things;
             self.things_ready.resolve();
         });
 
-        $.when(wget(this.base_url + "things/unknown_things")).then(function(things) {
+        $.when(wget(this.base_url + "world/unknown_things")).then(function(things) {
             self.unknown_things = things;
             self.unknown_things_ready.resolve();
         });

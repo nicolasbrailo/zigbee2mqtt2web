@@ -16,6 +16,26 @@ class ThingRegistry(object):
         thing_endpoint = 'thing/<thing_name>/<action>'
         flask_app.add_url_rule('/'+thing_endpoint, thing_endpoint, self.ws_thing_action_handler)
         flask_app.add_url_rule('/'+thing_endpoint+'/<path:args>', thing_endpoint+'+args', self.ws_thing_action_handler)
+        flask_app.add_url_rule('/world/known_things', '/world/known_things', self.ws_all_known_things)
+        flask_app.add_url_rule('/world/unknown_things', '/world/unknown_things', self.ws_all_unknown_things)
+        flask_app.add_url_rule('/world/status', '/world/status', self.ws_world_status)
+
+    # Flask endpoint handlers
+
+    def ws_all_known_things(self):
+        return json.dumps(self.get_known_things_names())
+
+    def ws_all_unknown_things(self):
+        return json.dumps(self.get_unknown_ids())
+
+    def ws_world_status(self):
+        world = {}
+        for thing in self.get_known_things_names():
+            obj = self.get_by_name_or_id(thing)
+            world[thing] = {'status': obj.json_status(),
+                              'supported_actions': obj.supported_actions()}
+
+        return json.dumps(world)
 
     def ws_thing_action_handler(self, thing_name, action, args=None):
         """ Flask handler: try to find a thing called $thing_name, and invoke
@@ -45,6 +65,7 @@ class ThingRegistry(object):
                         .format(thing_name, action, parsed_args), 405
 
         return json.dumps(obj.json_status())
+
 
 
     def register_thing(self, obj):

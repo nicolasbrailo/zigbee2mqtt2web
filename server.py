@@ -221,24 +221,6 @@ def flask_endpoint_webapp_root(path):
 
 # Registry status actions
 
-@flask_app.route('/things/all_known_things')
-def flask_endpoint_known_things():
-    return json.dumps(thing_registry.get_known_things_names())
-
-@flask_app.route('/things/unknown_things')
-def flask_endpoint_things_unknown_ids():
-    return json.dumps(thing_registry.get_unknown_ids())
-
-@flask_app.route('/things/get_world_status')
-def flask_endpoint_get_world_status():
-    actions = {}
-    for thing in thing_registry.get_known_things_names():
-        obj = thing_registry.get_by_name_or_id(thing)
-        actions[thing] = {'status': obj.json_status(),
-                          'supported_actions': obj.supported_actions()}
-
-    return json.dumps(actions)
-
 
 @flask_app.route('/world/scan_chromecasts')
 def flask_endpoint_world_scan_chromecasts():
