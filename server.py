@@ -11,7 +11,6 @@
 # * Smart update (instead of N seconds -> when media is about to end)
 # * MV flask bindings
 # * Local sensors
-# * RM thing.thing_type -> replace only with supported_actions
 
 
 import json
@@ -34,8 +33,8 @@ class MyIkeaButton(Button):
             self.btn2.brightness_down()
         if action == 'toggle':
             if self.btn1.is_on or self.btn2.is_on:
-                self.btn1.turn_off()
-                self.btn2.turn_off()
+                self.btn1.light_off()
+                self.btn2.light_off()
             else:
                 self.btn2.set_brightness(20)
 
@@ -64,7 +63,7 @@ class HueButton(Button):
             for thing in self.world.get_known_things_names():
                 kind = self.world.get_by_name_or_id(thing).thing_types()
                 if 'lamp' in kind:
-                    self.world.get_by_name_or_id(thing).turn_off()
+                    self.world.get_by_name_or_id(thing).light_off()
                 elif 'media_player' in kind:
                     self.world.get_by_name_or_id(thing).stop()
             return True
@@ -72,10 +71,10 @@ class HueButton(Button):
         if action == 'off-press':
             print("Scene: goto sleep")
             self.world.get_by_name_or_id('DeskLamp').set_brightness(5)
-            self.world.get_by_name_or_id('Livingroom Lamp').turn_off()
+            self.world.get_by_name_or_id('Livingroom Lamp').light_off()
             self.world.get_by_name_or_id('Floorlamp').set_brightness(5)
             self.world.get_by_name_or_id('Kitchen Counter - Right').set_brightness(25)
-            self.world.get_by_name_or_id('Kitchen Counter - Left').turn_off()
+            self.world.get_by_name_or_id('Kitchen Counter - Left').light_off()
             self.world.get_by_name_or_id('Baticueva TV').stop()
             return True
 
@@ -105,7 +104,7 @@ class SceneHandler(object):
     def dinner(self):
         self.world.get_by_name_or_id('DeskLamp').set_brightness(30)
         self.world.get_by_name_or_id('Floorlamp').set_brightness(100)
-        self.world.get_by_name_or_id('Livingroom Lamp').turn_off()
+        self.world.get_by_name_or_id('Livingroom Lamp').light_off()
         self.world.get_by_name_or_id('Kitchen Counter - Right').set_brightness(50)
         self.world.get_by_name_or_id('Kitchen Counter - Left').set_brightness(80)
         self.world.get_by_name_or_id('Baticueva TV').stop()
@@ -113,9 +112,9 @@ class SceneHandler(object):
     def sleepy(self):
         self.world.get_by_name_or_id('DeskLamp').set_brightness(20)
         self.world.get_by_name_or_id('Floorlamp').set_brightness(20)
-        self.world.get_by_name_or_id('Livingroom Lamp').turn_off()
+        self.world.get_by_name_or_id('Livingroom Lamp').light_off()
         self.world.get_by_name_or_id('Kitchen Counter - Right').set_brightness(40)
-        self.world.get_by_name_or_id('Kitchen Counter - Left').turn_off()
+        self.world.get_by_name_or_id('Kitchen Counter - Left').light_off()
         self.world.get_by_name_or_id('Baticueva TV').stop()
         try:
             self.world.get_by_name_or_id('Spotify').stop()
@@ -123,11 +122,11 @@ class SceneHandler(object):
             pass
 
     def world_off(self):
-        self.world.get_by_name_or_id('DeskLamp').turn_off()
-        self.world.get_by_name_or_id('Floorlamp').turn_off()
-        self.world.get_by_name_or_id('Livingroom Lamp').turn_off()
-        self.world.get_by_name_or_id('Kitchen Counter - Right').turn_off()
-        self.world.get_by_name_or_id('Kitchen Counter - Left').turn_off()
+        self.world.get_by_name_or_id('DeskLamp').light_off()
+        self.world.get_by_name_or_id('Floorlamp').light_off()
+        self.world.get_by_name_or_id('Livingroom Lamp').light_off()
+        self.world.get_by_name_or_id('Kitchen Counter - Right').light_off()
+        self.world.get_by_name_or_id('Kitchen Counter - Left').light_off()
         self.world.get_by_name_or_id('Baticueva TV').stop()
         try:
             self.world.get_by_name_or_id('Spotify').stop()
@@ -233,24 +232,24 @@ def flask_endpoint_get_world_status():
     actions = {}
     for thing in thing_registry.get_known_things_names():
         obj = thing_registry.get_by_name_or_id(thing)
-        actions[thing] = {'status': obj.json_status()}
-        actions[thing].update(obj.describe_capabilities())
+        actions[thing] = {'status': obj.json_status(),
+                          'supported_actions': obj.supported_actions()}
 
     return json.dumps(actions)
 
 
 # Thing actions
 
-@flask_app.route('/things/<name_or_id>/turn_on')
-def flask_endpoint_things_turn_on(name_or_id):
+@flask_app.route('/things/<name_or_id>/light_on')
+def flask_endpoint_things_light_on(name_or_id):
     obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.turn_on()
+    obj.light_on()
     return json.dumps(obj.json_status())
 
-@flask_app.route('/things/<name_or_id>/turn_off')
-def flask_endpoint_things_turn_off(name_or_id):
+@flask_app.route('/things/<name_or_id>/light_off')
+def flask_endpoint_things_light_off(name_or_id):
     obj = thing_registry.get_by_name_or_id(name_or_id)
-    obj.turn_off()
+    obj.light_off()
     return json.dumps(obj.json_status())
 
 @flask_app.route('/things/<name_or_id>/set_brightness/<brightness>')

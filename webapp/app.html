@@ -13,81 +13,13 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.1.1/handlebars.min.js"></script>
 
     <!-- All things -->
+    <script type="text/javascript" src="things/app.js"></script>
     <script type="text/javascript" src="things/templated_thing.js"></script>
     <script type="text/javascript" src="things/lamp/model.js"></script>
     <script type="text/javascript" src="things/media_player/model.js"></script>
     <script type="text/javascript" src="things/mqtt_device_info/model.js"></script>
 
 <script>
-var wget = function(url) {
-    var d = $.Deferred();
-    $.ajax({
-      type: 'GET',
-      dataType: 'json',
-      url: url,
-      success: function(msg){ d.resolve(msg); },
-      error: function(request, server_status, error){ d.resolve(null); },
-    });
-    return d;
-}
-
-
-class ThingsApp {
-    constructor(base_url) {
-        this.base_url = base_url;
-        this.things = [];
-        this.unknown_things= [];
-
-        this.ready = $.Deferred();
-        this.things_ready = $.Deferred();
-        this.unknown_things_ready = $.Deferred();
-
-        var self = this;
-
-        $.when(self.things_ready).then(function(){
-            $.when(self.unknown_things_ready).then(function(){
-                self.ready.resolve();
-            });
-        });
-
-        $.when(wget(this.base_url + "things/get_world_status")).then(function(things) {
-            self.things = things;
-            self.things_ready.resolve();
-        });
-
-        $.when(wget(this.base_url + "things/unknown_things")).then(function(things) {
-            self.unknown_things = things;
-            self.unknown_things_ready.resolve();
-        });
-    };
-
-    get_things_of_type(type_filter) {
-        if (!type_filter) return this.things;
-
-        var things = {}
-        for (var thing_name in this.things) {
-            var thing = this.things[thing_name];
-            if (thing.thing_types.includes(type_filter)) {
-                things[thing_name] = thing;
-            }
-        }
-
-        return things;
-    }
-
-    get_mapped_things(type_filter, map_class) {
-        var things = this.get_things_of_type(type_filter);
-        var mapped_things = [];
-        for (name in things) {
-            mapped_things.push(new map_class(this.base_url, name,
-                                         things[name].supported_actions,
-                                         things[name].status))
-        }
-
-        return mapped_things;
-    }
-}
-
 
 var init_all_templates = function() {
     Lamp.init_template();
@@ -108,23 +40,24 @@ var init_all_templates = function() {
 
 var things_app = new ThingsApp("/");
 var templates_ready = init_all_templates();
+
 $(document).ready(function(){
     var self = {base_url: '/'};
     $.when(templates_ready).then(function() {
         $.when(things_app.ready).then(function() {
-            var lamps = things_app.get_mapped_things("lamp", Lamp);
-            for (i in lamps) {
-                $('#lamps_list').append(lamps[i].create_ui());
+            var lamps = things_app.get_things_of_type(Lamp);
+            for (lamp of lamps) {
+                $('#lamps_list').append(lamp.create_ui());
             }
 
-            var media_players = things_app.get_mapped_things("media_player", MediaPlayer);
-            for (i in media_players) {
-                $('#media_players_list').append(media_players[i].create_ui());
+            var media_players = things_app.get_things_of_type(MediaPlayer);
+            for (pl of media_players) {
+                $('#media_players_list').append(pl.create_ui());
             }
 
-            var mqtt_things = things_app.get_mapped_things("mqtt", MqttDeviceInfo);
-            for (i in mqtt_things) {
-                $('#mqtt_network_status').append(mqtt_things[i].create_ui());
+            var mqtt_things = things_app.get_things_of_type(MqttDeviceInfo);
+            for (thing of mqtt_things) {
+                $('#mqtt_network_status').append(thing.create_ui());
             }
         });
     });

@@ -6,20 +6,20 @@ class TemplatedThing {
     static init_template() {
         var subclass = this;
 
-        if (! subclass.get_thing_type ) {
-            console.error("Subclass must define static get_thing_type()");
+        if (! subclass.get_thing_path_name ) {
+            console.error("Subclass must define static get_thing_path_name()");
         }
 
         // Add css to document
         var fileref = document.createElement("link");
         fileref.rel = "stylesheet";
         fileref.type = "text/css";
-        fileref.href = "things/"+ subclass.get_thing_type() + "/style.css";
+        fileref.href = "things/"+ subclass.get_thing_path_name() + "/style.css";
         document.getElementsByTagName("head")[0].appendChild(fileref)
 
         subclass.template_ready = $.Deferred();
 
-        var view_url = "things/"+ subclass.get_thing_type() + "/view.html";
+        var view_url = "things/"+ subclass.get_thing_path_name() + "/view.html";
         $.ajax({
             url: view_url,
             cache: false,
@@ -73,6 +73,6 @@ class TemplatedThing {
     }
 
     // update_status(new_status)
-    // static get_thing_type()
+    // static get_thing_path_name()
 }
 

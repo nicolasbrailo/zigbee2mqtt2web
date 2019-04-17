@@ -99,9 +99,6 @@ class ThingChromecast(Thing):
         self.cc.register_handler(yt)
         yt.play_video(video_id)
 
-    def thing_types(self):
-        return ['media_player']
-
     def supported_actions(self):
         return ['playpause', 'stop', 'play_next_in_queue', 'play_prev_in_queue',
                 'toggle_mute', 'volume_up', 'volume_down', 'set_volume_pct',

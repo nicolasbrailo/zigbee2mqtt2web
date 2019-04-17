@@ -49,9 +49,6 @@ class ThingSpotify(Thing):
         self._sp = Spotify(auth=tok)
         self.unmuted_vol_pct = 0
 
-    def thing_types(self):
-        return ['media_player']
-
     def supported_actions(self):
         return ['playpause', 'stop', 'play_next_in_queue', 'play_prev_in_queue',
                 'toggle_mute', 'volume_up', 'volume_down', 'set_volume_pct',

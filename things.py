@@ -1,6 +1,10 @@
 import json
 
 class Thing(object):
+    @staticmethod
+    def register_flask_bindings(flask_app):
+        pass
+
     def __init__(self, thing_id, pretty_name):
         self.thing_id = thing_id
         self.pretty_name = pretty_name
@@ -11,14 +15,7 @@ class Thing(object):
     def get_pretty_name(self):
         return self.pretty_name
 
-    def describe_capabilities(self):
-        return {'thing_types': self.thing_types(),
-                'supported_actions': self.supported_actions()}
-
     def json_status(self):
-        raise Exception("Subclass responsibility")
-
-    def thing_types(self):
         raise Exception("Subclass responsibility")
 
     def supported_actions(self):
@@ -30,11 +27,11 @@ class MqttThing(Thing):
         super().__init__(mqtt_id, pretty_name)
         self.link_quality = None
 
-    def thing_types(self):
-        return ['mqtt']
-
     def supported_actions(self):
-        return []
+        return ['mqtt_status']
+
+    def mqtt_status(self):
+        return self.json_status()
 
     def json_status(self):
         return {'link_quality': self.link_quality}
@@ -53,11 +50,6 @@ class BatteryPoweredThing(MqttThing):
         super().__init__(mqtt_id, pretty_name)
         self.battery_level = None
 
-    def thing_types(self):
-        s = super().thing_types()
-        s.extend(['battery_powered'])
-        return s
-
     def json_status(self):
         s = super().json_status()
         s.update({'battery_level': self.battery_level})
@@ -75,14 +67,9 @@ class Lamp(MqttThing):
         self.is_on = None
         self.mqtt_broadcaster = mqtt_broadcaster
 
-    def thing_types(self):
-        s = super().thing_types()
-        s.extend(['lamp'])
-        return s
-
     def supported_actions(self):
         s = super().supported_actions()
-        s.extend(['turn_on', 'turn_off', 'toggle'])
+        s.extend(['light_on', 'light_off', 'light_toggle'])
         return s
 
     def json_status(self):
@@ -109,22 +96,22 @@ class Lamp(MqttThing):
 
         return s
 
-    def turn_on(self, broadcast_update=True):
+    def light_on(self, broadcast_update=True):
         self.is_on = True
         if broadcast_update:
             self.broadcast_new_state()
 
-    def turn_off(self, broadcast_update=True):
+    def light_off(self, broadcast_update=True):
         self.is_on = False
         if broadcast_update:
             self.broadcast_new_state()
 
-    def toggle(self):
+    def light_toggle(self):
         if self.is_on == True:
-            self.turn_off()
+            self.light_off()
         else:
             # If is_on was None (unknown) assume it was off
-            self.turn_on()
+            self.light_on()
 
     def broadcast_new_state(self):
         topic = self.get_id() + '/set'
@@ -136,11 +123,6 @@ class DimmableLamp(Lamp):
         super().__init__(mqtt_id, pretty_name, mqtt_broadcaster)
         self.brightness = None # 0-100, phys => 0-255
         self.brightness_change_delta_pct = 20
-
-    def thing_types(self):
-        s = super().thing_types()
-        s.extend(['dimmable'])
-        return s
 
     def supported_actions(self):
         s = super().supported_actions()
@@ -183,9 +165,9 @@ class DimmableLamp(Lamp):
         self.brightness = pct
 
         if self.brightness == 0:
-            self.turn_off(broadcast_update=False)
+            self.light_off(broadcast_update=False)
         else:
-            self.turn_on(broadcast_update=False)
+            self.light_on(broadcast_update=False)
 
         self.broadcast_new_state()
 
@@ -212,11 +194,6 @@ class ColorDimmableLamp(DimmableLamp):
     def __init__(self, mqtt_id, pretty_name, mqtt_broadcaster):
         super().__init__(mqtt_id, pretty_name, mqtt_broadcaster)
         self.rgb = None
-
-    def thing_types(self):
-        s = super().thing_types()
-        s.extend(['color'])
-        return s
 
     def supported_actions(self):
         s = super().supported_actions()
@@ -257,11 +234,6 @@ class ColorDimmableLamp(DimmableLamp):
 class Button(BatteryPoweredThing):
     def __init__(self, mqtt_id, pretty_name):
         super().__init__(mqtt_id, pretty_name)
-
-    def thing_types(self):
-        s = super().thing_types()
-        s.extend(['button'])
-        return s
 
     def consume_message(self, topic, msg):
         if topic.lower().endswith('/config'):

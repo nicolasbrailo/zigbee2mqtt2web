@@ -1,6 +1,18 @@
 
 class MediaPlayer extends TemplatedThing {
-    static get_thing_type() {
+    /**
+     * Check if a list of actions look like an interface for a MediaPlayer
+     */
+    static matches_interface(actions) {
+        var minimal_interface = ["playpause", "stop", "toggle_mute", "set_volume_pct"];
+        for (var mthd of minimal_interface) {
+            if (!actions.includes(mthd)) return false;
+        }
+
+        return true;
+    }
+
+    static get_thing_path_name() {
         return "media_player";
     }
 

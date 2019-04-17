@@ -1,6 +1,13 @@
 
 class MqttDeviceInfo extends TemplatedThing {
-    static get_thing_type() {
+    /**
+     * Check if a list of actions look like an interface for an MqttDevice
+     */
+    static matches_interface(actions) {
+        return actions.includes("mqtt_status");
+    }
+
+    static get_thing_path_name() {
         return "mqtt_device_info";
     }
 

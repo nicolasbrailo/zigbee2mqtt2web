@@ -1,16 +1,26 @@
 
 class Lamp extends TemplatedThing {
-    static get_thing_type() {
+    static has_on_off(actions) { return actions.includes('light_on') && actions.includes('light_off'); }
+    static has_brightness(actions) { return actions.includes('set_brightness'); }
+    static has_color(actions) { return actions.includes('set_rgb'); }
+
+    /**
+     * Check if a list of actions look like an interface for a lamp
+     */
+    static matches_interface(actions) {
+        return Lamp.has_on_off(actions) || Lamp.has_brightness(actions);
+    }
+
+    static get_thing_path_name() {
         return "lamp";
     }
 
     constructor(things_server_url, name, supported_actions, status) {
         super(things_server_url, name, supported_actions, status);
 
-        this.supports_onoff = supported_actions.includes('turn_on') &&
-                                supported_actions.includes('turn_off');
-        this.supports_brightness = supported_actions.includes('set_brightness');
-        this.has_color = supported_actions.includes('set_rgb');
+        this.supports_onoff = Lamp.has_on_off(supported_actions);
+        this.supports_brightness = Lamp.has_brightness(supported_actions);
+        this.has_color = Lamp.has_color(supported_actions);
 
         // Register object UI callbacks
         var self = this;
@@ -48,7 +58,7 @@ class Lamp extends TemplatedThing {
         var should_be_on = $('#lamp_is_on_checkbox'+this.html_id).is(':checked');
         this.is_on = should_be_on;
         this.updateUI();
-        this.request_action((should_be_on? '/turn_on' : '/turn_off'));
+        this.request_action((should_be_on? '/light_on' : '/light_off'));
     }
 
     update_brigthness_from_ui() {
