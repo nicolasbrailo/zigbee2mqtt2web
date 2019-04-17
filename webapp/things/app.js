@@ -13,12 +13,29 @@ var wget = function(url) {
 
 
 class ThingsApp {
+    static init_all_templates() {
+        Lamp.init_template();
+        MediaPlayer.init_template();
+        MqttDeviceInfo.init_template();
+
+        var all_done = $.Deferred();
+        $.when(Lamp.template_ready).then(function() {
+            $.when(MediaPlayer.template_ready).then(function() {
+                $.when(MqttDeviceInfo.template_ready).then(function() {
+                    all_done.resolve();
+                });
+            });
+        });
+
+        return all_done;
+    }
+
     constructor(base_url) {
         this.base_url = base_url;
         this.things = [];
         this.unknown_things= [];
 
-        this.ready = $.Deferred();
+        this.is_ready = $.Deferred();
         this.things_ready = $.Deferred();
         this.unknown_things_ready = $.Deferred();
 
@@ -26,7 +43,7 @@ class ThingsApp {
 
         $.when(self.things_ready).then(function(){
             $.when(self.unknown_things_ready).then(function(){
-                self.ready.resolve();
+                self.is_ready.resolve();
             });
         });
 

@@ -21,30 +21,13 @@
 
 <script>
 
-var init_all_templates = function() {
-    Lamp.init_template();
-    MediaPlayer.init_template();
-    MqttDeviceInfo.init_template();
-
-    var all_done = $.Deferred();
-    $.when(Lamp.template_ready).then(function() {
-        $.when(MediaPlayer.template_ready).then(function() {
-            $.when(MqttDeviceInfo.template_ready).then(function() {
-                all_done.resolve();
-            });
-        });
-    });
-
-    return all_done;
-}
 
 var things_app = new ThingsApp("/");
-var templates_ready = init_all_templates();
+var templates_ready = ThingsApp.init_all_templates();
 
 $(document).ready(function(){
-    var self = {base_url: '/'};
     $.when(templates_ready).then(function() {
-        $.when(things_app.ready).then(function() {
+        $.when(things_app.is_ready).then(function() {
             var lamps = things_app.get_things_of_type(Lamp);
             for (lamp of lamps) {
                 $('#lamps_list').append(lamp.create_ui());
