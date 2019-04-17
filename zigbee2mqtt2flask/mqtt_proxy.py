@@ -3,24 +3,6 @@ import paho.mqtt.publish as publish
 import json
 import threading
 
-class MqttLogger(object):
-    def __init__(self, registry):
-        self.listener = None
-        self.registry = registry
-
-    def register_listener(self, l):
-        self.listener = l
-
-    def on_thing_message(self, thing_id, topic, parsed_msg):
-        if self.listener is not None:
-            thing = self.registry.get_by_name_or_id(thing_id)
-            self.listener.on_thing_message(thing.get_pretty_name(), topic, parsed_msg)
-
-    def on_unknown_message(self, topic, payload):
-        if self.listener is not None:
-            self.listener.on_unknown_message(topic, payload)
-
-
 class MqttProxy(object):
     """
     Bridge between thing's messages and mqtt
@@ -39,7 +21,8 @@ class MqttProxy(object):
         self.mqtt_ip = mqtt_ip
         self.mqtt_port = mqtt_port
         self.mqtt_topic_prefix = mqtt_topic_prefix
-        self.message_handler_list = message_handler_list
+        self.message_handler_list = []
+        self.message_handler_list.extend(message_handler_list)
         self.ignore_topics = ['zigbee2mqtt/bridge/state', 'zigbee2mqtt/bridge/config']
 
         self.client = mqtt.Client()
@@ -47,6 +30,9 @@ class MqttProxy(object):
         self.client.on_unsubscribe = on_unsubscribe
         self.client.on_message = self._on_mqtt_message
         self.client.connect(mqtt_ip, mqtt_port, 10)
+
+    def register_listener(self, l):
+        self.message_handler_list.append(l)
 
     def bg_run(self):
         self.bg_thread = threading.Thread(target=self.run)

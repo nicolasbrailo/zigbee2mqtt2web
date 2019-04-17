@@ -7,14 +7,12 @@
 #print("Daemon running!")
 
 # TODO
-# * Extract zigbee2mqtt2flask
 # * Local sensors
 # * MK proper logger for sys srvc
 # * Integrate as service + parseargs
 
-
 import json
-from things import Thing, Lamp, DimmableLamp, ColorDimmableLamp, Button
+from zigbee2mqtt2flask.things import Thing, Lamp, DimmableLamp, ColorDimmableLamp, Button
 
 class MyIkeaButton(Button):
     def __init__(self, mqtt_id, pretty_name, btn1, btn2):
@@ -39,52 +37,28 @@ class MyIkeaButton(Button):
                 self.btn2.set_brightness(20)
 
 class HueButton(Button):
-    def __init__(self, mqtt_id, pretty_name, world):
+    def __init__(self, mqtt_id, pretty_name):
         super().__init__(mqtt_id, pretty_name)
-        self.world = world
 
     def handle_action(self, action, msg):
         if action == 'up-press':
-            for thing in self.world.get_known_things_names():
-                kind = self.world.get_by_name_or_id(thing).thing_types()
-                if 'media_player' in kind:
-                    self.world.get_by_name_or_id(thing).volume_up()
+            print("UP")
             return True
 
         if action == 'down-press':
-            for thing in self.world.get_known_things_names():
-                kind = self.world.get_by_name_or_id(thing).thing_types()
-                if 'media_player' in kind:
-                    self.world.get_by_name_or_id(thing).volume_down()
+            print("DOWN")
             return True
 
         if action == 'off-hold':
-            # Shut down the world
-            for thing in self.world.get_known_things_names():
-                kind = self.world.get_by_name_or_id(thing).thing_types()
-                if 'lamp' in kind:
-                    self.world.get_by_name_or_id(thing).light_off()
-                elif 'media_player' in kind:
-                    self.world.get_by_name_or_id(thing).stop()
+            print("OFF")
             return True
 
         if action == 'off-press':
-            print("Scene: goto sleep")
-            self.world.get_by_name_or_id('DeskLamp').set_brightness(5)
-            self.world.get_by_name_or_id('Livingroom Lamp').light_off()
-            self.world.get_by_name_or_id('Floorlamp').set_brightness(5)
-            self.world.get_by_name_or_id('Kitchen Counter - Right').set_brightness(25)
-            self.world.get_by_name_or_id('Kitchen Counter - Left').light_off()
-            self.world.get_by_name_or_id('Baticueva TV').stop()
+            print("OFF2")
             return True
 
         if action == 'on-press':
-            print("Scene set")
-            self.world.get_by_name_or_id('DeskLamp').set_brightness(50)
-            self.world.get_by_name_or_id('DeskLamp').set_rgb('FFA000')
-            self.world.get_by_name_or_id('Floorlamp').set_brightness(100)
-            self.world.get_by_name_or_id('Kitchen Counter - Right').set_brightness(80)
-            self.world.get_by_name_or_id('Kitchen Counter - Left').set_brightness(80)
+            print("ON")
             return True
 
         print("No handler for action {} message {}".format(action, msg))
@@ -96,66 +70,68 @@ class SceneHandler(object):
         self.world = world
 
     def living_room_evening(self):
-        self.world.get_by_name_or_id('DeskLamp').set_brightness(60)
-        self.world.get_by_name_or_id('DeskLamp').set_rgb('ED7F0C')
-        self.world.get_by_name_or_id('Floorlamp').set_brightness(100)
-        self.world.get_by_name_or_id('Livingroom Lamp').set_brightness(100)
+        self.world.get_thing_by_name('DeskLamp').set_brightness(60)
+        self.world.get_thing_by_name('DeskLamp').set_rgb('ED7F0C')
+        self.world.get_thing_by_name('Floorlamp').set_brightness(100)
+        self.world.get_thing_by_name('Livingroom Lamp').set_brightness(100)
 
     def dinner(self):
-        self.world.get_by_name_or_id('DeskLamp').set_brightness(30)
-        self.world.get_by_name_or_id('Floorlamp').set_brightness(100)
-        self.world.get_by_name_or_id('Livingroom Lamp').light_off()
-        self.world.get_by_name_or_id('Kitchen Counter - Right').set_brightness(50)
-        self.world.get_by_name_or_id('Kitchen Counter - Left').set_brightness(80)
-        self.world.get_by_name_or_id('Baticueva TV').stop()
+        self.world.get_thing_by_name('DeskLamp').set_brightness(30)
+        self.world.get_thing_by_name('Floorlamp').set_brightness(100)
+        self.world.get_thing_by_name('Livingroom Lamp').light_off()
+        self.world.get_thing_by_name('Kitchen Counter - Right').set_brightness(50)
+        self.world.get_thing_by_name('Kitchen Counter - Left').set_brightness(80)
+        self.world.get_thing_by_name('Baticueva TV').stop()
 
     def sleepy(self):
-        self.world.get_by_name_or_id('DeskLamp').set_brightness(20)
-        self.world.get_by_name_or_id('Floorlamp').set_brightness(20)
-        self.world.get_by_name_or_id('Livingroom Lamp').light_off()
-        self.world.get_by_name_or_id('Kitchen Counter - Right').set_brightness(40)
-        self.world.get_by_name_or_id('Kitchen Counter - Left').light_off()
-        self.world.get_by_name_or_id('Baticueva TV').stop()
+        self.world.get_thing_by_name('DeskLamp').set_brightness(20)
+        self.world.get_thing_by_name('Floorlamp').set_brightness(20)
+        self.world.get_thing_by_name('Livingroom Lamp').light_off()
+        self.world.get_thing_by_name('Kitchen Counter - Right').set_brightness(40)
+        self.world.get_thing_by_name('Kitchen Counter - Left').light_off()
+        self.world.get_thing_by_name('Baticueva TV').stop()
         try:
-            self.world.get_by_name_or_id('Spotify').stop()
+            self.world.get_thing_by_name('Spotify').stop()
         except:
             pass
 
     def world_off(self):
-        self.world.get_by_name_or_id('DeskLamp').light_off()
-        self.world.get_by_name_or_id('Floorlamp').light_off()
-        self.world.get_by_name_or_id('Livingroom Lamp').light_off()
-        self.world.get_by_name_or_id('Kitchen Counter - Right').light_off()
-        self.world.get_by_name_or_id('Kitchen Counter - Left').light_off()
-        self.world.get_by_name_or_id('Baticueva TV').stop()
+        self.world.get_thing_by_name('DeskLamp').light_off()
+        self.world.get_thing_by_name('Floorlamp').light_off()
+        self.world.get_thing_by_name('Livingroom Lamp').light_off()
+        self.world.get_thing_by_name('Kitchen Counter - Right').light_off()
+        self.world.get_thing_by_name('Kitchen Counter - Left').light_off()
+        self.world.get_thing_by_name('Baticueva TV').stop()
         try:
-            self.world.get_by_name_or_id('Spotify').stop()
+            self.world.get_thing_by_name('Spotify').stop()
         except:
             pass
 
+    def test(self):
+        self.world.get_thing_by_name('DeskLamp').set_rgb('F00000')
 
-from thing_registry import ThingRegistry
-from mqtt_proxy import MqttProxy, MqttLogger
 
+
+from zigbee2mqtt2flask import Zigbee2Mqtt2Flask
 from flask import Flask, send_from_directory
 flask_app = Flask(__name__)
 
-thing_registry = ThingRegistry(flask_app)
-mqtt_logger = MqttLogger(thing_registry)
-mqtt = MqttProxy('192.168.2.100', 1883, 'zigbee2mqtt/', [thing_registry, mqtt_logger])
-scenes = SceneHandler(thing_registry)
 
-thing_registry.register_thing(ColorDimmableLamp('DeskLamp', 'DeskLamp', mqtt))
-thing_registry.register_thing(DimmableLamp('Kitchen Counter - Left', 'Kitchen Counter - Left', mqtt))
-thing_registry.register_thing(DimmableLamp('Kitchen Counter - Right', 'Kitchen Counter - Right', mqtt))
-thing_registry.register_thing(DimmableLamp('Floorlamp', 'Floorlamp', mqtt))
-thing_registry.register_thing(DimmableLamp('Livingroom Lamp', 'Livingroom Lamp', mqtt))
-thing_registry.register_thing(HueButton(   'HueButton', 'HueButton', thing_registry))
-thing_registry.register_thing(MyIkeaButton('IkeaButton', 'IkeaButton',
-                                           thing_registry.get_by_name_or_id('Kitchen Counter - Left'),
-                                           thing_registry.get_by_name_or_id('Kitchen Counter - Right')))
+world = Zigbee2Mqtt2Flask(flask_app, '192.168.2.100', 1883, 'zigbee2mqtt/')
 
-mqtt.bg_run()
+scenes = SceneHandler(world)
+
+world.register_thing(ColorDimmableLamp('DeskLamp', 'DeskLamp', world.mqtt))
+world.register_thing(DimmableLamp('Kitchen Counter - Left', 'Kitchen Counter - Left', world.mqtt))
+world.register_thing(DimmableLamp('Kitchen Counter - Right', 'Kitchen Counter - Right', world.mqtt))
+world.register_thing(DimmableLamp('Floorlamp', 'Floorlamp', world.mqtt))
+world.register_thing(DimmableLamp('Livingroom Lamp', 'Livingroom Lamp', world.mqtt))
+world.register_thing(HueButton(   'HueButton', 'HueButton'))
+world.register_thing(MyIkeaButton('IkeaButton', 'IkeaButton',
+                                           world.get_thing_by_name('Kitchen Counter - Left'),
+                                           world.get_thing_by_name('Kitchen Counter - Right')))
+
+world.start_mqtt_connection()
 
 
 from flask_socketio import SocketIO
@@ -170,19 +146,19 @@ class MqttToWebSocket(object):
         flask_socketio.emit('non-understood-mqtt-message',
                 {'topic': topic, 'msg': str(payload.decode('utf-8'))})
 
-mqtt_logger.register_listener(MqttToWebSocket())
+world.set_mqtt_listener(MqttToWebSocket())
 
 
 from thing_chromecast import ThingChromecast
 for cc in ThingChromecast.scan_network('192.168.2.101'):
-    thing_registry.register_thing(cc)
+    world.register_thing(cc)
 
 import json
 with open('config.json', 'r') as fp:
     cfg = json.loads(fp.read())
 
 from thing_spotify import ThingSpotify
-thing_registry.register_thing(ThingSpotify(cfg))
+world.register_thing(ThingSpotify(cfg))
 
 @flask_app.route('/scenes/living_room_evening')
 def flask_endpoint_scenes_1():
@@ -200,6 +176,10 @@ def flask_endpoint_scenes_3():
 def flask_endpoint_scenes_4():
     scenes.world_off()
     return "OK"
+@flask_app.route('/scenes/test')
+def flask_endpoint_scenes_5():
+    scenes.test()
+    return "OK"
 
 
 @flask_app.route('/webapp/<path:path>')
@@ -211,7 +191,7 @@ def flask_endpoint_world_scan_chromecasts():
     scan_result = {}
     for cc in ThingChromecast.scan_network():
         try:
-            thing_registry.register_thing(cc)
+            world.register_thing(cc)
             scan_result[cc.get_pretty_name()] = 'Found new device'
         except KeyError:
             scan_result[cc.get_pretty_name()] = 'Already registered'
@@ -220,6 +200,6 @@ def flask_endpoint_world_scan_chromecasts():
 flask_socketio.run(flask_app, host='0.0.0.0', port=2000, debug=False)
 
 print("STOPPING")
-mqtt.stop()
+world.stop_mqtt_connection()
 print("EXIT")
 

@@ -20,7 +20,7 @@ pychromecast = {index = "piwheels",version = "*"}
 flask-socketio = {index = "piwheels",version = "*"}
 requests = {index = "piwheels",version = "*"}
 spotipy = {git = "https://github.com/plamere/spotipy.git"}
-eventlet = "*"
+#eventlet = "*"
 
 [requires]
 python_version = "3.5"

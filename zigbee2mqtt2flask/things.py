@@ -1,10 +1,6 @@
 import json
 
 class Thing(object):
-    @staticmethod
-    def register_flask_bindings(flask_app):
-        pass
-
     def __init__(self, thing_id, pretty_name):
         self.thing_id = thing_id
         self.pretty_name = pretty_name
@@ -20,9 +16,6 @@ class Thing(object):
 
     def supported_actions(self):
         return ['json_status']
-
-    def say_hi(self, x, y):
-        return "HOLA " + x + y
 
 
 class MqttThing(Thing):
@@ -195,7 +188,7 @@ class DimmableLamp(Lamp):
 
         self.set_brightness(new_brightness)
 
-from color_lamp_rgb_converter import rgb_to_xy
+from .color_lamp_rgb_converter import rgb_to_xy
 class ColorDimmableLamp(DimmableLamp):
     def __init__(self, mqtt_id, pretty_name, mqtt_broadcaster):
         super().__init__(mqtt_id, pretty_name, mqtt_broadcaster)

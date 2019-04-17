@@ -1,4 +1,4 @@
-from things import Thing
+from zigbee2mqtt2flask.things import Thing
 
 # https://github.com/balloob/pychromecast
 import pychromecast

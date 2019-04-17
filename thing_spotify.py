@@ -1,6 +1,7 @@
-from things import Thing
+from zigbee2mqtt2flask.things import Thing
 
 from spotipy import Spotify
+from spotipy.client import SpotifyException
 from spotipy.oauth2 import SpotifyOAuth
 
 class _ThingSpotifyDummy(Thing):
@@ -343,5 +344,10 @@ class ThingSpotify(Thing):
         return self.impl.play_in_device(dev_name)
 
     def json_status(self):
-        return self.impl.json_status()
+        try:
+            return self.impl.json_status()
+        except SpotifyException as ex:
+            print(ex)
+            print(dir(ex))
+            print(ex.message)
 
