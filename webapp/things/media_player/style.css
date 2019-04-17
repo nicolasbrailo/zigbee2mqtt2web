@@ -6,6 +6,12 @@
     overflow: hidden;
 }
 
+.media_player_error {
+    width: 100%;
+    background-color: orange;
+    font-weight: bold;
+}
+
 .media_player_ctrl .media_icon {
     float: left;
     max-width: 80px;

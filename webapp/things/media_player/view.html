@@ -1,6 +1,15 @@
+<div class="media_player_ctrl" id="media_player_{{html_id}}_ctrl">
+    {{#if status.error}}
+        <div class="media_player_error">
+            <p>Error: {{status.error}}.
+            {{#if status.error_html_details}}
+                {{{status.error_html_details}}}.
+            {{/if}}</p>
+        </div>
+    {{/if}}
+
 {{#if has_media }}
 
-<div class="media_player_ctrl" id="media_player_{{html_id}}_ctrl">
     <img class="media_icon" src="{{player_icon}}" />
 
     <div class="media_player_small_control">
@@ -73,14 +82,11 @@
         </ul>
         {{/if}}
     </div>
-</div>
-
 
 
 {{else}}
 
 
-<div class="media_player_ctrl" id="media_player_{{html_id}}_ctrl">
     <div style="">
     <img class="media_icon" src="{{player_icon}}" />
 
@@ -106,7 +112,8 @@
         </div>
     </div>
     </div>
-</div>
+
 
 {{/if}}
+</div>
 

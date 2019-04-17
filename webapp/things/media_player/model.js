@@ -48,6 +48,7 @@ class MediaPlayer extends TemplatedThing {
     }
 
     update_status(new_status) {
+        console.log(new_status)
         this.status = new_status;
         this.has_media = !(!new_status.media);
         this.player_icon = (new_status.media && new_status.media.icon)?

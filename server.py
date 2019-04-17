@@ -183,18 +183,7 @@ with open('config.json', 'r') as fp:
     cfg = json.loads(fp.read())
 
 from thing_spotify import ThingSpotify
-
-# TODO
-#ThingSpotify.update_token_from_url(cfg, cfg['spotify_last_redir_url'])
-#exit(0)
-
-try:
-    tok = ThingSpotify.get_cached_token(cfg)
-    #thing_registry.register_thing(ThingSpotify(tok))
-except ThingSpotify.TokenNeedsRefresh as ex:
-    print("Spotify token needs a refresh. Please GOTO {}".format(ex.refresh_url))
-    exit(0)
-
+thing_registry.register_thing(ThingSpotify(cfg))
 
 @flask_app.route('/scenes/living_room_evening')
 def flask_endpoint_scenes_1():
@@ -217,10 +206,6 @@ def flask_endpoint_scenes_4():
 @flask_app.route('/webapp/<path:path>')
 def flask_endpoint_webapp_root(path):
     return send_from_directory('webapp', path)
-
-
-# Registry status actions
-
 
 @flask_app.route('/world/scan_chromecasts')
 def flask_endpoint_world_scan_chromecasts():

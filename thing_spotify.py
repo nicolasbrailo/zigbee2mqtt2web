@@ -3,56 +3,72 @@ from things import Thing
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 
-class ThingSpotify(Thing):
+class _ThingSpotifyDummy(Thing):
+    """ Dummy Spotify thing used when no auth token is valid """
 
-    class TokenNeedsRefresh(Exception):
-        def __init__(self, url):
-            self.refresh_url = url
-
-    @staticmethod
-    def _get_spotify_scopes():
-        return 'app-remote-control user-read-playback-state user-modify-playback-state user-read-currently-playing'
-
-    @staticmethod
-    def get_cached_token(cfg):
-        """ Call get_cached_token to try and receive a cached auth token. Will throw TokenNeedsRefresh
-        if token is invalid. Goto url in exception.refresh_url to get a new token from Spotify (user
-        will need to do that manually: it requires user approval """
-        auth = SpotifyOAuth(cfg['spotify_client_id'], cfg['spotify_client_secret'],
-                                cfg['spotify_redirect_uri'], scope=ThingSpotify._get_spotify_scopes(),
-                                cache_path=cfg['spotipy_cache'])
-
-        tok = auth.get_cached_token()
-        if tok:
-            return tok['access_token']
-
-        raise ThingSpotify.TokenNeedsRefresh(auth.get_authorize_url())
-
-    @staticmethod
-    def update_token_from_url(cfg, refresh_redir_url):
-        """ If get_cached_token failed, call get_token_from_redir_url with the result of the url
-        redirect that comes from calling the new authorize url """
-        auth = SpotifyOAuth(cfg['spotify_client_id'], cfg['spotify_client_secret'],
-                                cfg['spotify_redirect_uri'], scope=ThingSpotify._get_spotify_scopes(),
-                                cache_path=cfg['spotipy_cache'])
-
-        code = auth.parse_response_code(refresh_redir_url)
-        tok = auth.get_access_token(code)
-        if code is None or tok is None:
-            return ThingSpotify.get_cached_token()
-
-        return tok['access_token']
-
-
-    def __init__(self, tok):
+    def __init__(self):
         super().__init__("Spotify", "Spotify")
-        self._sp = Spotify(auth=tok)
-        self.unmuted_vol_pct = 0
 
     def supported_actions(self):
-        return ['playpause', 'stop', 'play_next_in_queue', 'play_prev_in_queue',
+        s = super().supported_actions()
+        s.extend(['playpause', 'stop', 'play_next_in_queue', 'play_prev_in_queue',
                 'toggle_mute', 'volume_up', 'volume_down', 'set_volume_pct',
-                'play_in_device']
+                'play_in_device', 'auth_token_refresh', 'set_new_auth_code'])
+        return s
+
+    def playpause(self):
+        pass
+
+    def stop(self):
+        pass
+
+    def play_next_in_queue(self):
+        pass
+
+    def play_prev_in_queue(self):
+        pass
+
+    def set_playtime(self, t):
+        pass
+
+    def volume_up(self):
+        pass
+
+    def volume_down(self):
+        pass
+
+    def set_volume_pct(self, pct):
+        pass
+
+    def toggle_mute(self):
+        pass
+
+    def play_in_device(self, dev_name):
+        pass
+
+    def json_status(self):
+        err_solve = "<a href='/thing/{}/auth_token_refresh' target='blank'>Refresh authentication data</a>"
+        return {
+                'error': 'Not authenticated',
+                'error_html_details': err_solve.format(self.get_pretty_name()),
+                'name': self.get_pretty_name(),
+                'uuid': self.get_id(),
+                'uri': None,
+                'active_device': None,
+                'available_devices': None,
+                'app': None,
+                'volume_pct': 0,
+                'volume_muted': True,
+                'player_state': None,
+                'media': None,
+                }
+
+
+class _ThingSpotifyImpl(_ThingSpotifyDummy):
+    def __init__(self, tok):
+        super().__init__()
+        self._sp = Spotify(auth=tok)
+        self.unmuted_vol_pct = 0
 
     def playpause(self):
         if self._is_active():
@@ -75,7 +91,7 @@ class ThingSpotify(Thing):
         if not self._is_active():
             return
 
-        self._sp.seek_track(t * 1000)
+        self._sp.seek_track(int(t) * 1000)
 
     def volume_up(self):
         if not self._is_active():
@@ -98,7 +114,7 @@ class ThingSpotify(Thing):
     def set_volume_pct(self, pct):
         if not self._is_active():
             return
-        self._sp.volume(pct)
+        self._sp.volume(int(pct))
 
     def toggle_mute(self):
         if not self._is_active():
@@ -189,4 +205,143 @@ class ThingSpotify(Thing):
 
         return status
 
+
+
+class ThingSpotify(Thing):
+    @staticmethod
+    def _get_spotify_scopes():
+        return 'app-remote-control user-read-playback-state user-modify-playback-state user-read-currently-playing'
+
+    @staticmethod
+    def _get_auth_obj(cfg):
+        return SpotifyOAuth(cfg['spotify_client_id'], 
+                            cfg['spotify_client_secret'],
+                            cfg['spotify_redirect_uri'],
+                            scope=ThingSpotify._get_spotify_scopes(),
+                            cache_path=cfg['spotipy_cache'])
+
+    @staticmethod
+    def _get_cached_token(cfg):
+        """ Call to try and receive a cached auth token. Will return
+        None if there is no valid token. If so, goto refresh_url to get a new token
+        from Spotify (user will need to do that manually: it requires user approval) """
+        tok = ThingSpotify._get_auth_obj(cfg).get_cached_token()
+        if tok:
+            return tok['access_token']
+        else:
+            return None
+
+    @staticmethod
+    def _update_token_from_url_code(cfg, code):
+        """ If get_cached_token failed, call get_token_from_redir_url with the result of the url
+        redirect that comes from calling the new authorize url """
+        tok = ThingSpotify._get_auth_obj(cfg).get_access_token(code)
+        if tok:
+            return tok['access_token']
+
+        # Check if there's a cached token we can use
+        return ThingSpotify._get_auth_obj(cfg).get_access_token(code)
+
+
+    def __init__(self, cfg):
+        super().__init__("Spotify", "Spotify")
+        self.cfg = cfg
+
+        tok = ThingSpotify._get_cached_token(cfg)
+        if tok is None:
+            self.impl = _ThingSpotifyDummy()
+            print("Spotify token needs a refresh! User will need to manually update token.")
+        else:
+            self.impl = _ThingSpotifyImpl(tok)
+
+    def supported_actions(self):
+        return self.impl.supported_actions()
+
+    def auth_token_refresh(self):
+        """ A bit hackish, but works: returns an HTML view to let a user manually
+        update the auth token for spotify """
+        html = """
+            <h1>Spotify Auth Update</h1>
+            <ol>
+                <li>Goto <a href="{}" target="blank">this page</a>.
+                    If asked, accept the permission request from Spotify.</li>
+                <li>If approved, you'll be redirected to another page. Copy the URL of this new page.</li>
+                <li>
+                    Paste the URL here: <input type="text" id="redir_url" onChange="validateCode()"/>
+                    <div id="invalid_code" style="display: inline">
+                        That looks like an invalid code! Please try again.
+                    </div>
+                </li>
+                <li id="valid_code">
+                    That looks like a valid code! <a href="#" id="set_new_code_link">Update Spotify token.</a>
+                </li>
+            </ol>
+
+            <script>
+                document.getElementById("valid_code").style.visibility = "hidden";
+                document.getElementById("invalid_code").style.visibility = "hidden";
+
+                function validateCode() {{
+                    var url = document.getElementById("redir_url").value;
+                    var sep = "?code=";
+                    var code = url.substr(url.indexOf(sep) + sep.length)
+                    console.log("Code = ", code);
+
+                    if (code.length > 10) {{
+                        document.getElementById("invalid_code").style.visibility = "hidden";
+                        document.getElementById("valid_code").style.visibility = "visible";
+                        document.getElementById("set_new_code_link").href = "set_new_auth_code/" + code;
+                    }} else {{
+                        document.getElementById("invalid_code").style.visibility = "visible";
+                        document.getElementById("valid_code").style.visibility = "hidden";
+                    }}
+                }}
+            </script>
+        """
+        return html.format(ThingSpotify._get_auth_obj(self.cfg).get_authorize_url())
+
+    def set_new_auth_code(self, code):
+        try:
+            tok = ThingSpotify._update_token_from_url_code(self.cfg, code)
+            if tok is None:
+                return "Sorry, token doesn't seem valid"
+            else:
+                self.impl = _ThingSpotifyImpl(tok)
+                return "Updated!"
+        except Exception as ex:
+            print(ex)
+            return str(ex)
+
+    def playpause(self):
+        return self.impl.playpause()
+
+    def stop(self):
+        return self.impl.stop()
+
+    def play_next_in_queue(self):
+        return self.impl.play_next_in_queue()
+
+    def play_prev_in_queue(self):
+        return self.impl.play_prev_in_queue()
+
+    def set_playtime(self, t):
+        return self.impl.set_playtime(t)
+
+    def volume_up(self):
+        return self.impl.volume_up()
+
+    def volume_down(self):
+        return self.impl.volume_down()
+
+    def set_volume_pct(self, pct):
+        return self.impl.set_volume_pct(pct)
+
+    def toggle_mute(self):
+        return self.impl.toggle_mute()
+
+    def play_in_device(self, dev_name):
+        return self.impl.play_in_device(dev_name)
+
+    def json_status(self):
+        return self.impl.json_status()
 
