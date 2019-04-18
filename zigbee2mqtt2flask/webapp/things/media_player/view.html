@@ -20,7 +20,7 @@
         </div>
 
         <div class="media_player_media_info">
-            <p class="media_title">{{status.media.title}}</p>
+            <p>{{status.media.title}}</p>
         </div>
 
         <div class="mini_control">
@@ -49,8 +49,6 @@
     </div>
     <div class="media_player_extended_control" id="media_player_{{html_id}}_extended_control">
         <div class="media_player_extended_control_positionbox">
-            <button class="control_button btn_prev"
-                id="media_player_{{html_id}}_prev">Prev</button>
             <input type="range" class="timeslider" 
                     id="media_player_{{html_id}}_playtime"
                     min=0 max={{status.media.duration}}
@@ -58,6 +56,8 @@
                 <label for="media_player_{{html_id}}_playtime">
                     {{#media_player_formatSeconds status.media.duration}}{{/media_player_formatSeconds}}
                 </label>
+            <button class="control_button btn_prev"
+                id="media_player_{{html_id}}_prev">Prev</button>
             <button class="control_button btn_next"
                 id="media_player_{{html_id}}_next">Next</button>
         </div>
