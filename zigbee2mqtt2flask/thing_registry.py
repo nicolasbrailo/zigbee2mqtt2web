@@ -97,6 +97,16 @@ class ThingRegistry(object):
         # If it's not a name it must be an id. Else fail
         return self.known_things[name_or_id]
 
+    def get_things_supporting(self, actions):
+        def impls_interface(obj, actions):
+            for action in actions:
+                if action not in obj.supported_actions():
+                    return False
+            return True
+
+        return [obj for name,obj in self.known_things.items()
+                        if impls_interface(obj, actions)]
+
     def get_known_things_names(self):
         return list(self.name_to_id.keys())
 

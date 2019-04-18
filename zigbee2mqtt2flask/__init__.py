@@ -54,4 +54,6 @@ class Zigbee2Mqtt2Flask(object):
     def get_thing_by_name(self, name):
         return self.thing_registry.get_by_name_or_id(name)
 
+    def get_things_supporting(self, actions):
+        return self.thing_registry.get_things_supporting(actions)
 
