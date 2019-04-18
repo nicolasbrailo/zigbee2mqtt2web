@@ -75,6 +75,13 @@ class ThingsApp {
 
         return matching_things;
     }
+
+    get_thing_by_name(name) {
+        for (var thing_name in this.things) {
+            if (thing_name == name) return this.things[thing_name];
+        }
+        return null;
+    }
 }
 
 
