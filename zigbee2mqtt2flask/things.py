@@ -1,15 +1,11 @@
 import json
 
 class Thing(object):
-    def __init__(self, thing_id, pretty_name):
+    def __init__(self, thing_id):
         self.thing_id = thing_id
-        self.pretty_name = pretty_name
 
     def get_id(self):
         return self.thing_id
-
-    def get_pretty_name(self):
-        return self.pretty_name
 
     def json_status(self):
         raise Exception("Subclass responsibility")
@@ -19,8 +15,8 @@ class Thing(object):
 
 
 class MqttThing(Thing):
-    def __init__(self, mqtt_id, pretty_name):
-        super().__init__(mqtt_id, pretty_name)
+    def __init__(self, mqtt_id):
+        super().__init__(mqtt_id)
         self.link_quality = None
 
     def supported_actions(self):
@@ -44,8 +40,8 @@ class MqttThing(Thing):
 
 
 class BatteryPoweredThing(MqttThing):
-    def __init__(self, mqtt_id, pretty_name):
-        super().__init__(mqtt_id, pretty_name)
+    def __init__(self, mqtt_id):
+        super().__init__(mqtt_id)
         self.battery_level = None
 
     def json_status(self):
@@ -60,8 +56,8 @@ class BatteryPoweredThing(MqttThing):
         return x or 'battery' in msg
 
 class Lamp(MqttThing):
-    def __init__(self, mqtt_id, pretty_name, mqtt_broadcaster):
-        super().__init__(mqtt_id, pretty_name)
+    def __init__(self, mqtt_id, mqtt_broadcaster):
+        super().__init__(mqtt_id)
         self.is_on = None
         self.mqtt_broadcaster = mqtt_broadcaster
 
@@ -117,8 +113,8 @@ class Lamp(MqttThing):
 
 
 class DimmableLamp(Lamp):
-    def __init__(self, mqtt_id, pretty_name, mqtt_broadcaster):
-        super().__init__(mqtt_id, pretty_name, mqtt_broadcaster)
+    def __init__(self, mqtt_id, mqtt_broadcaster):
+        super().__init__(mqtt_id, mqtt_broadcaster)
         self.brightness = None # 0-100, phys => 0-255
         self.brightness_change_delta_pct = 20
 
@@ -190,8 +186,8 @@ class DimmableLamp(Lamp):
 
 from .color_lamp_rgb_converter import rgb_to_xy
 class ColorDimmableLamp(DimmableLamp):
-    def __init__(self, mqtt_id, pretty_name, mqtt_broadcaster):
-        super().__init__(mqtt_id, pretty_name, mqtt_broadcaster)
+    def __init__(self, mqtt_id, mqtt_broadcaster):
+        super().__init__(mqtt_id, mqtt_broadcaster)
         self.rgb = None
 
     def supported_actions(self):
@@ -206,7 +202,7 @@ class ColorDimmableLamp(DimmableLamp):
                 xy = rgb_to_xy(self.rgb)
                 s['color'] = {'x': xy[0], 'y': xy[1]}
             except ZeroDivisionError:
-                print("Invalid color selected for {}, ignoring".format(self.pretty_name()))
+                print("Invalid color selected for {}, ignoring".format(self.get_id()))
         return s
 
     def json_status(self):
@@ -234,8 +230,8 @@ class ColorDimmableLamp(DimmableLamp):
 
 
 class Button(BatteryPoweredThing):
-    def __init__(self, mqtt_id, pretty_name):
-        super().__init__(mqtt_id, pretty_name)
+    def __init__(self, mqtt_id):
+        super().__init__(mqtt_id)
 
     def consume_message(self, topic, msg):
         if topic.lower().endswith('/config'):
@@ -254,6 +250,6 @@ class Button(BatteryPoweredThing):
         return False
 
     def handle_action(self, action, msg):
-        print(self.pretty_name, ": default handler for action ", action)
+        print(self.get_id(), ": default handler for action ", action)
 
 

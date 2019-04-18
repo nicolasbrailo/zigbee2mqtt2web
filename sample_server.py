@@ -15,8 +15,8 @@ MqttToWebSocket.build_and_register(flask_socketio, world)
 
 # Describe things and actions
 class MyButton(Button):
-    def __init__(self, mqtt_id, pretty_name, world):
-        super().__init__(mqtt_id, pretty_name)
+    def __init__(self, mqtt_id, world):
+        super().__init__(mqtt_id)
         self.world = world
 
     def handle_action(self, action, msg):
@@ -24,8 +24,8 @@ class MyButton(Button):
             self.world.get_thing_by_name('DeskLamp').toggle()
             return True
 
-world.register_thing(ColorDimmableLamp('MyDeskLamp', 'MyDeskLamp', world.mqtt))
-world.register_thing(MyButton('MyButton', 'MyButton', world))
+world.register_thing(ColorDimmableLamp('MyDeskLamp', world.mqtt))
+world.register_thing(MyButton('MyButton', world))
 
 # Start the world. Check http://127.0.0.1:2000/ZMF/webapp/example_app.html
 world.start_mqtt_connection()

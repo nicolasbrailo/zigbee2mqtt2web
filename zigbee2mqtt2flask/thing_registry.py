@@ -83,11 +83,11 @@ class ThingRegistry(object):
 
 
     def register_thing(self, obj):
-        if obj.get_pretty_name() in self.name_to_id.keys():
-            raise KeyError('Thing {} ({}) already registered'.format(obj.get_pretty_name(), obj.get_id()))
+        if obj.get_id() in self.name_to_id.keys():
+            raise KeyError('Thing {} already registered'.format(obj.get_id()))
 
         self.known_things[obj.get_id()] = obj
-        self.name_to_id[obj.get_pretty_name()] = obj.get_id()
+        self.name_to_id[obj.get_id()] = obj.get_id()
 
     def get_by_name_or_id(self, name_or_id):
         if name_or_id in self.name_to_id.keys():
