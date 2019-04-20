@@ -3,6 +3,9 @@ import paho.mqtt.publish as publish
 import json
 import threading
 
+import logging
+logger = logging.getLogger('zigbee2mqtt2flask.mqtt')
+
 class MqttProxy(object):
     """
     Bridge between thing's messages and mqtt
@@ -12,7 +15,10 @@ class MqttProxy(object):
 
     def __init__(self, mqtt_ip, mqtt_port, mqtt_topic_prefix, message_handler_list):
         def on_connect(client, userdata, flags, rc):
-            print("Connected to MQTT broker with result code "+str(rc))
+            if rc == 0:
+                logger.info("Connected to MQTT broker {}:{}".format(mqtt_ip, mqtt_port))
+            else:
+                logger.warning("Connected to MQTT broker {}:{}, error code {}".format(mqtt_ip, mqtt_port, rc))
             client.subscribe("#", qos=1)
 
         def on_unsubscribe(client, userdata, msg_id):
@@ -39,11 +45,14 @@ class MqttProxy(object):
         self.bg_thread.start()
 
     def run(self):
+        logger.debug("Running MQTT listener thread")
         self.client.loop_forever()
 
     def stop(self):
+        logger.debug("Stopping MQTT listener thread...")
         self.client.unsubscribe('#')
         self.bg_thread.join()
+        logger.debug("MQTT listener thread stopped")
 
     def _on_mqtt_message(self, _, _2, msg):
         if msg.topic in self.ignore_topics:
@@ -61,25 +70,24 @@ class MqttProxy(object):
                 try:
                     handler.on_unknown_message(msg.topic, msg.payload)
                 except Exception as ex:
-                    print('UnknownMsgHandler {} error while handling: {}'.format(str(handler), str(ex)))
+                    logger.exception("UnknownMsgHandler {} found an error while handling message {}".
+                                        format(str(handler), str(msg.payload), exc_info=True))
             return
 
         parsed_msg = None
         try:
             parsed_msg = json.loads(msg.payload.decode('utf-8'))
         except Exception as ex:
-            print('Error decoding mqtt message from json in channel {}: {}'.\
-                    format(msg.topic, msg.payload))
+            logger.error("Ignoring mqtt message with decoding error in channel {}: {}:".\
+                            format(msg.topic, msg.payload))
             return
 
-        # TODO: Repeated msgs -> Close subscription before disconnect?
-        #print(msg.timestamp)
-        #print(msg.timestamp, "Call thing msg", msg.payload)
         for handler in self.message_handler_list:
             try:
                 handler.on_thing_message(thing_id, msg.topic, parsed_msg)
             except Exception as ex:
-                print('Handler {} found error while handling MQTT message: {}'.format(str(handler), str(ex)))
+                logger.exception("Handler {} found error while handling MQTT message {}".
+                                    format(str(handler), str(msg.payload), exc_info=True))
 
     def broadcast(self, topic, msg):
         topic = self.mqtt_topic_prefix + topic

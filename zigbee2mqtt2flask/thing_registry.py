@@ -1,5 +1,8 @@
 import json
 
+import logging
+logger = logging.getLogger('zigbee2mqtt2flask')
+
 class ThingRegistry(object):
     """
     Acts as a dictionary of all known things and also as a bridge between
@@ -24,11 +27,12 @@ class ThingRegistry(object):
         flask_app.add_url_rule('/'+unknown_things_ep,       unknown_things_ep, self.ws_all_unknown_things)
         flask_app.add_url_rule('/'+world_status_ep,         world_status_ep,   self.ws_world_status)
 
-        print("Registered endpoint {} for things API".format(thing_ep))
-        print("Registered endpoint {}/* for things API with arguments".format(thing_ep))
-        print("Registered endpoint {} for known things API".format(known_things_ep))
-        print("Registered endpoint {} for unknown things API".format(unknown_things_ep))
-        print("Registered endpoint {} for world status API".format(world_status_ep))
+        logger.debug("ZMF serves things API @ url {}".format(thing_ep))
+        logger.debug("ZMF serves things with arguments API @ url {} for".format(thing_ep))
+        logger.debug("ZMF lists known things @ url {}".format(known_things_ep))
+        logger.debug("ZMF lists unknown things @ url {}".format(unknown_things_ep))
+        logger.debug("ZMF serves world status @ url {}".format(world_status_ep))
+
 
     # Flask endpoint handlers
 
@@ -50,14 +54,17 @@ class ThingRegistry(object):
     def ws_thing_action_handler(self, thing_name, action, args=None):
         """ Flask handler: try to find a thing called $thing_name, and invoke
         $action on the found object (if any) """
+        logger.debug("ZMF calling {}.{}({})".format(thing_name, action, args))
 
         try:
             obj = self.get_by_name_or_id(thing_name)
         except KeyError:
+            logger.debug("ZMF invocation error: no object named {} is known".format(thing_name))
             return "No object called {}".format(thing_name), 404
 
         method = getattr(obj, action, None)
         if method is None:
+            logger.debug("ZMF invocation error: object {} has no method {}".format(thing_name, action))
             return "No method {} on object {}".format(action, thing_name), 405
 
         parsed_args = []
@@ -76,9 +83,11 @@ class ThingRegistry(object):
 
             return json.dumps(obj.json_status())
 
-        except TypeError:
-            return "Calling {}.{}({}) yields a type error (are you sure the arguments are correct?)"\
-                        .format(thing_name, action, parsed_args), 405
+        except (TypeError, ValueError):
+            msg = "Calling {}.{}({}) yields a type error (are you sure the arguments are correct?)"\
+                        .format(thing_name, action, parsed_args)
+            logger.debug("ZMF invocation error: " + msg, exc_info=True)
+            return msg, 405
 
 
 
@@ -114,15 +123,16 @@ class ThingRegistry(object):
         return list(self.unknown_things)
 
     def on_thing_message(self, thing_id, topic, json_msg):
+        logger.debug("Thing {} got message {}".format(thing_id, json_msg))
         if thing_id in self.known_things.keys():
             if not self.known_things[thing_id].consume_message(topic, json_msg):
                 self.on_unknown_message(topic, json.dumps(json_msg))
         else:
             if thing_id not in self.unknown_things:
                 self.unknown_things.add(thing_id)
-                print('Thing {} added to registry of unknown things'.format(thing_id))
+                logger.warning("Mqtt message for unknown thing {}. Added to unknown registry.".format(thing_id))
 
     def on_unknown_message(self, topic, payload):
-        print('Received message that can\'t be understood:' +\
-                    '\t{}\n\t{}'.format(topic, payload))
+        logger.warning("Couldn't understand received mqtt message in topic {}:".format(topic))
+        logger.warning(payload)
 

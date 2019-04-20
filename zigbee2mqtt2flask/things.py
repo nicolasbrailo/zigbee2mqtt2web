@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger('zigbee2mqtt2flask.thing')
+
 import json
 
 class Thing(object):
@@ -202,7 +205,7 @@ class ColorDimmableLamp(DimmableLamp):
                 xy = rgb_to_xy(self.rgb)
                 s['color'] = {'x': xy[0], 'y': xy[1]}
             except ZeroDivisionError:
-                print("Invalid color selected for {}, ignoring".format(self.get_id()))
+                logger.error("Lamp {} ignoring invalid color {}".format(self.get_id(), self.rgb))
         return s
 
     def json_status(self):
@@ -250,6 +253,6 @@ class Button(BatteryPoweredThing):
         return False
 
     def handle_action(self, action, msg):
-        print(self.get_id(), ": default handler for action ", action)
+        logger.notice("Thing {} action {} implements no handler".format(self.get_id(), action))
 
 
