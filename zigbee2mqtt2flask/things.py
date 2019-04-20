@@ -110,9 +110,12 @@ class Lamp(MqttThing):
             # If is_on was None (unknown) assume it was off
             self.light_on()
 
-    def broadcast_new_state(self):
+    def broadcast_new_state(self, transition_time=1):
         topic = self.get_id() + '/set'
-        self.mqtt_broadcaster.broadcast(topic, json.dumps(self.mqtt_status()))
+        cmd = self.mqtt_status()
+        if transition_time is not None:
+            cmd['transition'] = transition_time
+        self.mqtt_broadcaster.broadcast(topic, json.dumps(cmd))
 
 
 class DimmableLamp(Lamp):
@@ -155,7 +158,7 @@ class DimmableLamp(Lamp):
 
         return s
 
-    def set_brightness(self, pct):
+    def set_brightness(self, pct, broadcast_update=True):
         pct = int(pct)
         if pct < 0 or pct > 100:
             raise Exception('Unexpected brightness %: {} (should be 0-100)'.format(pct))
@@ -167,7 +170,8 @@ class DimmableLamp(Lamp):
         else:
             self.light_on(broadcast_update=False)
 
-        self.broadcast_new_state()
+        if broadcast_update:
+            self.broadcast_new_state()
 
     def brightness_up(self):
         self._chg_brightness(+1)
@@ -227,9 +231,10 @@ class ColorDimmableLamp(DimmableLamp):
 
         return s
 
-    def set_rgb(self, html_rgb_triple):
+    def set_rgb(self, html_rgb_triple, broadcast_update=True):
         self.rgb = bytes.fromhex(html_rgb_triple)
-        self.broadcast_new_state()
+        if broadcast_update:
+            self.broadcast_new_state()
 
 
 class Button(BatteryPoweredThing):
