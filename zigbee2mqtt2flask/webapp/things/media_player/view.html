@@ -10,7 +10,12 @@
 
 {{#if has_media }}
 
-    <img class="media_icon" src="{{player_icon}}" />
+    
+    {{#if player_icon}}
+        <img class="media_icon" src="{{player_icon}}" />
+    {{else}}
+        <img class="media_no_icon" />
+    {{/if}}
 
     <div class="media_player_small_control">
         <div class="media_player_info">

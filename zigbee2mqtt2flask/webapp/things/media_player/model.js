@@ -59,7 +59,7 @@ class MediaPlayer extends TemplatedThing {
         this.has_media = !(!new_status.media);
         this.player_icon = (new_status.media && new_status.media.icon)?
                                 new_status.media.icon :
-                                'things/media_player/icons/chromecast.png';
+                                null;
         this.updateUI();
     }
 
