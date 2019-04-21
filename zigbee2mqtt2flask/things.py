@@ -110,7 +110,7 @@ class Lamp(MqttThing):
             # If is_on was None (unknown) assume it was off
             self.light_on()
 
-    def broadcast_new_state(self, transition_time=1):
+    def broadcast_new_state(self, transition_time=None):
         topic = self.get_id() + '/set'
         cmd = self.mqtt_status()
         if transition_time is not None:
