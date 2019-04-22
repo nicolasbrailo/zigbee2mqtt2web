@@ -23,7 +23,7 @@ class TemplatedThing {
         var view_url = base_url + "things/"+ subclass.get_thing_path_name() + "/view.html";
         $.ajax({
             url: view_url,
-            cache: false,
+            cache: true,
             type: 'get',
             dataType: 'html',
             success: function(tmpl) {
