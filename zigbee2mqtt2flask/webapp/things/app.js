@@ -13,48 +13,45 @@ var wget = function(url) {
 
 
 class ThingsApp {
-    static init_all_templates(webapp_base_url) {
-        Lamp.init_template(webapp_base_url);
-        MediaPlayer.init_template(webapp_base_url);
-        MqttDeviceInfo.init_template(webapp_base_url);
-
-        var all_done = $.Deferred();
-        $.when(Lamp.template_ready).then(function() {
-            $.when(MediaPlayer.template_ready).then(function() {
-                $.when(MqttDeviceInfo.template_ready).then(function() {
-                    all_done.resolve();
-                });
-            });
-        });
-
-        return all_done;
-    }
-
-    constructor(api_base_url) {
-        this.api_base_url = api_base_url;
+    constructor(api_base_url, webapp_base_url, templated_things_classes) {
         this.things = [];
         this.unknown_things= [];
 
-        this.is_ready = $.Deferred();
-        this.things_ready = $.Deferred();
-        this.unknown_things_ready = $.Deferred();
+        this.api_base_url = api_base_url;
+        this.webapp_base_url = webapp_base_url;
+        this.templated_things_classes = templated_things_classes;
 
+        // Promise to be resolved when all objects have been initialized
+        this.is_ready = $.Deferred();
+
+        // Cache this for scope
         var self = this;
 
-        $.when(self.things_ready).then(function(){
-            $.when(self.unknown_things_ready).then(function(){
-                self.is_ready.resolve();
-            });
-        });
+        // Init all templates
+        this.tmpls_ready = [];
+        for (var tmpl of templated_things_classes) {
+            console.log("Init template ", tmpl.get_thing_path_name())
+            self.tmpls_ready.push( tmpl.init_template(self.webapp_base_url) );
+        }
 
+        this.things_ready = $.Deferred();
         $.when(wget(this.api_base_url + "world/status")).then(function(things) {
             self.things = things;
             self.things_ready.resolve();
         });
 
+        this.unknown_things_ready = $.Deferred();
         $.when(wget(this.api_base_url + "world/unknown_things")).then(function(things) {
             self.unknown_things = things;
             self.unknown_things_ready.resolve();
+        });
+
+        $.when(self.things_ready).then(function(){
+            $.when(self.unknown_things_ready).then(function(){
+                $.when.apply($, self.tmpls_ready).then(function() {
+                    self.is_ready.resolve();
+                });
+            });
         });
     };
 

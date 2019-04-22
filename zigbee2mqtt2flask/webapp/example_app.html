@@ -22,27 +22,19 @@
 <script>
 
 
-var things_app = new ThingsApp("/ZMF/");
-var templates_ready = ThingsApp.init_all_templates("/ZMF/webapp/");
+var things_app = new ThingsApp("/ZMF/", "/ZMF/webapp/", [Lamp, MqttDeviceInfo]);
 
 $(document).ready(function(){
-    $.when(templates_ready).then(function() {
-        $.when(things_app.is_ready).then(function() {
-            var lamps = things_app.get_things_of_type(Lamp);
-            for (lamp of lamps) {
-                $('#lamps_list').append(lamp.create_ui());
-            }
+    $.when(things_app.is_ready).then(function() {
+        var lamps = things_app.get_things_of_type(Lamp);
+        for (lamp of lamps) {
+            $('#lamps_list').append(lamp.create_ui());
+        }
 
-            var media_players = things_app.get_things_of_type(MediaPlayer);
-            for (pl of media_players) {
-                $('#media_players_list').append(pl.create_ui());
-            }
-
-            var mqtt_things = things_app.get_things_of_type(MqttDeviceInfo);
-            for (thing of mqtt_things) {
-                $('#mqtt_network_status').append(thing.create_ui());
-            }
-        });
+        var mqtt_things = things_app.get_things_of_type(MqttDeviceInfo);
+        for (thing of mqtt_things) {
+            $('#mqtt_network_status').append(thing.create_ui());
+        }
     });
 });
 
@@ -53,10 +45,6 @@ $(document).ready(function(){
 <div class="container-fluid">
     <h2>Lamps</h2>
     <ul id="lamps_list" style="margin: 0; padding: 0;" />
-    </ul>
-
-    <h2>Media players</h2>
-    <ul id="media_players_list" style="margin: 0; padding: 0;" />
     </ul>
 
     <h2>Mqtt network status</h2>

@@ -18,6 +18,7 @@ class TemplatedThing {
         document.getElementsByTagName("head")[0].appendChild(fileref)
 
         subclass.template_ready = $.Deferred();
+        var caller_promise = $.Deferred();
 
         var view_url = base_url + "things/"+ subclass.get_thing_path_name() + "/view.html";
         $.ajax({
@@ -35,8 +36,11 @@ class TemplatedThing {
                 if (subclass.on_template_ready) {
                     subclass.on_template_ready();
                 }
+                caller_promise.resolve(); 
             }
         });
+
+        return caller_promise;
     }
 
     constructor(things_server_url, name, supported_actions, status) {
