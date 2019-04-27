@@ -164,7 +164,7 @@
 }
 
 .media_player_ctrl .media_player_extended_control .timeslider {
-    width: calc(90% - 100px); /* slider width - width btns */
+    width: calc(90% - 200px); /* slider width - width btns */
     min-width: 150px;
     display: inline-block;
 }
