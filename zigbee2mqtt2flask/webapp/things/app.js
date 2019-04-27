@@ -40,17 +40,9 @@ class ThingsApp {
             self.things_ready.resolve();
         });
 
-        this.unknown_things_ready = $.Deferred();
-        $.when(wget(this.api_base_url + "world/unknown_things")).then(function(things) {
-            self.unknown_things = things;
-            self.unknown_things_ready.resolve();
-        });
-
         $.when(self.things_ready).then(function(){
-            $.when(self.unknown_things_ready).then(function(){
-                $.when.apply($, self.tmpls_ready).then(function() {
-                    self.is_ready.resolve();
-                });
+            $.when.apply($, self.tmpls_ready).then(function() {
+                self.is_ready.resolve();
             });
         });
     };
