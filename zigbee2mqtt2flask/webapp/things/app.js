@@ -1,21 +1,7 @@
 
-var wget = function(url) {
-    var d = $.Deferred();
-    $.ajax({
-      type: 'GET',
-      dataType: 'json',
-      url: url,
-      success: function(msg){ d.resolve(msg); },
-      error: function(request, server_status, error){ d.resolve(null); },
-    });
-    return d;
-}
-
-
 class ThingsApp {
     constructor(api_base_url, webapp_base_url, templated_things_classes) {
         this.things = [];
-        this.unknown_things= [];
 
         this.api_base_url = api_base_url;
         this.webapp_base_url = webapp_base_url;
@@ -35,9 +21,14 @@ class ThingsApp {
         }
 
         this.things_ready = $.Deferred();
-        $.when(wget(this.api_base_url + "world/status")).then(function(things) {
+        $.ajax({
+          type: 'GET',
+          dataType: 'json',
+          url: this.api_base_url + "world/status",
+          success: function(things){
             self.things = things;
             self.things_ready.resolve();
+          },
         });
 
         $.when(self.things_ready).then(function(){
