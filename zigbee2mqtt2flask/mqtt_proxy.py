@@ -32,6 +32,7 @@ class MqttProxy(object):
         self.ignore_topics = ['zigbee2mqtt/bridge/state', 'zigbee2mqtt/bridge/config']
 
         self.client = mqtt.Client()
+        self.client.on_non_json_msg = None
         self.client.on_connect = on_connect
         self.client.on_unsubscribe = on_unsubscribe
         self.client.on_message = self._on_mqtt_message
@@ -76,11 +77,21 @@ class MqttProxy(object):
 
         parsed_msg = None
         try:
-            parsed_msg = json.loads(msg.payload.decode('utf-8'))
+            decoded_msg = msg.payload.decode('utf-8')
         except Exception as ex:
             logger.error("Ignoring mqtt message with decoding error in channel {}: {}:".\
-                            format(msg.topic, msg.payload))
+                            format(msg.topic, msg.payload), exc_info=True)
             return
+
+        try:
+            parsed_msg = json.loads(decoded_msg)
+        except Exception as ex:
+            if self.on_non_json_msg is not None:
+                return self.on_non_json_msg(msg.topic, decoded_msg)
+            else:
+                logger.error("Ignoring non-json message in channel {}: {}:".\
+                                    format(msg.topic, msg.payload), exc_info=True)
+                return
 
         for handler in self.message_handler_list:
             try:
