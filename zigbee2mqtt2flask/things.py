@@ -131,7 +131,7 @@ class DimmableLamp(Lamp):
 
     def mqtt_status(self):
         s = super().mqtt_status()
-        if self.brightness is not None:
+        if s['state'] == 'ON' and self.brightness is not None:
             s['brightness'] = int(self.brightness / 100.0 * 255)
         return s
 
