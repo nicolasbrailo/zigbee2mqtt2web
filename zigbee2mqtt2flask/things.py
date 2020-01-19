@@ -2,6 +2,7 @@ import logging
 logger = logging.getLogger('zigbee2mqtt2flask.thing')
 
 import json
+import time
 
 class Thing(object):
     def __init__(self, thing_id):
@@ -233,6 +234,51 @@ class ColorDimmableLamp(DimmableLamp):
 
     def set_rgb(self, html_rgb_triple, broadcast_update=True):
         self.rgb = bytes.fromhex(html_rgb_triple)
+        if broadcast_update:
+            self.broadcast_new_state()
+
+class ColorTempDimmableLamp(DimmableLamp):
+    def __init__(self, mqtt_id, mqtt_broadcaster):
+        super().__init__(mqtt_id, mqtt_broadcaster)
+        self.color_temp = None
+
+    def supported_actions(self):
+        s = super().supported_actions()
+        s.extend(['set_color_temp'])
+        return s
+
+    def mqtt_status(self):
+        s = super().mqtt_status()
+        if self.color_temp is not None:
+            # Lamps seem to dislike setting temperature and color. First set one, then the other
+            topic = self.get_id() + '/set'
+            self.mqtt_broadcaster.broadcast(topic, json.dumps(s))
+            # Reset msg
+            s = {}
+            s['color_temp'] = self.color_temp
+            time.sleep(1)
+        return s
+
+    def json_status(self):
+        s = super().json_status()
+        s['color_temp'] = self.color_temp
+        return s
+
+    def consume_message(self, topic, msg):
+        s = super().consume_message(topic, msg)
+
+        if 'color_temp' in msg:
+            self.set_color_temp(msg['color_temp'], False)
+            return True
+
+        return s
+
+    def set_color_temp(self, color_temp, broadcast_update=True):
+        try:
+            self.color_temp = int(color_temp)
+        except:
+            self.color_temp = 0
+
         if broadcast_update:
             self.broadcast_new_state()
 
