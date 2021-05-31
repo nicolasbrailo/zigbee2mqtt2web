@@ -4,6 +4,8 @@ logger = logging.getLogger('zigbee2mqtt2flask.thing')
 import json
 import time
 
+from apscheduler.schedulers.background import BackgroundScheduler
+
 class Thing(object):
     def __init__(self, thing_id):
         self.thing_id = thing_id
