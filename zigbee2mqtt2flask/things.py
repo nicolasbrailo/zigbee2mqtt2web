@@ -341,6 +341,7 @@ class MultiIkeaMotionSensor(Thing):
 
     def json_status(self):
         active = False
+        sensors_stats = []
         for s in self._sensors:
             if s.occupied:
                 active = True
