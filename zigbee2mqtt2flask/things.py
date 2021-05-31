@@ -319,6 +319,7 @@ class MultiIkeaMotionSensor(Thing):
             world.register_thing(self)
             self.on_occupant_entered = on_occupant_entered
             self.on_occupant_left = on_occupant_left
+            self.name = mqtt_id
             self.occupied = False
 
         def consume_message(self, topic, msg):
@@ -333,13 +334,16 @@ class MultiIkeaMotionSensor(Thing):
 
             return False
 
+        def json_status(self):
+            return {'name': self.name, 'active': self.occupied}
+
     def json_status(self):
-        sensor_names = [s.get_id() for s in self._sensors]
         active = False
         for s in self._sensors:
             if s.occupied:
                 active = True
-        return {'sensors': sensor_names, 'active': active}
+            sensors_stats.append(s.json_status())
+        return {'group_active': active, 'sensors_status': sensors_stats}
 
     def __init__(self, world, mqtt_ids):
         super().__init__('MultiSensor' + '_'.join(mqtt_ids))
