@@ -3,7 +3,7 @@ logger = logging.getLogger('zigbee2mqtt2flask.thing')
 
 import json
 import time
-
+import traceback
 from apscheduler.schedulers.background import BackgroundScheduler
 
 class Thing(object):
@@ -391,4 +391,64 @@ class MultiIkeaMotionSensor(Thing):
     def activity_timeout(self):
         pass
 
+
+
+class MultiThing:
+    def __init__(self, group_id, typeofthing, mqtt_ids, mqtt_broadcaster):
+        self.typeofthing = typeofthing
+        self.group_id = group_id
+        self.things = []
+        for mqtt_id in mqtt_ids:
+            try:
+                self.things.append(typeofthing(mqtt_id, mqtt_broadcaster))
+            except TypeError as ex:
+                print("Can't build thing of type {}, bad ctor".format(str(typeofthing)))
+                raise ex
+
+    def get_id(self):
+        return self.group_id
+
+    def __getattr__(self, name):
+        def wrapper(*args, **kwargs):
+            last_ex = None
+            last_res = None
+            first_call = True
+            for obj in self.things:
+                # Try to find method on this sub-thing; all sub things should be the same type, so fail all calls if this fails
+                f = None
+                try:
+                    f = getattr(obj, name)
+                except AttributeError as ex:
+                    print("Thing {}: Method {}.{} doesn't exist".format(self.group_id, self.typeofthing, name))
+                    raise ex
+                except TypeError as ex:
+                    print("Thing {}: Can't call {}.{} for the supplied args".format(self.group_id, self.typeofthing, name))
+                    raise ex
+
+                # Invoke method on sub-thing. If one fail, continue executing and raise error on last one.
+                this_res = None
+                try:
+                    this_res = f(*args, **kwargs)
+                except Exception as ex:
+                    print("Thing {}: Exception on {}.{} for sub-thing {}".format(self.group_id, self.typeofthing, name, obj.get_id()))
+                    print(traceback.format_exc())
+                    last_ex = ex
+
+                # All ret vals should be the same, otherwise we don't know how to wrap this. Default to returning
+                # whatever was last + printing an error
+                if first_call:
+                    first_call = False
+                else:
+                    if last_res != this_res:
+                        pass
+                    last_res = this_res
+
+            # If there were errors, pick an arbitrary exception to raise
+            if last_ex is not None:
+                raise last_ex
+
+            # If there were no errors, pick an arbitrary value to raise. Hopefull all values are the same
+            return last_res
+
+        return wrapper
 
