@@ -6,6 +6,9 @@ import time
 import traceback
 from apscheduler.schedulers.background import BackgroundScheduler
 
+from .geo_helper import light_outside
+from .geo_helper import late_night
+
 class Thing(object):
     def __init__(self, thing_id):
         self.thing_id = thing_id
@@ -35,7 +38,7 @@ class MqttThing(Thing):
 
     def json_status(self):
         return {'link_quality': self.link_quality}
-        
+
     def consume_message(self, topic, msg):
         """ Return True if message was understood """
 
@@ -317,7 +320,7 @@ class MultiIkeaMotionSensor(Thing):
     class SensorImpl(BatteryPoweredThing):
         def __init__(self, world, mqtt_id, on_occupant_entered, on_occupant_left):
             super().__init__(mqtt_id)
-            logger.warning(f"Registering thing {mqtt_id}")
+            logger.info(f"Registering thing {mqtt_id}")
             world.register_thing(self)
             self.on_occupant_entered = on_occupant_entered
             self.on_occupant_left = on_occupant_left
@@ -357,7 +360,8 @@ class MultiIkeaMotionSensor(Thing):
         self._scheduler = BackgroundScheduler()
         self._bg = None
         self._scheduler.start()
-        self.timeout_secs = 60
+        # Ikea motion sensors seem to use 150ish seconds as their refresh period
+        self.timeout_secs = 150
 
     def _on_occupant_entered(self):
         self._maybe_cancel_timeout()
@@ -391,6 +395,47 @@ class MultiIkeaMotionSensor(Thing):
     def activity_timeout(self):
         pass
 
+
+class MotionActivatedNightLight(MultiIkeaMotionSensor):
+    def __init__(self, lat, lon, late_night_start_hr, world, sensor_mqtt_ids, light):
+        super().__init__(world, sensor_mqtt_ids)
+        self.light = light
+        self.light_on_because_activity = False
+        self.lat = lat
+        self.lon = lon
+        self.late_night_start_hr = late_night_start_hr
+        self.off_during_daylight = True
+        self.high_brightness_pct = 40
+        self.low_brightness_pct = 5
+
+    def always_off_during_daylight(self, v):
+        self.off_during_daylight = v
+
+    def activity_detected(self):
+        # Only trigger if the light wasn't on before (eg manually)
+        if self.light.is_on:
+            return
+
+        if self.off_during_daylight and light_outside(self.lat, self.lon):
+            return
+
+        logger.info("MotionActivatedLight on activity_detected")
+        brightness = self.high_brightness_pct
+        if late_night(self.lat, self.lon, self.late_night_start_hr):
+            brightness = self.low_brightness_pct
+
+        self.light_on_because_activity = True
+        self.light.set_brightness(brightness)
+
+    def all_vacant(self):
+        logger.info("MotionActivatedLight on all_vacant")
+        if self.light_on_because_activity:
+            self.light_on_because_activity = False
+            self.light.light_off()
+
+    def activity_timeout(self):
+        logger.info("MotionActivatedLight on timeout")
+        self.all_vacant()
 
 
 class MultiThing:
