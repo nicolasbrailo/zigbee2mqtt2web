@@ -454,7 +454,7 @@ class MultiThing:
         return self.group_id
 
     def __getattr__(self, name):
-        def wrapper(*args, **kwargs):
+        def funcwrapper(*args, **kwargs):
             last_ex = None
             last_res = None
             first_call = True
@@ -470,7 +470,7 @@ class MultiThing:
                     print("Thing {}: Can't call {}.{} for the supplied args".format(self.group_id, self.typeofthing, name))
                     raise ex
 
-                # Invoke method on sub-thing. If one fail, continue executing and raise error on last one.
+                # Invoke method on sub-thing. If one fails, continue executing and raise error on last one.
                 this_res = None
                 try:
                     this_res = f(*args, **kwargs)
@@ -492,8 +492,21 @@ class MultiThing:
             if last_ex is not None:
                 raise last_ex
 
-            # If there were no errors, pick an arbitrary value to raise. Hopefull all values are the same
+            # If there were no errors, pick an arbitrary value to return. Hopefully all values are the same
             return last_res
 
-        return wrapper
+        # Pretend everything is fine if we don't wrap any objects
+        if len(self.things) == 0:
+            return None
+
+        # Requested a function-like member, wrap it
+        if callable(getattr(self.things[0], name)):
+            return funcwrapper
+
+        # Requested a variable-like member, read all of them in case there are side-effects and return the last
+        val = None
+        for obj in self.things:
+            val = getattr(obj, name)
+        return val
+   
 
