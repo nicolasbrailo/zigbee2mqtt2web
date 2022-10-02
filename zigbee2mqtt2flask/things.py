@@ -135,6 +135,16 @@ class DimmableLamp(Lamp):
         s.extend(['set_brightness', 'brightness_up', 'brightness_down'])
         return s
 
+    def light_toggle(self, brightness=None):
+        if brightness is None:
+            return super().light_toggle()
+
+        if self.is_on == True:
+            self.light_off()
+        else:
+            self.set_brightness(brightness)
+
+
     def mqtt_status(self):
         s = super().mqtt_status()
         if s['state'] == 'ON' and self.brightness is not None:
@@ -508,5 +518,21 @@ class MultiThing:
         for obj in self.things:
             val = getattr(obj, name)
         return val
-   
+
+
+def any_light_on(world, lst):
+    for name in lst:
+        if world.get_thing_by_name(name).is_on:
+            return True
+    return False
+
+def light_group_toggle(world, grp):
+    things = [name for name,_ in grp]
+    if any_light_on(world, things):
+        for name,brightness in grp:
+            world.get_thing_by_name(name).light_off()
+    else:
+        for name,brightness in grp:
+            world.get_thing_by_name(name).set_brightness(brightness)
+
 
