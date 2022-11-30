@@ -126,13 +126,13 @@ class ThingRegistry(object):
         logger.debug("Thing {} got message {}".format(thing_id, json_msg))
         if thing_id in self.known_things.keys():
             if not self.known_things[thing_id].consume_message(topic, json_msg):
-                self.on_unknown_message(topic, json.dumps(json_msg))
+                self.on_unknown_message(thing_id, topic, json.dumps(json_msg))
         else:
             if thing_id not in self.unknown_things:
                 self.unknown_things.add(thing_id)
                 logger.warning("Mqtt message for unknown thing {}. Added to unknown registry.".format(thing_id))
 
-    def on_unknown_message(self, topic, payload):
-        logger.warning("Couldn't understand received mqtt message in topic {}:".format(topic))
+    def on_unknown_message(self, thing_id, topic, payload):
+        logger.warning("Couldn't understand received mqtt message for {} in topic {}:".format(thing_id, topic))
         logger.warning(payload)
 

@@ -57,12 +57,13 @@ class BatteryPoweredThing(MqttThing):
         s = super().json_status()
         s.update({'battery_level': self.battery_level})
         return s
-        
+
     def consume_message(self, topic, msg):
         x = super().consume_message(topic, msg)
         if 'battery' in msg:
             self.battery_level = msg['battery']
-        return x or 'battery' in msg
+            return True
+        return x
 
 class Lamp(MqttThing):
     def __init__(self, mqtt_id, mqtt_broadcaster):
@@ -316,10 +317,103 @@ class Button(BatteryPoweredThing):
             self.handle_action(msg['action'], msg)
             return True
 
-        return False
+        return s
 
     def handle_action(self, action, msg):
         logger.notice("Thing {} action {} implements no handler".format(self.get_id(), action))
+
+
+class XiaomiContactSensor(BatteryPoweredThing):
+    def __init__(self, mqtt_id):
+        super().__init__(mqtt_id)
+        self.contact = None
+        self.temperature = None
+        self.voltage = None
+
+    def json_status(self):
+        s = super().json_status()
+        s.update({'contact': self.contact})
+        s.update({'temperature': self.temperature})
+        s.update({'voltage': self.voltage})
+        return s
+
+    def consume_message(self, topic, msg):
+        contact_chg = False
+        if 'contact' in msg:
+            if self.contact != msg['contact']:
+                contact_chg = True
+            self.contact = msg['contact']
+        if 'temperature' in msg:
+            self.temperature = msg['temperature']
+        if 'voltage' in msg:
+            self.voltage = msg['voltage']
+
+        if contact_chg:
+            if self.contact:
+                self.on_close()
+            else:
+                self.on_open()
+
+        return True
+
+    def on_close(self):
+        pass
+
+    def on_open(self):
+        pass
+
+
+class DoorOpenSensor(XiaomiContactSensor):
+    def __init__(self, mqtt_id, door_open_timeout_secs):
+        super().__init__(mqtt_id)
+        self.door_open_timeout_secs = door_open_timeout_secs
+        self.door_open = None
+        self._scheduler = None
+        self._bg = None
+
+    def on_close(self):
+        if self.door_open is not None and not self.door_open:
+            logger.error("Error: duplicated door close event?")
+
+        self.door_open = False
+
+        if self._bg is None:
+            logger.error("Error: door warden never started")
+        else:
+            self._bg.remove()
+            self._bg = None
+
+        self._scheduler = None
+
+        self.door_closed()
+
+
+    def on_open(self):
+        if self.door_open:
+            logger.error("Error: duplicated door open event?")
+
+        self.door_open = True
+
+        if self._scheduler is not None:
+            logger.info("Error: duplicated on_open events?")
+            self._scheduler = None
+
+        if self._bg is not None:
+            logger.info("Error: duplicated on_open events?")
+            self._bg.remove()
+            self._bg = None
+
+        self._scheduler = BackgroundScheduler()
+        self._scheduler.start()
+        self._bg = self._scheduler.add_job(
+                       func=self._door_warden_timeout,
+                       trigger="interval",
+                       seconds=self.door_open_timeout_secs)
+
+        self.door_opened()
+
+    def _door_warden_timeout(self):
+        self.door_open_timeout()
 
 
 class MultiIkeaMotionSensor(Thing):
