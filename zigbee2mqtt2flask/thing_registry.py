@@ -17,12 +17,14 @@ class ThingRegistry(object):
         self.unknown_things = set()
 
         thing_ep          = endpoint_prefix + '/thing/<thing_name>/<action>'
+        things_by_prop_ep = endpoint_prefix + '/things_with_prop/<prop>'
         known_things_ep   = endpoint_prefix + '/world/known_things'
         unknown_things_ep = endpoint_prefix + '/world/unknown_things'
         world_status_ep   = endpoint_prefix + '/world/status'
 
         flask_app.add_url_rule('/'+thing_ep,                thing_ep,          self.ws_thing_action_handler)
         flask_app.add_url_rule('/'+thing_ep+'/<path:args>', thing_ep+'+args',  self.ws_thing_action_handler)
+        flask_app.add_url_rule('/'+things_by_prop_ep,       things_by_prop_ep, self.ws_search_thing_by_prop_action_handler)
         flask_app.add_url_rule('/'+known_things_ep,         known_things_ep,   self.ws_all_known_things)
         flask_app.add_url_rule('/'+unknown_things_ep,       unknown_things_ep, self.ws_all_unknown_things)
         flask_app.add_url_rule('/'+world_status_ep,         world_status_ep,   self.ws_world_status)
@@ -41,6 +43,9 @@ class ThingRegistry(object):
 
     def ws_all_unknown_things(self):
         return json.dumps(self.get_unknown_ids())
+
+    def ws_search_thing_by_prop_action_handler(self, prop):
+        return json.dumps(self.get_things_with_property(prop))
 
     def ws_world_status(self):
         world = {}
@@ -115,6 +120,14 @@ class ThingRegistry(object):
 
         return [obj for name,obj in self.known_things.items()
                         if impls_interface(obj, actions)]
+
+    def get_things_with_property(self, prop_name):
+        t = {}
+        for name,obj in self.known_things.items():
+            s = obj.json_status()
+            if prop_name in s:
+                t[name] = s
+        return t
 
     def get_known_things_names(self):
         return list(self.name_to_id.keys())

@@ -25,7 +25,7 @@ class Zigbee2Mqtt2Flask(object):
         flask_app.add_url_rule('/' + flask_endpoint_prefix + '/graphviz_netmap',
                                      flask_endpoint_prefix + 'graphviz_netmap',
                                self.mk_graphviz_mqtt_network_map)
-        
+
         if serve_example_webapp:
             try:
                 cwd = os.path.dirname(os.path.abspath(__file__))
@@ -105,4 +105,7 @@ class Zigbee2Mqtt2Flask(object):
 
     def get_things_supporting(self, actions):
         return self.thing_registry.get_things_supporting(actions)
+
+    def get_things_with_property(self, prop):
+        return self.thing_registry.get_things_with_property(prop)
 
