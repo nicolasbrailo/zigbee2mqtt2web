@@ -326,6 +326,7 @@ class Button(BatteryPoweredThing):
 class TuyaHumidityTempSensor(BatteryPoweredThing):
     def __init__(self, mqtt_id, db=None):
         super().__init__(mqtt_id)
+        self.sensor_name = mqtt_id
         self.temperature = None
         self.humidity = None
         self.last_update = None
@@ -349,19 +350,21 @@ class TuyaHumidityTempSensor(BatteryPoweredThing):
             return False
 
         try:
-            if db is not None:
-                self.db.add_sample()
+            if self.db is not None:
+                self.db.add_sample(self)
         except Exception as ex:
             logger.error("Failed to save latest sensor update " + str(ex))
 
         return True
 
 class XiaomiContactSensor(BatteryPoweredThing):
-    def __init__(self, mqtt_id):
+    def __init__(self, mqtt_id, db=None):
         super().__init__(mqtt_id)
+        self.sensor_name = mqtt_id
         self.contact = None
         self.temperature = None
         self.voltage = None
+        self.db = db
 
     def json_status(self):
         s = super().json_status()
@@ -371,6 +374,7 @@ class XiaomiContactSensor(BatteryPoweredThing):
         return s
 
     def consume_message(self, topic, msg):
+        super().consume_message(topic, msg)
         contact_chg = False
         if 'contact' in msg:
             if self.contact != msg['contact']:
@@ -387,6 +391,9 @@ class XiaomiContactSensor(BatteryPoweredThing):
             else:
                 self.on_open()
 
+        if self.db is not None:
+            self.db.add_sample(self)
+
         return True
 
     def on_close(self):
@@ -397,8 +404,8 @@ class XiaomiContactSensor(BatteryPoweredThing):
 
 
 class DoorOpenSensor(XiaomiContactSensor):
-    def __init__(self, mqtt_id, door_open_timeout_secs):
-        super().__init__(mqtt_id)
+    def __init__(self, mqtt_id, db=None, door_open_timeout_secs=60):
+        super().__init__(mqtt_id, db)
         self.door_open_timeout_secs = door_open_timeout_secs
         self.door_open = None
         self._scheduler = None
@@ -410,9 +417,7 @@ class DoorOpenSensor(XiaomiContactSensor):
 
         self.door_open = False
 
-        if self._bg is None:
-            logger.error("Error: door warden never started")
-        else:
+        if self._bg is not None:
             self._bg.remove()
             self._bg = None
 
@@ -447,6 +452,45 @@ class DoorOpenSensor(XiaomiContactSensor):
 
     def _door_warden_timeout(self):
         self.door_open_timeout()
+
+
+class IkeaPowerOutlet(MqttThing):
+    def __init__(self, mqtt_id, mqtt_broadcaster):
+        super().__init__(mqtt_id)
+        self.mqtt_broadcaster = mqtt_broadcaster
+        self.outlet_powered = None
+
+    def consume_message(self, topic, msg):
+        x = super().consume_message(topic, msg)
+        if 'state' in msg:
+            self.outlet_powered = (msg['state'] == 'ON')
+            return True
+        return x
+
+    def supported_actions(self):
+        s = super().supported_actions()
+        s.extend(['outlet_on', 'outlet_off'])
+        return s
+
+    def json_status(self):
+        s = super().json_status()
+        s['outlet_powered'] = self.outlet_powered
+        return s
+
+    def broadcast_new_state(self):
+        self.mqtt_broadcaster.broadcast(
+                self.get_id() + '/set',
+                json.dumps({'state': 'ON' if self.outlet_powered else 'OFF'})
+        )
+
+    def outlet_on(self):
+        self.outlet_powered = True
+        self.broadcast_new_state()
+
+    def outlet_off(self):
+        self.outlet_powered = False
+        self.broadcast_new_state()
+
 
 
 class MultiIkeaMotionSensor(Thing):

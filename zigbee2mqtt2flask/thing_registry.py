@@ -97,6 +97,7 @@ class ThingRegistry(object):
 
 
     def register_thing(self, obj):
+        logger.debug(f"Thing {obj.get_id()} is now part of the world")
         if obj.get_id() in self.name_to_id.keys():
             raise KeyError('Thing {} already registered'.format(obj.get_id()))
 
