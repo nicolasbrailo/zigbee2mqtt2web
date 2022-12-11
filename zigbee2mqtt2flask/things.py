@@ -341,9 +341,8 @@ class TuyaHumidityTempSensor(BatteryPoweredThing):
     def consume_message(self, topic, msg):
         super().consume_message(topic, msg)
         try:
-            m = json.loads(msg)
-            self.temperature = m['temperature']
-            self.humidity = m['humidity']
+            self.temperature = msg['temperature']
+            self.humidity = msg['humidity']
             self.last_update = time.time()
         except Exception as ex:
             logger.error("Can't parse sensor status: " + str(ex) + " - msg = " + msg)
