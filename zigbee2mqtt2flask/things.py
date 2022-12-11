@@ -323,6 +323,40 @@ class Button(BatteryPoweredThing):
         logger.notice("Thing {} action {} implements no handler".format(self.get_id(), action))
 
 
+class TuyaHumidityTempSensor(BatteryPoweredThing):
+    def __init__(self, mqtt_id, db=None):
+        super().__init__(mqtt_id)
+        self.temperature = None
+        self.humidity = None
+        self.last_update = None
+        self.db = db
+
+    def json_status(self):
+        s = super().json_status()
+        s.update({'temperature': self.temperature})
+        s.update({'humidity': self.humidity})
+        s.update({'last_update': self.last_update})
+        return s
+
+    def consume_message(self, topic, msg):
+        super().consume_message(topic, msg)
+        try:
+            m = json.loads(msg)
+            self.temperature = m['temperature']
+            self.humidity = m['humidity']
+            self.last_update = time.time()
+        except Exception as ex:
+            logger.error("Can't parse sensor status: " + str(ex) + " - msg = " + msg)
+            return False
+
+        try:
+            if db is not None:
+                self.db.add_sample()
+        except Exception as ex:
+            logger.error("Failed to save latest sensor update " + str(ex))
+
+        return True
+
 class XiaomiContactSensor(BatteryPoweredThing):
     def __init__(self, mqtt_id):
         super().__init__(mqtt_id)
