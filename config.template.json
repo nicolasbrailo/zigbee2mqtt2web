@@ -1,6 +1,6 @@
 {
   "COMMENT": "Flask settings: whatever Flaks needs to work normally",
-  "server_name": "Zigbee2Mqtt2Web",
+  "server_systemd_name": "Zigbee2Mqtt2Web",
   "server_listen_port": 1234,
   "COMMENT_ui_local_path": "Delete or leave empty to stop ZMW from serving a UI",
   "ui_local_path": "./zigbee2mqtt2web_ui/www",

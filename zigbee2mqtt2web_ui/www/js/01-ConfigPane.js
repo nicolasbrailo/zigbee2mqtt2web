@@ -126,6 +126,10 @@ class ConfigPane extends React.Component {
                   <button onClick={this.toggleMqttFeed}>Show MQTT message feed</button>
                   {this.render_mqtt_feed()}
                 </li>
+                <li><button id="syslogOpenNewWindow"
+                            onClick={() => window.open('/syslog/500')}>
+                      Syslog
+                    </button></li>
               </ul>
             </div>)
   }

@@ -10,6 +10,7 @@ from flask_socketio import SocketIO
 import dataclasses
 import json
 import os
+import subprocess
 
 import logging
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ def _validate(cfg):
         'host': cfg['server_listen_host'] if (
             'server_listen_host' in cfg) else '0.0.0.0',
         'port': cfg['server_listen_port'],
+        'server_systemd_name': cfg['server_systemd_name'],
         'socketio_topic': cfg['mqtt_socketio_topic'],
         'ui_local_path': None,
         'ui_uri_prefix': '/www',
@@ -64,7 +66,7 @@ class FlaskBridge:
         # long to complete, it's likely the user may lose it
         self._last_graphvizmap = None
 
-        self._flask = Flask(cfg['server_name'])
+        self._flask = Flask(self._cfg['server_systemd_name'])
 
         # If websockets break, try this instead:
         #
@@ -170,6 +172,16 @@ class FlaskBridge:
         def cached_mqtt_networkmap():
             return self._last_graphvizmap
         self._thing_get('/mqtt_networkmap', cached_mqtt_networkmap)
+
+        def syslog(num_lines):
+            cmd = '/usr/bin/journalctl' \
+                 f' --unit={self._cfg["server_systemd_name"]}' \
+                 f' -n {num_lines}' \
+                  ' --no-pager --reverse --output=cat'
+            syslogcmd = subprocess.run(cmd.split(), stdout=subprocess.PIPE, text=True)
+            return f'<pre>{syslogcmd.stdout}</pre>'
+        self.add_url_rule('/syslog/<num_lines>', syslog)
+
 
     def _thing_get(self, url, cb_view):
         return self._thing_url(url, cb_view, ['GET'])
