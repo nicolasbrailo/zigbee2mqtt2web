@@ -10,6 +10,9 @@ from .zigbee2mqtt_thing import Zigbee2MqttActionValue
 import logging
 logger = logging.getLogger(__name__)
 
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
+logging.getLogger('apscheduler.scheduler').setLevel(logging.ERROR)
+
 
 class Zigbee2Mqtt2Web:
     """ Global wrapper for Z2M2W """

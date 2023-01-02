@@ -113,9 +113,9 @@ class Zigbee2MqttThing:
     def _set(self, key, val, set_by_user=True):
         for _act_name, action in self.actions.items():
             if action.accepts_value(key, val):
-                logger.debug('Action %s[%d].%s accepts set %s = %s from %s',
-                             self.name, self.thing_id, _act_name, key, val,
-                             'user' if set_by_user else 'MQTT')
+                #logger.debug('Action %s[%d].%s accepts set %s = %s from %s',
+                #             self.name, self.thing_id, _act_name, key, val,
+                #             'user' if set_by_user else 'MQTT')
                 if set_by_user:
                     action.set_value(val)
                 else:
@@ -321,9 +321,9 @@ class Zigbee2MqttActionValue:
     def get_value_for_mqtt_status_update(self):
         """ Prepares a map with this action's user changes, to be sync'd to MQTT """
         if not self._needs_mqtt_propagation:
-            logger.debug(
-                'No need to MQTT update this action in %s',
-                self.thing_name)
+            #logger.debug(
+            #    'No need to MQTT update this action in %s',
+            #    self.thing_name)
             return None
 
         logger.debug('Will send MQTT update for %s', self.thing_name)
@@ -433,27 +433,27 @@ class Zigbee2MqttAction:
         Clears the needs-propagation bit if set.
         """
         if not self.can_set and self.value.meta['type'] != 'composite':
-            logger.debug(
-                'Thing %s.%s can\'t be MQTT set, will send no update',
-                self.value.thing_name,
-                self.name)
+            #logger.debug(
+            #    'Thing %s.%s can\'t be MQTT set, will send no update',
+            #    self.value.thing_name,
+            #    self.name)
             return {}
 
         val = self.value.get_value_for_mqtt_status_update()
         if val is None:
-            logger.debug(
-                'Thing %s.%s has value None, will send no update',
-                self.value.thing_name,
-                self.name)
+            #logger.debug(
+            #    'Thing %s.%s has value None, will send no update',
+            #    self.value.thing_name,
+            #    self.name)
             return {}
 
         name = self.name if self.value.meta['type'] != 'composite' else self.value.meta['property']
-        logger.debug(
-            'Thing %s.%s has update %s=%s',
-            self.value.thing_name,
-            self.name,
-            name,
-            val)
+        #logger.debug(
+        #    'Thing %s.%s has update %s=%s',
+        #    self.value.thing_name,
+        #    self.name,
+        #    name,
+        #    val)
         return {name: val}
 
 

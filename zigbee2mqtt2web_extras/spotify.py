@@ -344,6 +344,7 @@ class Spotify(PhonyZMWThing):
             description="Wrapper over Spotify for ZMW",
             thing_type="media_player",
         )
+        _config_spotipy_logger(use_debug_log=cfg['debug_log'])
         self._cfg = cfg
         self._spotify = None
         self.actions = _build_actions_map(self._refresh_access_tok, self._cfg)
@@ -355,7 +356,6 @@ class Spotify(PhonyZMWThing):
             func=self._refresh_access_tok,
             trigger="interval",
             seconds=_SPOTIFY_SECS_BETWEEN_TOK_REFRESH)
-        _config_spotipy_logger(use_debug_log=cfg['debug_log'])
 
     def add_reauth_paths(self, webserver):
         """ Adds paths to reatuh to a flask instance """
