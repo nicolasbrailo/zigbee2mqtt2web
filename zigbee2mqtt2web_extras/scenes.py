@@ -59,7 +59,10 @@ def _make_scene_all_things_off(registry):
                 pass
 
         for changed_thing_name in changes:
-            registry.broadcast_thing(changed_thing_name)
+            thing = registry.get_thing(changed_thing_name)
+            if 'transition' in thing.actions:
+                thing.set('transition', 3)
+            registry.broadcast_thing(thing)
 
     return all_things_off
 

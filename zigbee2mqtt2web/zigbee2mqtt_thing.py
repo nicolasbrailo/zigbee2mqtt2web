@@ -164,7 +164,7 @@ class Zigbee2MqttActionValue:
     """
     thing_name: str  # Only needed to print error messages
     meta: dict
-    _current: object
+    _current: object = None
     _needs_mqtt_propagation: bool = False
     # Triggered whenever this action is updated from MQTT
     on_change_from_mqtt: Callable = None
@@ -191,7 +191,9 @@ class Zigbee2MqttActionValue:
             sub_dbgs = ';'.join(sub_dbgs)
             return f'{self._current} {{Composite: {sub_dbgs}}}'
         if self.meta['type'] == 'user_defined':
-            return f'{self.meta["on_get"]()} user_defined'
+            if self.meta["on_get"] is not None:
+                return f'{self.meta["on_get"]()} user_defined'
+            return f'User defined function, no getter'
 
         return f'{self._current} UNKNOWN ({self.meta["type"]})'
 
@@ -203,7 +205,7 @@ class Zigbee2MqttActionValue:
         """
         # The set may fail, but it's a good enough heuristic: if a propagation
         # isn't needed, there's no bad side effect other than an extra message
-        logger.debug('User set %s.action = %s', self.thing_name, val)
+        #logger.debug('User set %s.action = %s', self.thing_name, val)
         self._needs_mqtt_propagation = True
 
         # Values for composites may come as a string (eg from Flask) instead of
@@ -326,7 +328,7 @@ class Zigbee2MqttActionValue:
             #    self.thing_name)
             return None
 
-        logger.debug('Will send MQTT update for %s', self.thing_name)
+        #logger.debug('Will send MQTT update for %s', self.thing_name)
         self._needs_mqtt_propagation = False
 
         # Most value logic is in get_value, but bools are special: we need to send
@@ -346,6 +348,7 @@ def make_user_defined_zigbee2mqttaction(
         setter=None,
         getter=None):
     """ Helper to make user-defined actions """
+    if getter is None: getter = lambda: None
     return Zigbee2MqttAction(
         name=name,
         description=description,
@@ -357,7 +360,6 @@ def make_user_defined_zigbee2mqttaction(
                 'type': 'user_defined',
                 'on_set': setter,
                 'on_get': getter},
-            _current=None,
         ))
 
 
@@ -502,7 +504,6 @@ def _build_zigbee2mqtt_action_value(thing_name, action):
     return Zigbee2MqttActionValue(
         thing_name=thing_name,
         meta=_get_action_metadata(thing_name, action),
-        _current=None,
     )
 
 

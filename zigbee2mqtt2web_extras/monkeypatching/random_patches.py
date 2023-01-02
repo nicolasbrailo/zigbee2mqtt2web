@@ -2,6 +2,8 @@
 
 
 from zigbee2mqtt2web.zigbee2mqtt_thing import make_user_defined_zigbee2mqttaction
+from zigbee2mqtt2web import Zigbee2MqttAction
+from zigbee2mqtt2web import Zigbee2MqttActionValue
 
 
 def _add_color_mode_support(thing):
@@ -69,6 +71,18 @@ def _hack_add_light_helper_methods(thing):
         thing.set_brightness_pct = _set_brightness_pct
 
 
+def _hack_add_light_transition_time_methods(thing):
+    thing.actions['transition'] = Zigbee2MqttAction(
+                    name='transition',
+                    description='Add transition time parameter for any state changes',
+                    can_set=True,
+                    can_get=False,
+                    value=Zigbee2MqttActionValue(
+                        thing_name=thing.name,
+                        meta={'type': 'numeric', 'value_min': 0, 'value_max': 10}
+                ))
+
+
 # Things that declare color_* don't always declare color_temp
 monkeypatch_add_color_mode_support = \
     'Add color mode support, if color_xy, color_hs or color_temp actions are present', \
@@ -96,3 +110,10 @@ monkeypatch_add_light_helper_methods = \
     'Add helper methods like turn_on(), is_light_on(), etc to thing that looks like light', \
     lambda t: t.thing_type == 'light', \
     _hack_add_light_helper_methods
+
+
+# Adds transition time to things that look like lights
+monkeypatch_add_light_transition_time_methods = \
+    'Add transition time parameter for any state changes', \
+    lambda t: t.thing_type == 'light', \
+    _hack_add_light_transition_time_methods
