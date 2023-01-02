@@ -1,9 +1,7 @@
-# Pipfile.lock -> causes problems when deploying to different target (ie x86Linux/RPi)
-Pipfile.lock
-
 # Never commit config secrets
 config.json
 config.spotify_cache.json
+zigbee2mqtt2web_ui/build/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
