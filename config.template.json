@@ -1,0 +1,41 @@
+{
+  "COMMENT": "Flask settings: whatever Flaks needs to work normally",
+  "server_name": "Zigbee2Mqtt2Web",
+  "server_listen_port": 1234,
+  "COMMENT_ui_local_path": "Delete or leave empty to stop ZMW from serving a UI",
+  "ui_local_path": "./zigbee2mqtt2web_ui/www",
+  "COMMENT_www_extra": "If present, will set an additional directory to serve files from. The prefix must start with a slash and not be /www",
+  "www_extra_local_path": "./zigbee2mqtt2web_ui/www",
+  "www_extra_uri_prefix": "/web_assets",
+
+  "COMMENT": "MQTT settings: how to connect to MQTT",
+  "mqtt_ip": "127.0.0.1",
+  "mqtt_port": 1883,
+
+  "COMMENT": "The topic prefix that zibee2mqtt will be using",
+  "mqtt_topic_prefix": "zigbee2mqtt",
+
+  "COMMENT": "The topic to use when forwarding messages to websocket",
+  "mqtt_socketio_topic": "mqtt_thing_msg",
+
+  "COMMENT": "Sensor history settings",
+  "sensor_db_path": "./sensors.sqlite",
+  "sensor_db_retention_rows": 100,
+
+  "COMMENT": "Spotify settings, leave out to disable Spotify integration",
+  "spotify": {
+       "debug_log": false,
+       "start_reauth_url_path": "/spotify/start_reauth/",
+       "set_reauth_code_url_path": "/spotify/set_reauth/",
+       "redirect_uri": "SPOTIFY_APP_REDIRECT_URI",
+       "client_secret": "SPOTIFY_APP_CLIENT_SECRET",
+       "client_id": "SPOTIFY_APP_CLIENT_ID",
+       "spotipy_cache": "./config.spotify_cache.json"
+   },
+
+  "COMMENT": "Sonos settings, leave out to skip loading the Sonos module",
+  "sonos": {
+       "debug_log": false
+  }
+}
+

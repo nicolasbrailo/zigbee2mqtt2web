@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="icon" href="favicon.ico" type="image/x-icon"/>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<title>Zigbee2Mqtt2Web - networkmap</title>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/www/rel.css">
+</head>
+
+<body class="dark">
+  <div id="graphviz_svg_div"></div>
+</body>
+
+<script
+  src="https://code.jquery.com/jquery-3.6.2.min.js" 
+  integrity="sha384-hG927x624PENgmWpFXvtXur3MEE0/cNnW0uTi+AcHTSFncBqimnzYyBzy8aFDA1s"
+  crossorigin="anonymous">
+</script>
+<script src="//d3js.org/d3.v5.min.js"></script>
+<script src="https://unpkg.com/@hpcc-js/wasm@0.3.11/dist/index.min.js"></script>
+<script src="https://unpkg.com/d3-graphviz@3.0.5/build/d3-graphviz.js"></script>
+
+
+<script>
+function render(data) {
+  if (!data) {
+      data = 'digraph G {"Network map is empty"}';
+  }
+  d3.select("#graphviz_svg_div").graphviz().renderDot(data);
+}
+
+render('digraph G {"Loading network map..."}');
+
+$.ajax({
+    url: '/mqtt_networkmap',
+    cache: false,
+    type: 'get',
+    dataType: 'json',
+    success: (req) => { console.log("Received network map", req?.data); render(req?.data?.value); },
+    error: () => render('digraph G {"ZMW server request failed"}'),
+});
+</script>
+</html>

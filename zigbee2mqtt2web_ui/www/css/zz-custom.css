@@ -1,0 +1,204 @@
+.no-error {
+  display: none;
+}
+#global_error_ui {
+  width: 60%;
+
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  border: 2px solid var(--color-error);
+  background-color: var(--color-secondary);
+  border-radius: 50px;
+  opacity: .9;
+
+  padding: 20px;
+  font-size: large;
+}
+#global_error_msg {
+  border: 1px solid var(--color-primary);
+  margin-bottom: 20px;
+}
+#global_error_ui_ack {
+  font-weight: bold;
+  font-size: normal;
+  background: transparent;
+  position: relative;
+  top: 38%;
+  left: 90%;
+
+  margin: 2px;
+  padding: 4px;
+  border-radius: 10px;
+  text-align: center;
+
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background-color: var(--bg-secondary-color);
+}
+
+.modal {
+  border: 1px solid var(--color-modal-border);
+  border-radius: 20px;
+  background-color: var(--color-modal-bg);
+  padding: 20px;
+  margin: 5px;
+}
+.modal-button {
+  font-weight: bold;
+  font-size: xx-small;
+  background-color: transparent;
+  background: transparent;
+
+  margin: 2px;
+  padding: 4px;
+  border-radius: 10px;
+  text-align: center;
+
+  border: 2px solid var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-secondary);
+}
+
+
+.thing_div {
+  border-bottom: 1px solid grey;
+}
+
+.thing_name {
+  padding-left: 5px;
+  padding-right: 5px;
+  font-weight: bold;
+  font-size: large;
+}
+
+.thing_div input[type=checkbox] {
+  height: 2.5rem;
+  width: 2.5rem;
+  margin-top: 5px;
+}
+
+.thing_div input[type=range] {
+  height: 5px;
+  margin: 0px 0;
+  width: 80%;
+}
+
+.thing_div .col-primary-action {
+  flex: 1;
+  max-width: 3.5rem;
+  align-items: center;
+  display: flex;
+}
+
+.thing_div .col-fixed-fill {
+  flex: 1;
+}
+
+.thing_div .toggle-details-panel {
+  flex: 1;
+  text-align: end;
+  font-weight: bold;
+  font-size: x-large;
+}
+
+#things_root ul {
+  padding: 0;
+  margin: 0;
+}
+#things_root li {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+
+
+#scenes ul {
+  padding: 0;
+  margin: 0;
+}
+#scenes li {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  display: inline;
+}
+#scenes button {
+  display: inline;
+
+  background-color: transparent;
+  border-color: var(--color-lightGrey);
+  color: var(--color-secondary);
+  background: transparent;
+
+  margin: 5px;
+  border-radius: 10px;
+  border: 2px solid var(--color-primary);
+  text-align: center;
+}
+
+#sensors_pane ul {
+  list-style-type: none;
+  padding: 0px;
+  margin: 0px;
+}
+#sensors_pane li {
+  list-style-type: none;
+  padding: 0px;
+  margin: 0px;
+}
+#sensors_pane li label {
+  margin-right: 10px;
+}
+#sensors_pane li ul {
+  clear:both;
+  display: inline-block;
+  padding: 0px;
+  margin-top: 5px;
+  margin-left: 20px;
+}
+#sensors_pane li li {
+  border-radius: 5px;
+  border: 1px solid var(--color-secondary);
+  display: inline-flex;
+  list-style-type: none;
+  padding: 1px 10px 1px 10px;
+  margin-right: 5px;
+}
+#sensors_pane li li label {
+  color: var(--color-secondary);
+  margin-right: 5px;
+}
+
+#ConfigPane_config_options {
+  right: 0px;
+  bottom: 0px;
+  padding: 0px;
+  margin: 0px;
+}
+#ConfigPane_config_options li {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+#ConfigPane_config_options button {
+  background-color: transparent;
+  border-color: var(--color-lightGrey);
+  color: var(--color-secondary);
+  background: transparent;
+
+  margin: 5px;
+  border-radius: 10px;
+  border: 2px solid var(--color-primary);
+  text-align: center;
+}
+
+
+.thing-list-reorder-link {
+  padding-right: 10px;
+  font-size: x-large;
+}

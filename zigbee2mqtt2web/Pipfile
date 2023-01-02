@@ -9,13 +9,9 @@ flask = {index = "piwheels",version = "*"}
 flask-socketio = {index = "piwheels",version = "*"}
 paho-mqtt = {index = "piwheels",version = "*"}
 pylint = {index = "piwheels",version = "*"}
-spotipy = {git = "https://github.com/plamere/spotipy.git"}
-apscheduler = "*"
-astral = "*"
-simple-websocket = "*"
-soco = "*"
 
 [dev-packages]
 
 [requires]
 python_version = "3.9"
+

@@ -1,0 +1,60 @@
+#MediaPlayerList ul {
+  padding: 0;
+  margin: 0;
+}
+#MediaPlayerList li {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+#MediaPlayerList .col-media-icon {
+  padding: 0;
+}
+
+#MediaPlayerList .media-icon {
+  max-width: 100px;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  margin: 0px;
+  padding: 0px;
+  border-radius: 500px;
+}
+
+#MediaPlayerList .col-media-mainpanel {
+  padding-left: 10px;
+  width: 100%;
+}
+
+#MediaPlayerList .media-info-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow:ellipsis;
+  max-width: 250px;
+}
+
+#MediaPlayerList .player-button {
+  background: transparent;
+  font-size: x-large;
+  width: fit-content;
+  opacity: 0.6;
+  padding: 0;
+}
+
+#MediaPlayerList .player-volume {
+  padding: 0;
+  display: inline;
+  width: 180px;
+  padding: 5px;
+}
+
+@media screen and (max-width: 599px) {
+  #MediaPlayerList .player-volume {
+    width:100px;
+    display: block;
+  }
+  #MediaPlayerList .media-info-label {
+    width:100px;
+  }
+}

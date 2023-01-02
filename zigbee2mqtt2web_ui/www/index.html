@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link rel="icon" href="favicon.ico" type="image/x-icon"/>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<title>BatiCasa</title>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/www/rel.css">
+</head>
+
+<body class="dark">
+  <div id="global_error_ui" class="no-error">
+    <div id="global_error_msg" class="container"></div>
+    <button id="global_error_ui_ack">OK</button>
+  </div>
+  <div class="row container" style="margin-top: 5px">
+    <div class="col card" id="things_root"></div>
+    <div class="col"  id="others_root"></div>
+  </div>
+  <div class="row container">
+    <div id="sensors_history"></div>
+    <div id="config"></div>
+  </div>
+</body>
+
+<script
+  src="https://code.jquery.com/jquery-3.6.2.min.js" 
+  integrity="sha384-hG927x624PENgmWpFXvtXur3MEE0/cNnW0uTi+AcHTSFncBqimnzYyBzy8aFDA1s"
+  crossorigin="anonymous">
+</script>
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"
+  integrity="sha384-lix6gfYhwhgbLPheLwgmmEYQL73kK4LcFRUyt6uLa36TY0YZNWCdpidU+HX+gVXN"
+  crossorigin="anonymous">
+</script>
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js"
+  integrity="sha384-Siw62Hkn0S0jBTE5nHbjlPvg2soIqKgOnp4qUW49Pz5sOjEOue5d6NzCydyTsd2n"
+  crossorigin="anonymous">
+</script>
+<script
+  src="https://unpkg.com/react@18/umd/react.production.min.js"
+  integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8"
+  crossorigin="anonymous">
+</script>
+<script
+  src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
+  integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh"
+  crossorigin="anonymous">
+</script>
+
+<script src="/www/app.rel.js" ></script>
+</html>

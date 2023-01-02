@@ -1,0 +1,15 @@
+body.dark {
+  --font-color: #A9E4EF;
+  --color-primary: #42213D;
+  --color-secondary: #326567;
+  --bg-color: #141617;
+  --bg-secondary-color: #131316;
+  --color-grey: #ccc;
+  --color-darkGrey: #777;
+
+  --slider-track: var(--color-secondary);
+  --slider-thumb: var(--color-primary);
+
+  --color-modal-bg: var(--bg-secondary-color);
+  --color-modal-border: var(--color-primary);
+}
