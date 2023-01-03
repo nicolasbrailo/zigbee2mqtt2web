@@ -91,6 +91,11 @@ class Zigbee2MqttThing:
                     msg,
                     exc_info=True)
 
+        if len(changes) != 0:
+            logger.debug('MQTT message updated thing %s ID %d: %s', self.name,  self.thing_id, msg)
+        else:
+            logger.debug('MQTT message ignored by thing %s ID %d: %s', self.name,  self.thing_id, msg)
+
         # Once the update is done, invoke user callbacks. At this point
         # * The update is fully complete
         # * If the callback throws, we can let the exception propagate safely

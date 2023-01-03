@@ -141,12 +141,12 @@ class MultiMqttThing:
                 # and raise error on last one.
                 this_res = None
                 try:
-                    logger.debug(
-                        "Multi-MQTT dispatch: call %s[%d].%s(%s)",
-                        obj.name,
-                        obj.thing_id,
-                        name,
-                        args)
+                    #logger.debug(
+                    #    "Multi-MQTT dispatch: call %s[%d].%s(%s)",
+                    #    obj.name,
+                    #    obj.thing_id,
+                    #    name,
+                    #    args)
                     this_res = underlying_function(*args, **kwargs)
                 except Exception as ex:  # pylint: disable=broad-except
                     logger.error(
