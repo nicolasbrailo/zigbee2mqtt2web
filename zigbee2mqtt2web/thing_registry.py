@@ -24,7 +24,7 @@ class ThingRegistry:
         # Some things may hold a reference to the registry, so things break
         # unless we return a dummy dict for serializing (ie that can be picked:
         # https://docs.python.org/3/library/pickle.html#object.__getstate__)
-        return {'thing_registry':'Non-serializable'}
+        return {'thing_registry': 'Non-serializable'}
 
     def start_mqtt_networkmap(self):
         """ See Zigbee2MqttBridge.start_networkmap """

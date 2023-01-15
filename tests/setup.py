@@ -5,7 +5,6 @@ import logging
 print("Disable stdout log for test")
 logging.getLogger().addHandler(logging.NullHandler())
 
-
 class FakeMqtt:
     def __init__(self):
         self.started = False
@@ -500,7 +499,155 @@ def get_motion_sensor():
                 "scenes": []
             }
         },
-        "friendly_name": "EscaleraPBSensor2",
+        "friendly_name": "MotionSensor1",
+        "ieee_address": "0x94deb8fffe6c209e",
+        "interview_completed": true,
+        "interviewing": false,
+        "manufacturer": "IKEA of Sweden",
+        "model_id": "TRADFRI motion sensor",
+        "network_address": 58826,
+        "power_source": "Battery",
+        "software_build_id": "2.0.022",
+        "supported": true,
+        "type": "EndDevice"
+    }''')
+
+def get_another_motion_sensor():
+    return json.loads('''{
+        "date_code": "20190308",
+        "definition": {
+            "description": "TRADFRI motion sensor",
+            "exposes": [
+                {
+                    "access": 1,
+                    "description": "Remaining battery in %",
+                    "name": "battery",
+                    "property": "battery",
+                    "type": "numeric",
+                    "unit": "%",
+                    "value_max": 100,
+                    "value_min": 0
+                },
+                {
+                    "access": 1,
+                    "description": "Indicates whether the device detected occupancy",
+                    "name": "occupancy",
+                    "property": "occupancy",
+                    "type": "binary",
+                    "value_off": false,
+                    "value_on": true
+                },
+                {
+                    "access": 1,
+                    "name": "requested_brightness_level",
+                    "property": "requested_brightness_level",
+                    "type": "numeric",
+                    "value_max": 254,
+                    "value_min": 76
+                },
+                {
+                    "access": 1,
+                    "name": "requested_brightness_percent",
+                    "property": "requested_brightness_percent",
+                    "type": "numeric",
+                    "value_max": 100,
+                    "value_min": 30
+                },
+                {
+                    "access": 1,
+                    "description": "Indicates whether the device detected bright light (works only in night mode)",
+                    "name": "illuminance_above_threshold",
+                    "property": "illuminance_above_threshold",
+                    "type": "binary",
+                    "value_off": false,
+                    "value_on": true
+                },
+                {
+                    "access": 1,
+                    "description": "Link quality (signal strength)",
+                    "name": "linkquality",
+                    "property": "linkquality",
+                    "type": "numeric",
+                    "unit": "lqi",
+                    "value_max": 255,
+                    "value_min": 0
+                }
+            ],
+            "model": "E1525/E1745",
+            "options": [
+                {
+                    "access": 2,
+                    "description": "Time in seconds after which occupancy is cleared after detecting it (default 90 seconds).",
+                    "name": "occupancy_timeout",
+                    "property": "occupancy_timeout",
+                    "type": "numeric",
+                    "value_min": 0
+                },
+                {
+                    "access": 2,
+                    "description": "Set to false to also send messages when illuminance is above threshold in night mode (default true).",
+                    "name": "illuminance_below_threshold_check",
+                    "property": "illuminance_below_threshold_check",
+                    "type": "binary",
+                    "value_off": false,
+                    "value_on": true
+                }
+            ],
+            "supports_ota": true,
+            "vendor": "IKEA"
+        },
+        "endpoints": {
+            "1": {
+                "bindings": [
+                    {
+                        "cluster": "genPollCtrl",
+                        "target": {
+                            "endpoint": 1,
+                            "ieee_address": "0x00124b0022a54d1d",
+                            "type": "endpoint"
+                        }
+                    },
+                    {
+                        "cluster": "genPowerCfg",
+                        "target": {
+                            "endpoint": 1,
+                            "ieee_address": "0x00124b0022a54d1d",
+                            "type": "endpoint"
+                        }
+                    }
+                ],
+                "clusters": {
+                    "input": [
+                        "genBasic",
+                        "genPowerCfg",
+                        "genIdentify",
+                        "genAlarms",
+                        "genPollCtrl",
+                        "touchlink",
+                        "64636"
+                    ],
+                    "output": [
+                        "genIdentify",
+                        "genGroups",
+                        "genOnOff",
+                        "genLevelCtrl",
+                        "genOta",
+                        "touchlink"
+                    ]
+                },
+                "configured_reportings": [
+                    {
+                        "attribute": "batteryPercentageRemaining",
+                        "cluster": "genPowerCfg",
+                        "maximum_report_interval": 62000,
+                        "minimum_report_interval": 3600,
+                        "reportable_change": 0
+                    }
+                ],
+                "scenes": []
+            }
+        },
+        "friendly_name": "MotionSensor2",
         "ieee_address": "0x94deb8fffe6c209e",
         "interview_completed": true,
         "interviewing": false,

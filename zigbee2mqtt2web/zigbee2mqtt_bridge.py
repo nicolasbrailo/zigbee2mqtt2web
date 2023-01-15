@@ -62,7 +62,8 @@ class Zigbee2MqttBridge:
                     device_added = True
 
             if not device_added:
-                logger.info('Bridge published network definition. No new devices were found.')
+                logger.info(
+                    'Bridge published network definition. No new devices were found.')
                 return
 
             logger.info('Zigbee2Mqtt network, device definition published. '
@@ -116,16 +117,18 @@ class Zigbee2MqttBridge:
 
     def register_or_ignore(self, thing):
         """ Add or replace a thing to the MQTT registry """
-        if thing.name not in self._known_things:
-            self.register(thing)
+        if thing.name in self._known_things:
             logger.info(
-                'Registered Zigbee2Mqtt device %s ID %d',
-                thing.name,
-                thing.thing_id)
-            return True
-        else:
-            logger.info('Ignoring registration for %s, thing already known', thing.name)
+                'Ignoring registration for %s, thing already known',
+                thing.name)
             return False
+
+        self.register(thing)
+        logger.info(
+            'Registered Zigbee2Mqtt device %s ID %d',
+            thing.name,
+            thing.thing_id)
+        return True
 
     def replace(self, thing):
         """ Replace a thing in the MQTT registry, throws if thing was not known """

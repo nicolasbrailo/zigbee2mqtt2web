@@ -33,7 +33,7 @@ class TestZigbee2MqttBridge(unittest.TestCase):
             get_bridge_all_devs_msg())
         found = set(bridge.get_all_known_thing_names())
         expected = set(['Oficina', 'foo', 'SensorPuertaEntrada',
-                        'Belador', 'EscaleraPBSensor2'])
+                        'Belador', 'MotionSensor1'])
         self.assertEqual(expected.intersection(found), expected)
 
         t = bridge.get_thing('Oficina')
@@ -70,30 +70,9 @@ class TestZigbee2MqttBridge(unittest.TestCase):
         known_and_broken = set(bridge.get_all_known_thing_names())
 
         expected = set(['Oficina', 'SensorPuertaEntrada',
-                        'Belador', 'EscaleraPBSensor2'])
+                        'Belador', 'MotionSensor1'])
         self.assertEqual(known.intersection(expected), known)
         self.assertEqual(known_and_broken.difference(known), {'foo'})
-
-    def test_callback_on_network_discovered(self):
-        called = 0
-
-        def check_call():
-            nonlocal called
-            called += 1
-
-        mqtt = FakeMqtt()
-        bridge = Zigbee2MqttBridge(CFG, mqtt)
-        bridge.on_mqtt_network_discovered(check_call)
-        bridge.start()
-        mqtt.on_message(
-            'topic_prefix/bridge/devices',
-            get_bridge_all_devs_msg())
-        self.assertEqual(called, 1)
-
-        mqtt.on_message(
-            'topic_prefix/bridge/devices',
-            get_bridge_all_devs_msg())
-        self.assertEqual(called, 2)
 
     def test_callback_on_network_discovered_out_of_order(self):
         called = 0
@@ -155,3 +134,30 @@ class TestZigbee2MqttBridge(unittest.TestCase):
         mqtt.on_message('topic_prefix/foo', {"foo": 123})
         self.assertTrue(called1)
         self.assertTrue(called2)
+
+    def test_callback_on_network_discovered(self):
+        called = 0
+
+        def check_call():
+            nonlocal called
+            called += 1
+
+        mqtt = FakeMqtt()
+        bridge = Zigbee2MqttBridge(CFG, mqtt)
+        bridge.on_mqtt_network_discovered(check_call)
+        bridge.start()
+        mqtt.on_message(
+            'topic_prefix/bridge/devices',
+            get_bridge_some_devs_msg())
+        self.assertEqual(called, 1)
+
+        mqtt.on_message(
+            'topic_prefix/bridge/devices',
+            get_bridge_some_devs_msg())
+        # Same list of devices == no callback
+        self.assertEqual(called, 1)
+
+        mqtt.on_message(
+            'topic_prefix/bridge/devices',
+            get_bridge_all_devs_msg())
+        self.assertEqual(called, 2)

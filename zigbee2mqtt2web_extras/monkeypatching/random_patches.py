@@ -73,14 +73,14 @@ def _hack_add_light_helper_methods(thing):
 
 def _hack_add_light_transition_time_methods(thing):
     thing.actions['transition'] = Zigbee2MqttAction(
-                    name='transition',
-                    description='Add transition time parameter for any state changes',
-                    can_set=True,
-                    can_get=False,
-                    value=Zigbee2MqttActionValue(
-                        thing_name=thing.name,
-                        meta={'type': 'numeric', 'value_min': 0, 'value_max': 10}
-                ))
+        name='transition',
+        description='Add transition time parameter for any state changes',
+        can_set=True,
+        can_get=False,
+        value=Zigbee2MqttActionValue(
+            thing_name=thing.name,
+            meta={'type': 'numeric', 'value_min': 0, 'value_max': 10}
+        ))
 
 
 # Things that declare color_* don't always declare color_temp

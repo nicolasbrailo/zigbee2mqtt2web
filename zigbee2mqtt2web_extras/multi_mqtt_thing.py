@@ -108,7 +108,8 @@ class MultiMqttThing:
         # _wrapped_things_names is initialized in init(), but copying doesn't have
         # to call init. When this field has its default attribute, it just means
         # someone copied us and is trying to do something (eg serializing to string)
-        # so we need to avoid any further getattr calls that may trigger recursion
+        # so we need to avoid any further getattr calls that may trigger
+        # recursion
         if self._wrapped_things_names is None:
             return None
 
@@ -141,7 +142,7 @@ class MultiMqttThing:
                 # and raise error on last one.
                 this_res = None
                 try:
-                    #logger.debug(
+                    # logger.debug(
                     #    "Multi-MQTT dispatch: call %s[%d].%s(%s)",
                     #    obj.name,
                     #    obj.thing_id,

@@ -16,6 +16,9 @@ class MultiMotionSensor:
     """
 
     def __init__(self, registry, sensor_names, timeout_secs=None):
+        if not isinstance(sensor_names, type([])):
+            raise TypeError('MultiSensor needs a list of sensors to wrap')
+
         self._registry = registry
         self._sensor_names = sensor_names
         self._active = False
@@ -27,48 +30,50 @@ class MultiMotionSensor:
         # so that's a reasonable default
         self._timeout_secs = 200 if timeout_secs is None else timeout_secs
 
+        self._registry.on_mqtt_network_discovered(self._install_motion_cbs)
+        self._install_motion_cbs()
+
+    def _install_motion_cbs(self):
         def build_cb(sensor_name):
             def callback(occupied):
                 return self._on_activity(sensor_name, occupied)
             return callback
 
         for sensor_name in self._sensor_names:
-            registry.get_thing(sensor_name).actions['occupancy'] \
-                    .value.on_change_from_mqtt = build_cb(sensor_name)
+            self._registry.get_thing(sensor_name).actions['occupancy'] \
+                .value.on_change_from_mqtt = build_cb(sensor_name)
 
     def _on_activity(self, sensor_name, occupied):
-        if occupied:
-            if not self._active:
-                logger.debug('Register activity on %s', sensor_name)
-                self._active = True
-                self._start_watchdog()
-                self.on_activity_detected()
-            else:
+        if not occupied and not self._active:
+            # A sensor may send periodic 'no one is here' pings, so we can
+            # just ignore these
+            logger.debug(
+                'Cleared activity on %s but no longer active '
+                '(sensor reported after timeout of %d seconds?)',
+                sensor_name,
+                self._timeout_secs)
+        elif occupied and self._active:
+            logger.debug(
+                'Register activity on %s, multiple sensors active',
+                sensor_name)
+            self._pet_watchdog()
+        elif occupied and not self._active:
+            logger.debug('Register activity on %s', sensor_name)
+            self._active = True
+            self._start_watchdog()
+            self.on_activity_detected()
+        elif not occupied and self._active:
+            if self.all_sensors_clear():
                 logger.debug(
-                    'Register activity on %s, multiple sensors active',
+                    'Cleared activity on %s and all sensors clear',
                     sensor_name)
-                self._pet_watchdog()
-        else:
-            if self._active:
-                if self.all_sensors_clear():
-                    logger.debug(
-                        'Cleared activity on %s and all sensors clear',
-                        sensor_name)
-                    self._active = False
-                    self._stop_watchdog()
-                    self.on_activity_cleared()
-                else:
-                    logger.debug(
-                        'Cleared activity on %s, but other sensors are active',
-                        sensor_name)
+                self._active = False
+                self._stop_watchdog()
+                self.on_activity_cleared()
             else:
-                # A sensor may send periodic 'no one is here' pings, so we can
-                # just ignore these
                 logger.debug(
-                    'Cleared activity on %s but no longer active '
-                    '(sensor reported after timeout of %d seconds?)',
-                    sensor_name,
-                    self._timeout_secs)
+                    'Cleared activity on %s, but other sensors are active',
+                    sensor_name)
 
     def _start_watchdog(self):
         """ Called when first active, to start up a timer that will detect a

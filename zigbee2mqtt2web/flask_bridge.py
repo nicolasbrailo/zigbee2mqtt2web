@@ -175,13 +175,13 @@ class FlaskBridge:
 
         def syslog(num_lines):
             cmd = '/usr/bin/journalctl' \
-                 f' --unit={self._cfg["server_systemd_name"]}' \
-                 f' -n {num_lines}' \
+                f' --unit={self._cfg["server_systemd_name"]}' \
+                f' -n {num_lines}' \
                   ' --no-pager --reverse --output=cat'
-            syslogcmd = subprocess.run(cmd.split(), stdout=subprocess.PIPE, text=True)
+            syslogcmd = subprocess.run(
+                cmd.split(), stdout=subprocess.PIPE, text=True, check=True)
             return f'<pre>{syslogcmd.stdout}</pre>'
         self.add_url_rule('/syslog/<num_lines>', syslog)
-
 
     def _thing_get(self, url, cb_view):
         return self._thing_url(url, cb_view, ['GET'])

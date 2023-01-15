@@ -92,9 +92,17 @@ class Zigbee2MqttThing:
                     exc_info=True)
 
         if len(changes) != 0:
-            logger.debug('MQTT message updated thing %s ID %d: %s', self.name,  self.thing_id, msg)
+            logger.debug(
+                'MQTT message updated thing %s ID %d: %s',
+                self.name,
+                self.thing_id,
+                msg)
         else:
-            logger.debug('MQTT message ignored by thing %s ID %d: %s', self.name,  self.thing_id, msg)
+            logger.debug(
+                'MQTT message ignored by thing %s ID %d: %s',
+                self.name,
+                self.thing_id,
+                msg)
 
         # Once the update is done, invoke user callbacks. At this point
         # * The update is fully complete
@@ -118,7 +126,7 @@ class Zigbee2MqttThing:
     def _set(self, key, val, set_by_user=True):
         for _act_name, action in self.actions.items():
             if action.accepts_value(key, val):
-                #logger.debug('Action %s[%d].%s accepts set %s = %s from %s',
+                # logger.debug('Action %s[%d].%s accepts set %s = %s from %s',
                 #             self.name, self.thing_id, _act_name, key, val,
                 #             'user' if set_by_user else 'MQTT')
                 if set_by_user:
@@ -198,7 +206,7 @@ class Zigbee2MqttActionValue:
         if self.meta['type'] == 'user_defined':
             if self.meta["on_get"] is not None:
                 return f'{self.meta["on_get"]()} user_defined'
-            return f'User defined function, no getter'
+            return 'User defined function, no getter'
 
         return f'{self._current} UNKNOWN ({self.meta["type"]})'
 
@@ -328,7 +336,7 @@ class Zigbee2MqttActionValue:
     def get_value_for_mqtt_status_update(self):
         """ Prepares a map with this action's user changes, to be sync'd to MQTT """
         if not self._needs_mqtt_propagation:
-            #logger.debug(
+            # logger.debug(
             #    'No need to MQTT update this action in %s',
             #    self.thing_name)
             return None
@@ -353,7 +361,9 @@ def make_user_defined_zigbee2mqttaction(
         setter=None,
         getter=None):
     """ Helper to make user-defined actions """
-    if getter is None: getter = lambda: None
+    if getter is None:
+        def getter():
+            return None
     return Zigbee2MqttAction(
         name=name,
         description=description,
@@ -440,7 +450,7 @@ class Zigbee2MqttAction:
         Clears the needs-propagation bit if set.
         """
         if not self.can_set and self.value.meta['type'] != 'composite':
-            #logger.debug(
+            # logger.debug(
             #    'Thing %s.%s can\'t be MQTT set, will send no update',
             #    self.value.thing_name,
             #    self.name)
@@ -448,14 +458,14 @@ class Zigbee2MqttAction:
 
         val = self.value.get_value_for_mqtt_status_update()
         if val is None:
-            #logger.debug(
+            # logger.debug(
             #    'Thing %s.%s has value None, will send no update',
             #    self.value.thing_name,
             #    self.name)
             return {}
 
         name = self.name if self.value.meta['type'] != 'composite' else self.value.meta['property']
-        #logger.debug(
+        # logger.debug(
         #    'Thing %s.%s has update %s=%s',
         #    self.value.thing_name,
         #    self.name,

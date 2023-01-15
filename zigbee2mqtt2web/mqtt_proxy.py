@@ -2,6 +2,7 @@
 
 import threading
 import json
+from json import JSONDecodeError
 
 from paho.mqtt import publish
 import paho.mqtt.client as mqtt
@@ -57,7 +58,7 @@ class MqttProxy:
         is_json = True
         try:
             parsed_msg = json.loads(msg.payload)
-        except TypeError:
+        except (TypeError, JSONDecodeError):
             is_json = False
 
         try:
