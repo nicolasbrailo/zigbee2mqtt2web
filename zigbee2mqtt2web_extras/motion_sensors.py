@@ -2,8 +2,8 @@
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from .geo_helper import light_outside
-from .geo_helper import late_night
+from .utils.geo_helper import light_outside
+from .utils.geo_helper import late_night
 
 import logging
 logger = logging.getLogger(__name__)
