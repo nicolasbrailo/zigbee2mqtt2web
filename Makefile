@@ -6,6 +6,9 @@ test:
 run:
 	python3 -m pipenv run python ./main.py | tee run.log
 
+shell:
+	python3 -m pipenv run python
+
 lint:
 	autopep8 -r --in-place --aggressive --aggressive zigbee2mqtt2web/ | tee lint.log
 	python3 -m pipenv run python -m pylint zigbee2mqtt2web --disable=C0411 | tee --append lint.log

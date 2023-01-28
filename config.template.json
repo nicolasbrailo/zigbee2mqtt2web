@@ -18,9 +18,10 @@
   "COMMENT": "The topic to use when forwarding messages to websocket",
   "mqtt_socketio_topic": "mqtt_thing_msg",
 
-  "COMMENT": "Sensor history settings",
+  "COMMENT": "Sensor history settings. Retention rows and days are both optional. When both are specified, it will take the most restrictive option (ie if days=2 and rows=0, no rows will be stored). When none are specified, no measurements are ever deleted.",
   "sensor_db_path": "./sensors.sqlite",
   "sensor_db_retention_rows": 100,
+  "sensor_db_retention_days": 2,
 
   "COMMENT": "Spotify settings, leave out to disable Spotify integration",
   "spotify": {

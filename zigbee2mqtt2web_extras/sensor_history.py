@@ -14,7 +14,7 @@ def _maybe_create_table(conn, sensor_name, metrics):
         ')')
 
 
-def _discard_old_samples(conn, sensor_name, retention_rows):
+def _discard_old_samples_by_retention_count(conn, sensor_name, retention_rows):
     if retention_rows is None or retention_rows <= 0:
         return
     conn.execute(
@@ -25,6 +25,15 @@ def _discard_old_samples(conn, sensor_name, retention_rows):
         f'    ORDER BY sample_time DESC '
         f'    LIMIT {retention_rows} '
         f'  )'
+    )
+
+
+def _discard_old_samples_by_retention_days(conn, sensor_name, retention_days):
+    if retention_duration is None:
+        return
+    conn.execute(
+        f"DELETE FROM {sensor_name} "
+        f"WHERE sample_time < datetime('now', '-{retention_days} days')"
     )
 
 
@@ -61,8 +70,9 @@ class SensorsHistory:
     """ Automatically hooks up an observer to a sensor-like thing, and keeps
     track of changes in the sensor so it can save the change history to a DB """
 
-    def __init__(self, dbpath, retention_rows=-1):
+    def __init__(self, dbpath, retention_rows=None, retention_days=None):
         self._retention_rows = retention_rows
+        self._retention_days = retention_days
         self._dbpath = dbpath
 
     def register_to_webserver(self, server):
@@ -103,7 +113,10 @@ class SensorsHistory:
                 f' ({cols_q}) VALUES ({vals_placeholders})'
         conn.execute(query, readings)
 
-        _discard_old_samples(conn, thing.name, self._retention_rows)
+        _discard_old_samples_by_retention_count(
+            conn, thing.name, self._retention_rows)
+        _discard_old_samples_by_retention_days(
+            conn, thing.name, self._retention_days)
         conn.commit()
 
     def get_known_sensors(self):
