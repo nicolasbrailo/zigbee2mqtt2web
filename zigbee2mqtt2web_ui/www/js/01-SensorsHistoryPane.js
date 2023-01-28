@@ -1,25 +1,34 @@
 function simple_dygraph_plot(html_elm_id, url) {
+  let dygraph_opts = {
+                      fillGraph: false,
+                      connectSeparatedPoints: true,
+                      highlightCircleSize: 2,
+                      strokeWidth: 1,
+                      // smooth graph, helps fill in periods where sensors aren't concurrent
+                      rollPeriod: 5,
+                      legend: 'always',
+                      highlightSeriesOpts: {
+                          strokeWidth: 3,
+                          strokeBorderWidth: 1,
+                          highlightCircleSize: 5
+                      },
+                  };
+
   $.ajax({
       url: url,
       cache: false,
       type: 'get',
       dataType: 'text',
       success: function(t_csv) {
-              new Dygraph(
-                  document.getElementById(html_elm_id),
-                  t_csv,
-                  {
-                      fillGraph: false,
-                      connectSeparatedPoints: true,
-                      highlightCircleSize: 2,
-                      strokeWidth: 1,
-                      highlightSeriesOpts: {
-                          strokeWidth: 3,
-                          strokeBorderWidth: 1,
-                          highlightCircleSize: 5
-                      },
-                  });
-          }
+        const label_elm = document.getElementById(html_elm_id + '_label');
+        if (label_elm) {
+          dygraph_opts['labelsDiv'] = label_elm;
+        }
+        new Dygraph(
+            document.getElementById(html_elm_id),
+            t_csv,
+            dygraph_opts);
+      }
   });
 }
 
@@ -66,6 +75,7 @@ class SensorsHistoryPane extends React.Component {
         <div className="col card" key={`local_plot_${metric}_div`}>
           <h3>{metric}</h3>
           <div id={`local_plot_${metric}`} />
+          <div id={`local_plot_${metric}_label`} />
         </div>);
     }
 
