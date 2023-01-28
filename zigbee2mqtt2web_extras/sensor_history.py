@@ -29,7 +29,7 @@ def _discard_old_samples_by_retention_count(conn, sensor_name, retention_rows):
 
 
 def _discard_old_samples_by_retention_days(conn, sensor_name, retention_days):
-    if retention_duration is None:
+    if retention_days is None:
         return
     conn.execute(
         f"DELETE FROM {sensor_name} "

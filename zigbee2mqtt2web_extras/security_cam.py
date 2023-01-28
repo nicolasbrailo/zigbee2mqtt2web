@@ -24,16 +24,19 @@ class SecurityCam(Ftpd):
 
     def _motion_detected(self, remote_ip, fpath):
         # TODO timeout
-        if remote_ip in self._motion_detected_clients and self._motion_detected_clients[remote_ip] == True:
+        if remote_ip in self._motion_detected_clients and self._motion_detected_clients[
+                remote_ip]:
             print(f'Client {remote_ip} sent update, but alarm already on')
             return
 
-        self._motion_detected_clients[remote_ip] = True # TODO log time for timeout
-        media_id = wa.upload_image(fpath)
+        # TODO log time for timeout
+        self._motion_detected_clients[remote_ip] = True
+        media_id = self._wa.upload_image(fpath)
         for num in self._wa_notify:
             print(f'Client {remote_ip} uploaded {fpath}, alert {num}')
-            wa.message_from_params_template(num, media_id)
+            self._wa.message_from_params_template(num, media_id)
 
     def _motion_cleared(self, remote_ip, fpath):
-        self._motion_detected_clients[remote_ip] = False # TODO log time for timeout
+        # TODO log time for timeout
+        self._motion_detected_clients[remote_ip] = False
         print(f'Client {remote_ip} uploaded {fpath}, alert clear')
