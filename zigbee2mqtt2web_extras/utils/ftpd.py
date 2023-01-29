@@ -1,7 +1,16 @@
+"""
+Creates an FTP server. This server relies on an external firewall, and if anything fishy is detected (eg an unknown
+IP or user trying to connect) it will crash the process, and create a token file so that it will never start again (it
+will crash loop if started as a system service).
+"""
+
 import os
 from pyftpdlib import servers
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.authorizers import DummyAuthorizer
+
+import logging
+logger = logging.getLogger(__name__)
 
 """ If a security breach is detected (such as a bad login attempt, or a connection
 from a not-allowlisted IP) then the server will crash, and a file will be created
@@ -11,7 +20,9 @@ FTP_SECURITY_BAD_FNAME = 'FTP_SECURITY_BAD'
 
 def _die_if_security_risk(marker_path):
     if os.path.exists(os.path.join(marker_path, FTP_SECURITY_BAD_FNAME)):
-        print('A security issue has been detected, please disable FTP')
+        # Use logger.error instead of fatal|critical, to ensure we call abort() instead of
+        # maybe throwing an exception from the logger
+        logger.error('A security issue has been detected, please disable FTP')
         os.abort()
 
 
@@ -79,15 +90,16 @@ class Ftpd:
         return wrapper
 
     def blocking_run(self):
+        """ Run forever. Needs to be called from a thread """
         self._server.serve_forever()
 
     @_check_allowlisted
     def on_connect(self, remote_ip):
-        pass
+        logger.info('FTP client %s connected', remote_ip)
 
     @_check_allowlisted
     def on_disconnect(self, remote_ip):
-        pass
+        logger.info('FTP client %s disconnected', remote_ip)
 
     @_check_allowlisted
     def on_login(self):
@@ -98,4 +110,4 @@ class Ftpd:
         self._on_upload_complete(remote_ip, fpath)
 
     def _on_upload_complete(self, remote_ip, fpath):
-        pass
+        raise RuntimeError('Subclass responsibility')

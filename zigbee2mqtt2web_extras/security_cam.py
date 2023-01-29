@@ -1,8 +1,16 @@
+""" FTP server for a security cam: sends a Whatsapp notification on file upload """
+
 import os
 from .utils.ftpd import Ftpd
-from .utils.whatsapp import WhatsApp
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 class SecurityCam(Ftpd):
+    """ Creates an FTPD. This class expects the camera to upload a picture when motion starts,
+    and then a video once the motion ends """
+
     def __init__(self, cfg, wa):
         self._cam_ips = cfg['cam_ips']
         self._wa_notify = cfg['wa_notify']
