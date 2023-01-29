@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 # Comment out to see requests to WA's API
 logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
 
+
 class WhatsApp:
     """ WA integration, may be against WA ToS """
 

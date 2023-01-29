@@ -5,12 +5,16 @@ will crash loop if started as a system service).
 """
 
 import os
+import threading
 from pyftpdlib import servers
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.authorizers import DummyAuthorizer
 
 import logging
 logger = logging.getLogger(__name__)
+
+# Comment out to see raw FTP commands
+logging.getLogger('pyftpdlib').setLevel(logging.ERROR)
 
 """ If a security breach is detected (such as a bad login attempt, or a connection
 from a not-allowlisted IP) then the server will crash, and a file will be created
@@ -52,6 +56,7 @@ def _make_handler(this):
 
 class Ftpd:
     def __init__(self, cfg):
+        self._bg = None
         self._cfg = cfg
         _die_if_security_risk(self._cfg['ftp_tainted_marker_path'])
 
@@ -79,7 +84,8 @@ class Ftpd:
             cfg['pwd'],
             cfg['upload_local_path'],
             perm='elradfmwMT')
-        self._server = servers.FTPServer((cfg['ip'], cfg['port']), handler)
+        self._server = servers.ThreadedFTPServer(
+            (cfg['ip'], cfg['port']), handler)
 
     def _check_allowlisted(underlying_func):
         def wrapper(self, handler, *k, **kw):
@@ -89,9 +95,20 @@ class Ftpd:
             return underlying_func(self, *k, **kw)
         return wrapper
 
-    def blocking_run(self):
-        """ Run forever. Needs to be called from a thread """
-        self._server.serve_forever()
+    def start(self):
+        """ Run FTPD """
+        logger.info(
+            'FTPD will listen at %s:%s',
+            self._cfg['ip'],
+            self._cfg['port'])
+        logger.info('Allowlisted IPs: %s', self._cfg['ip_allowlist'])
+        self._bg = threading.Thread(target=self._server.serve_forever)
+        self._bg.start()
+
+    def stop(self):
+        """ Stop FTPD and wait for shutdown """
+        self._server.close_all()
+        self._bg.join()
 
     @_check_allowlisted
     def on_connect(self, remote_ip):
@@ -107,6 +124,7 @@ class Ftpd:
 
     @_check_allowlisted
     def on_file_received(self, remote_ip, fpath):
+        logger.info('FTP client %s uploaded file %s', remote_ip, fpath)
         self._on_upload_complete(remote_ip, fpath)
 
     def _on_upload_complete(self, remote_ip, fpath):

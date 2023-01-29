@@ -42,6 +42,7 @@
   "COMMENT": "Security cam settings. Read FTPD.py for info",
   "security_cam": {
     "cam_ips": ["LIST_OF_YOUR_CAM_IPS"],
+    "motion_timeout_secs": 300,
     "ftp": {
       "ip": "LISTEN_ADDR_FOR_FTPD",
       "port": 2121,
