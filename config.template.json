@@ -37,6 +37,27 @@
   "COMMENT": "Sonos settings, leave out to skip loading the Sonos module",
   "sonos": {
        "debug_log": false
-  }
-}
+  },
 
+  "COMMENT": "Security cam settings. Read FTPD.py for info",
+  "security_cam": {
+    "cam_ips": ["LIST_OF_YOUR_CAM_IPS"],
+    "ftp": {
+      "ip": "LISTEN_ADDR_FOR_FTPD",
+      "port": 2121,
+      "user": "user",
+      "pwd": "123",
+      "upload_local_path": "WHERE_TO_STORE_UPLOADED_FILES",
+      "ftp_tainted_marker_path": "MARKER_TO_CRASHLOOP_READ_DOCS"
+    }
+  },
+
+  "COMMENT": "WhatsApp integration. Read whatsapp.py for setup info.",
+  "whatsapp": {
+    "tok": "THIS_IS_A_PASSWORD_BE_CAREFUL",
+    "notify_targets": ["TARGET_PHONE_NUMBER", "ANOTHER_TARGET_PHONE_NUMBER"],
+    "from_number": "A_TEST_NUMBER_GO_READ_DOCS"
+  },
+
+  "COMMENT": "JSON is silly"
+}

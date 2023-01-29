@@ -17,8 +17,21 @@ lint:
 
 install:
 	python3 -m pipenv install requests
-	# If Redis is missing, it's because it tends to fail when installing spotipy. Try this:
-	# python3 -m pipenv --upgrade install spotipy
+
+reinstall_pipenv_deps:
+	@echo "This is a list of the pipenv install commands I've used to get stuff working"
+	@echo "It may or may not be stable, and it may or may not be complete (probably isn't)"
+	@echo "Use this to create a new environment from scratch."
+	#python3 -m pipenv install apscheduler 
+	#python3 -m pipenv install astral
+	#python3 -m pipenv install git+https://github.com/ReolinkCameraAPI/reolink-python-api.git
+	#python3 -m pipenv install git+https://github.com/ReolinkCameraAPI/reolink-python-api.git#egg=reolink-python-api
+	#python3 -m pipenv install pyftpdlib
+	#python3 -m pipenv install requests
+	#python3 -m pipenv install soco
+	#python3 -m pipenv install spotipy --upgrade
+	# If Redis is missing, it's because it tends to fail when installing spotipy. Try this a few times:
+	#python3 -m pipenv --upgrade install spotipy
 
 ui:
 	make -C zigbee2mqtt2web_ui all
