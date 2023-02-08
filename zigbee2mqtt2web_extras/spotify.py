@@ -350,7 +350,12 @@ class Spotify(PhonyZMWThing):
         self.actions = _build_actions_map(self._refresh_access_tok, self._cfg)
 
         # After all actions are built, refresh their access token
-        self._refresh_access_tok()
+        try:
+            self._refresh_access_tok()
+        except:
+            logging.error(
+                'Failed to authenticate Spotify, will retry later',
+                exc_info=True)
 
         _SCHEDULER.add_job(
             func=self._refresh_access_tok,
