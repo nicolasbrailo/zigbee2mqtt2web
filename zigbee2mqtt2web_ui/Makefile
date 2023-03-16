@@ -18,3 +18,7 @@ www/app.rel.js: $(JS_SRCS)
 
 www/rel.css: $(CSS_SRCS)
 	./build/node_modules/.bin/uglifycss --output $@ $(CSS_SRCS)
+
+localize_js_deps:
+	./localize_js_deps.sh
+
