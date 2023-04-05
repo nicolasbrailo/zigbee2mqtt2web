@@ -68,6 +68,16 @@ class TestThings(unittest.TestCase):
         self.assertEqual(t.thing_type, None)
         self.assertEqual(len(t.actions), 5)
 
+    def test_alias(self):
+        t = parse_from_zigbee2mqtt(0, get_contact_sensor(), known_aliases={'SensorPuertaEntrada': 'AliasName'})
+        self.assertEqual(t.address, '0x00158d0008ad5e77')
+        self.assertEqual(t.name, 'AliasName')
+        self.assertEqual(t.real_name, 'SensorPuertaEntrada')
+        self.assertEqual(t.manufacturer, 'LUMI')
+        self.assertEqual(t.model, 'MCCGQ11LM')
+        self.assertEqual(t.thing_type, None)
+        self.assertEqual(len(t.actions), 5)
+
     def test_debug(self):
         t = parse_from_zigbee2mqtt(0, get_contact_sensor())
         dbg = t.debug_str()

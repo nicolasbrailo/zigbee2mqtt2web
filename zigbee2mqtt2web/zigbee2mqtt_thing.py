@@ -35,6 +35,7 @@ class Zigbee2MqttThing:
     thing_id: int
     address: str
     name: str
+    real_name: str
     broken: bool
     manufacturer: str
     model: str
@@ -66,6 +67,7 @@ class Zigbee2MqttThing:
         Parses an MQTT message, updates the local state to reflect the changes.
         If an observer was registered for (one of) the changed actions of this
         object, the callback will be invoked only if the change was accepted.
+        Note the topic may either be the name, addr or alias of this thing
         """
         changes = []
         thing_updated = False
@@ -554,13 +556,22 @@ def _parse_zigbee2mqtt_actions(thing_name, definition):
     return thing_type, ActionDict(actions)
 
 
-def parse_from_zigbee2mqtt(thing_id, thing):
+def parse_from_zigbee2mqtt(thing_id, thing, known_aliases=None):
     """
     Parses a message from zigbee2mqtt to create a local replica, with
     self-describing metadata.
     """
+    known_aliases = known_aliases or {}
     addr = thing['ieee_address']
-    name = thing.get('friendly_name', addr)
+    real_name = thing.get('friendly_name', addr)  # Unaliased name
+    name = known_aliases.get(real_name, known_aliases.get(addr, real_name))
+    if real_name != name:
+        logger.info(
+            'Thing %s is an alias for thing %s addr %s',
+            name,
+            real_name,
+            addr)
+
     definition = thing.get('definition', {}) or {}
     model_id = thing.get('model_id', None)
     model = definition.get('model', model_id)
@@ -569,6 +580,7 @@ def parse_from_zigbee2mqtt(thing_id, thing):
         thing_id=thing_id,
         address=addr,
         name=name,
+        real_name=real_name,
         broken=(not thing['interview_completed']) and (not thing['interviewing']),
         manufacturer=thing.get('manufacturer', None),
         model=model,

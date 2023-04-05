@@ -352,7 +352,7 @@ class Spotify(PhonyZMWThing):
         # After all actions are built, refresh their access token
         try:
             self._refresh_access_tok()
-        except:
+        except BaseException:
             logging.error(
                 'Failed to authenticate Spotify, will retry later',
                 exc_info=True)

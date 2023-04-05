@@ -15,6 +15,12 @@
   "COMMENT": "The topic prefix that zibee2mqtt will be using",
   "mqtt_topic_prefix": "zigbee2mqtt",
 
+  "COMMENT": "Friendlier names for devices",
+  "mqtt_device_aliases": {
+    "example_mqtt_ieee_address": "alias",
+    "example_mqtt_friendly_name": "friendlier_name"
+  },
+
   "COMMENT": "The topic to use when forwarding messages to websocket",
   "mqtt_socketio_topic": "mqtt_thing_msg",
 

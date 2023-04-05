@@ -12,7 +12,7 @@ import unittest
 from zigbee2mqtt2web import Zigbee2MqttBridge
 
 
-CFG = {'mqtt_topic_prefix': 'topic_prefix'}
+CFG = {'mqtt_topic_prefix': 'topic_prefix', 'mqtt_device_aliases': {}}
 
 
 class TestZigbee2MqttBridge(unittest.TestCase):
@@ -161,3 +161,20 @@ class TestZigbee2MqttBridge(unittest.TestCase):
             'topic_prefix/bridge/devices',
             get_bridge_all_devs_msg())
         self.assertEqual(called, 2)
+
+    def test_devices_have_alias(self):
+        mqtt = FakeMqtt()
+        aliases = {"Oficina": "Oficina_aliased", "0x00158d0008ad5e77": "SensorPuertaEntrada_aliased"}
+        bridge = Zigbee2MqttBridge({'mqtt_topic_prefix': 'topic_prefix', 'mqtt_device_aliases': aliases}, mqtt)
+        bridge.start()
+        mqtt.on_message(
+            'topic_prefix/bridge/devices',
+            get_bridge_all_devs_msg())
+
+        self.assertFalse("Oficina" in bridge.get_thing_names())
+        self.assertFalse("SensorPuertaEntrada" in bridge.get_thing_names())
+        self.assertTrue("Oficina_aliased" in bridge.get_thing_names())
+        self.assertTrue("SensorPuertaEntrada_aliased" in bridge.get_thing_names())
+
+        self.assertEqual(bridge.get_thing('Oficina_aliased').real_name, 'Oficina')
+        self.assertEqual(bridge.get_thing('SensorPuertaEntrada_aliased').real_name, 'SensorPuertaEntrada')

@@ -22,6 +22,7 @@ class Zigbee2MqttBridge:
 
     def __init__(self, cfg, mqtt):
         self._mqtt_topic_prefix = cfg['mqtt_topic_prefix']
+        self._aliases = cfg['mqtt_device_aliases']
         self._known_things = {}
         self._rules = []
         self._cb_on_device_discovery = []
@@ -56,7 +57,8 @@ class Zigbee2MqttBridge:
             logger.info('Zigbee2Mqtt bridge published list of devices')
             device_added = False
             for jsonthing in payload:
-                thing = parse_from_zigbee2mqtt(self._last_device_id, jsonthing)
+                thing = parse_from_zigbee2mqtt(
+                    self._last_device_id, jsonthing, known_aliases=self._aliases)
                 self._last_device_id += 1
                 if self.register_or_ignore(thing):
                     device_added = True
@@ -112,15 +114,22 @@ class Zigbee2MqttBridge:
         self._known_things[thing.name] = thing
         self.cb_for_mqtt_topic(thing.name, thing.on_mqtt_update)
         self.cb_for_mqtt_topic(thing.address, thing.on_mqtt_update)
+        self.cb_for_mqtt_topic(f'{thing.real_name}/set', thing.on_mqtt_update)
         self.cb_for_mqtt_topic(f'{thing.name}/set', thing.on_mqtt_update)
         self.cb_for_mqtt_topic(f'{thing.address}/set', thing.on_mqtt_update)
 
     def register_or_ignore(self, thing):
         """ Add or replace a thing to the MQTT registry """
         if thing.name in self._known_things:
-            logger.info(
-                'Ignoring registration for %s, thing already known',
-                thing.name)
+            if thing.name != thing.real_name and thing.real_name not in self._known_things:
+                logger.warning(
+                    "Thing with MQTT name %s is being ignored, because it's aliased by %s. Aliasing things to the same name is a bad idea.",
+                    thing.real_name,
+                    thing.name)
+            else:
+                logger.info(
+                    'Ignoring registration for %s, thing already known',
+                    thing.name)
             return False
 
         self.register(thing)
@@ -153,13 +162,14 @@ class Zigbee2MqttBridge:
             thing = self.get_thing(thing_or_name)
         else:
             thing = thing_or_name
-        topic = f'{self._mqtt_topic_prefix}/{thing.name}/set'
+        topic = f'{self._mqtt_topic_prefix}/{thing.real_name}/set'
         status = thing.make_mqtt_status_update()
         if len(status.keys()) != 0:
             self._mqtt.broadcast(topic, status)
             logger.debug(
-                'Thing %s is bcasting update topic[%s]:"%s"',
+                'Thing %s%s is bcasting update topic[%s]:"%s"',
                 thing.name,
+                f'(an alias for {thing.real_name})' if thing.real_name != thing.name else '',
                 topic,
                 status)
         else:
