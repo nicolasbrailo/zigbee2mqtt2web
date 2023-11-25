@@ -11,10 +11,43 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class FakeMqttProxy:
+    """ Mqtt mock, for dev server """
+
+    def __init__(self, _cfg):
+        logger.warning('Skipping MQTT for dev server. Stuff may break')
+
+    def start(self):
+        """ See real MqttProxy """
+
+    def on_message(self, topic, payload):
+        """ See real MqttProxy """
+        logger.warning('FakeMqttProxy::on_message(%s, %s)', topic, payload)
+
+    def on_non_json_msg(self, topic, payload):
+        """ See real MqttProxy """
+        logger.warning(
+            'FakeMqttProxy::on_non_json_msg(%s, %s)',
+            topic,
+            payload)
+
+    def stop(self):
+        """ See real MqttProxy """
+
+    def broadcast(self, topic, msg):
+        """ See real MqttProxy """
+        logger.warning('FakeMqttProxy::broadcast(%s, %s)', topic, msg)
+
+
 class MqttProxy:
     """ Thin wrapper for an MQTT client: manages connections, and translates messages to json """
 
     def __init__(self, cfg):
+        if "mqtt_skip_connect_for_dev" in cfg and \
+                cfg["mqtt_skip_connect_for_dev"]:
+            logger.warning('Skipping MQTT for dev server. Stuff may break')
+            return
+
         self._mqtt_ip = cfg['mqtt_ip']
         self._mqtt_port = cfg['mqtt_port']
 

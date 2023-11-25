@@ -1,7 +1,7 @@
 """ Zigbee2Mqtt2Web: facade for all wrappers over thing registry + ZMW """
 
 from .flask_bridge import FlaskBridge
-from .mqtt_proxy import MqttProxy
+from .mqtt_proxy import MqttProxy, FakeMqttProxy
 from .thing_registry import ThingRegistry
 from .zigbee2mqtt_bridge import Zigbee2MqttBridge
 from .zigbee2mqtt_thing import Zigbee2MqttAction
@@ -19,7 +19,13 @@ class Zigbee2Mqtt2Web:
 
     def __init__(self, cfg):
         self._monkeypatch_rules = []
-        self._mqtt_proxy = MqttProxy(cfg)
+
+        if "mqtt_skip_connect_for_dev" in cfg and \
+                cfg["mqtt_skip_connect_for_dev"]:
+            self._mqtt_proxy = FakeMqttProxy(cfg)
+        else:
+            self._mqtt_proxy = MqttProxy(cfg)
+
         self._mqtt_registry = Zigbee2MqttBridge(cfg, self._mqtt_proxy)
         self._mqtt_registry.on_mqtt_network_discovered(self._monkey_patch)
         self.registry = ThingRegistry(self._mqtt_registry)

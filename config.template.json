@@ -9,6 +9,7 @@
   "www_extra_uri_prefix": "/web_assets",
 
   "COMMENT": "MQTT settings: how to connect to MQTT",
+  "mqtt_skip_connect_for_dev": true,
   "mqtt_ip": "127.0.0.1",
   "mqtt_port": 1883,
 
