@@ -15,7 +15,12 @@ lint:
 	autopep8 -r --in-place --aggressive --aggressive zigbee2mqtt2web_extras/ | tee --append lint.log
 	python3 -m pipenv run python -m pylint zigbee2mqtt2web_extras --disable=C0411 | tee --append lint.log
 
-install:
+Pipfile:
+	echo "Select one of Pipfile.arm or Pipfile.x86, and mv to Pipfile"
+	false
+
+install: Pipfile
+	python3 -m pipenv --python $(shell which python3 )
 	python3 -m pipenv install requests
 
 reinstall_pipenv_deps:
@@ -39,6 +44,7 @@ ui:
 install_system_deps:
 	sudo apt-get --assume-yes install python3-pip authbind python3-autopep8
 	make -C zigbee2mqtt2web_extras install_system_deps
+	make -C zigbee2mqtt2web_ui install_system_deps
 	pip3 install pipenv
 
 MKFILE_PATH=$(abspath $(lastword $(MAKEFILE_LIST)))

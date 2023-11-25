@@ -1,4 +1,5 @@
 # Never commit config secrets
+Pipfile
 config.json
 config.spotify_cache.json
 zigbee2mqtt2web_ui/build/
