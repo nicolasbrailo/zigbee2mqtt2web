@@ -5,15 +5,17 @@ import json
 from json import JSONDecodeError
 from flask import send_from_directory, url_for
 
+import soco
 from soco import discover
 from soco.exceptions import SoCoUPnPException
 from soco.exceptions import SoCoSlaveException
 
 from ..phony import PhonyZMWThing
+from .helpers import sonos_announce
 from .tts import get_local_path_tts
 
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('ZMWSonos')
 
 # sudo apt-get install python3-lxml libxslt1-dev
 # python3 -m pipenv install soco --skip-lock
@@ -29,6 +31,7 @@ def _config_logger(use_debug_log):
         logging.getLogger('soco.services').setLevel(logging.INFO)
         logging.getLogger('soco.discovery').setLevel(logging.INFO)
         logging.getLogger('soco.zonegroupstate').setLevel(logging.INFO)
+        logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
 
 
 def get_sonos_by_name():
@@ -115,19 +118,6 @@ class Sonos(PhonyZMWThing):
             <input type="text" id="lang" value="en">
         """
 
-    def tts_announce(self, lang, phrase):
-        """ Say something on all available speakers """
-        try:
-            tts_local_file = get_local_path_tts(self._cfg['tts_cache_path'], phrase, lang)
-        except RuntimeError as ex:
-            return str(ex), 507
-        return self._cfg['url_base_tts_asset_webserver'] + \
-                    url_for(self._cfg['webpath_tts_asset'], fname=tts_local_file)
-
-    def tts_asset(self, fname):
-        """ Serve a file asset created from tts_announce """
-        return send_from_directory(self._cfg['tts_cache_path'], fname)
-
     def _stop(self, _val):
         all_devs = get_sonos_by_name()
         for name, device in all_devs.items():
@@ -174,78 +164,36 @@ class Sonos(PhonyZMWThing):
         except (JSONDecodeError, TypeError, KeyError):
             uri = uri_or_msg
 
-        return self.play_announcement(uri, volume, timeout_secs, force)
+        self.play_announcement(uri, volume, timeout_secs, force)
 
     def play_announcement(
             self,
             uri,
             announcement_volume=50,
             timeout_secs=10,
-            force=None):
+            force=False):
         """ Attempts to play a short clip over all known Sonos devices. Will skip devices
         playing some media, unless their name is specified in the force field. The
         announcement will be played at announcement_volume, but the volume of each
         device will be restored after the announcement finishes. This call blocks until
         all devices have finished playing (and their volume restored) or until the timeout
         is reached. """
-        logger.info(
-            'Will play announcement from %s at volume %d',
-            uri,
-            announcement_volume)
-        vols_to_restore = {}
-        all_devs = get_sonos_by_name()
-        if force is None:
-            force = []
+        zones = soco.discover()
+        sonos_announce(zones, uri, announcement_volume, timeout_secs, force)
 
-        for name, device in all_devs.items():
-            try:
-                if is_this_sonos_playing_something(device):
-                    if name in force:
-                        logger.info(
-                            'Sonos %s is playing something else, it will be forced-stopped', name)
-                    else:
-                        logger.info(
-                            'Skip Sonos announcement on %s, something else is playing', name)
-                        continue
+    def tts_announce(self, lang, phrase):
+        """ Say something on all available speakers """
+        try:
+            tts_local_file = get_local_path_tts(
+                self._cfg['tts_cache_path'], phrase, lang)
+        except RuntimeError as ex:
+            return str(ex), 507
 
-                vols_to_restore[name] = device.volume
-                device.volume = announcement_volume
-                device.play_uri(uri, title='Baticasa Announcement')
-                logger.info(
-                    'Playing %s in Sonos %s, volume to restore is %d',
-                    uri,
-                    name,
-                    all_devs[name].volume)
-            except Exception:  # pylint: disable=broad-except
-                logger.error(
-                    'Announcement failed in Sonos %s',
-                    name,
-                    exc_info=True)
+        tts_asset_url = self._cfg['url_base_tts_asset_webserver'] + \
+            url_for(self._cfg['webpath_tts_asset'], fname=tts_local_file)
+        self.play_announcement(tts_asset_url)
+        return tts_asset_url
 
-        for name, volume in vols_to_restore.items():
-            timeout = timeout_secs
-            device = all_devs[name]
-            while True:
-                try:
-                    if not is_this_sonos_playing_something(
-                            device) or timeout <= 0:
-                        logger.info(
-                            "Restore Sonos %s volume to %d",
-                            name,
-                            volume)
-                        device.volume = volume
-                        break
-                except Exception:  # pylint: disable=broad-except
-                    logger.error(
-                        'Volume restore failed in Sonos %s',
-                        name,
-                        exc_info=True)
-                    break
-
-                timeout -= 1
-                if timeout <= 0:
-                    logger.info(
-                        "Sonos %s is still playing and timeout expired", name)
-                else:
-                    logger.info("Sonos %s is still playing, waiting...", name)
-                time.sleep(1)
+    def tts_asset(self, fname):
+        """ Serve a file asset created from tts_announce """
+        return send_from_directory(self._cfg['tts_cache_path'], fname)

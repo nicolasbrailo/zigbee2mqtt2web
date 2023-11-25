@@ -43,7 +43,7 @@
 
   "COMMENT": "Sonos settings, leave out to skip loading the Sonos module",
   "sonos": {
-       "debug_log": true,
+       "debug_log": false,
 
        "COMMENT_webpath_prefix": "url prefix for sonos REST interface",
        "webpath_prefix": "sonos",

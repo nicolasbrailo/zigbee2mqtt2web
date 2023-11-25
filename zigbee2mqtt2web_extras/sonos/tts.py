@@ -7,6 +7,7 @@ from pathlib import Path
 import logging
 logger = logging.getLogger(__name__)
 
+
 def get_local_path_tts(cache_path, phrase, lang):
     # Try to create cache path, throw on fail
     Path(cache_path).mkdir(parents=True, exist_ok=True)
