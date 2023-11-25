@@ -1,3 +1,5 @@
+# This is an example: you probably want to customize this with your network!
+
 import sys
 import logging
 import json
@@ -5,6 +7,9 @@ import json
 from zigbee2mqtt2web import Zigbee2Mqtt2Web
 from zigbee2mqtt2web_extras.monkeypatching import add_all_known_monkeypatches
 from zigbee2mqtt2web_extras.scenes import SceneManager
+
+from zigbee2mqtt2web_extras.sonos import Sonos
+from zigbee2mqtt2web_extras.spotify import Spotify
 
 root = logging.getLogger()
 root.setLevel(logging.DEBUG)
@@ -46,5 +51,17 @@ def on_net_discovery():
 
 add_all_known_monkeypatches(zmw)
 zmw.registry.on_mqtt_network_discovered(on_net_discovery)
+
+# Load extras
+if 'sonos' in CFG:
+    sonos = Sonos(CFG['sonos'])
+    sonos.add_announcement_paths(zmw.webserver)
+    zmw.registry.register(sonos)
+
+if 'spotify' in CFG:
+    spotify = Spotify(CFG['spotify'])
+    spotify.add_reauth_paths(zmw.webserver)
+    zmw.registry.register(spotify)
+
 zmw.start_and_block()
 zmw.stop()

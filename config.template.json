@@ -32,7 +32,7 @@
 
   "COMMENT": "Spotify settings, leave out to disable Spotify integration",
   "spotify": {
-       "debug_log": false,
+       "debug_log": true,
        "start_reauth_url_path": "/spotify/start_reauth/",
        "set_reauth_code_url_path": "/spotify/set_reauth/",
        "redirect_uri": "SPOTIFY_APP_REDIRECT_URI",
@@ -43,7 +43,16 @@
 
   "COMMENT": "Sonos settings, leave out to skip loading the Sonos module",
   "sonos": {
-       "debug_log": false
+       "debug_log": true,
+
+       "COMMENT_webpath_prefix": "url prefix for sonos REST interface",
+       "webpath_prefix": "sonos",
+
+       "COMMENT_tts_cache_path": "Where to store TTS asset files after downloading",
+       "tts_cache_path": "./tts_cache",
+
+       "COMMENT_url_base_tts_asset_webserver": "URL that can serve TTS assets; needs to be reachable by all Sonos speakers",
+       "url_base_tts_asset_webserver": "http://192.168.1.152:1234"
   },
 
   "COMMENT": "Security cam settings. Read FTPD.py for info",

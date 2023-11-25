@@ -3,12 +3,14 @@
 import time
 import json
 from json import JSONDecodeError
+from flask import send_from_directory, url_for
 
 from soco import discover
 from soco.exceptions import SoCoUPnPException
 from soco.exceptions import SoCoSlaveException
 
-from .phony import PhonyZMWThing
+from ..phony import PhonyZMWThing
+from .tts import get_local_path_tts
 
 import logging
 logger = logging.getLogger(__name__)
@@ -58,6 +60,13 @@ class Sonos(PhonyZMWThing):
 
         _config_logger(cfg['debug_log'])
 
+        # Ensure we have all needed cfgs
+        cfg['webpath_prefix']
+        cfg['tts_cache_path']
+        cfg['url_base_tts_asset_webserver']
+        cfg['webpath_tts_asset'] = f'/{cfg["webpath_prefix"]}/tts_asset/<fname>'
+        self._cfg = cfg
+
         self._add_action('stop',
                          'Stop all Sonos in the LAN from playing anything',
                          setter=self._stop)
@@ -74,6 +83,50 @@ class Sonos(PhonyZMWThing):
             'Play a (short) clip on all LAN Sonos. Request should contain either only'
             'a URL, or a message like {"uri": $, "volume": $, "timeout_secs": [$, $]}',
             setter=self._play_announcement)
+
+    def add_announcement_paths(self, webserver):
+        """ Adds paths for announcements to a flask instance """
+        webserver.add_url_rule(
+            f'/{self._cfg["webpath_prefix"]}/say',
+            self._announce_test_ui)
+        webserver.add_url_rule(
+            f'/{self._cfg["webpath_prefix"]}/tts_announce/<lang>/<phrase>',
+            self.tts_announce)
+        webserver.add_url_rule(
+            self._cfg["webpath_tts_asset"],
+            self.tts_asset)
+
+    def _announce_test_ui(self):
+        """ Creates a trivial form to test announcmenets """
+        return f"""
+            <script>
+            function startAnnouncement() {{
+                const phrase = document.getElementById('phrase').value;
+                const lang = document.getElementById('lang').value;
+                const url = `/{self._cfg["webpath_prefix"]}/tts_announce/${{lang}}/${{phrase}}`;
+                window.location.href = url;
+            }}
+            </script>
+
+
+            <button onClick="javascript:startAnnouncement()">Say</button>
+            <input type="text" id="phrase"/>
+            in
+            <input type="text" id="lang" value="en">
+        """
+
+    def tts_announce(self, lang, phrase):
+        """ Say something on all available speakers """
+        try:
+            tts_local_file = get_local_path_tts(self._cfg['tts_cache_path'], phrase, lang)
+        except RuntimeError as ex:
+            return str(ex), 507
+        return self._cfg['url_base_tts_asset_webserver'] + \
+                    url_for(self._cfg['webpath_tts_asset'], fname=tts_local_file)
+
+    def tts_asset(self, fname):
+        """ Serve a file asset created from tts_announce """
+        return send_from_directory(self._cfg['tts_cache_path'], fname)
 
     def _stop(self, _val):
         all_devs = get_sonos_by_name()
