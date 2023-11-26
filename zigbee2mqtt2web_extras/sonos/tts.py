@@ -1,3 +1,7 @@
+"""
+TTS helpers: given a phrase, attempt to create a local file
+"""
+
 from urllib.parse import quote
 import hashlib
 import os
@@ -9,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 def get_local_path_tts(cache_path, phrase, lang):
+    """ Try to get a TTS from Google translate """
+
     # Try to create cache path, throw on fail
     Path(cache_path).mkdir(parents=True, exist_ok=True)
 
@@ -27,7 +33,8 @@ def get_local_path_tts(cache_path, phrase, lang):
             with open(cached, 'wb') as cache_f:
                 cache_f.write(req.read())
         except urllib.error.HTTPError as ex:
-            raise RuntimeError(f'Failed to retrieve TTS from {url}: {str(ex)}')
+            raise RuntimeError(
+                f'Failed to retrieve TTS from {url}: {str(ex)}') from ex
 
         if not cached.is_file():
             raise RuntimeError(f"TTS failed: can't download {url}")

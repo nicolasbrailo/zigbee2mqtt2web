@@ -64,9 +64,10 @@ class Sonos(PhonyZMWThing):
         _config_logger(cfg['debug_log'])
 
         # Ensure we have all needed cfgs
-        cfg['webpath_prefix']
-        cfg['tts_cache_path']
-        cfg['url_base_tts_asset_webserver']
+        cfg['webpath_prefix']  # pylint: disable=pointless-statement
+        cfg['tts_cache_path']  # pylint: disable=pointless-statement
+        cfg['url_base_tts_asset_webserver']  # pylint: disable=pointless-statement
+
         cfg['webpath_tts_asset'] = f'/{cfg["webpath_prefix"]}/tts_asset/<fname>'
         self._cfg = cfg
 
@@ -194,10 +195,10 @@ class Sonos(PhonyZMWThing):
 
         try:
             msg = json.loads(msg)
-        except (JSONDecodeError, TypeError, KeyError):
-            raise ValueError(f"Can't parse TTS request {msg}")
+        except (JSONDecodeError, TypeError, KeyError) as ex:
+            raise ValueError(f"Can't parse TTS request {msg}") from ex
 
-        if not 'phrase' in msg:
+        if 'phrase' not in msg:
             raise ValueError(f"Missing 'phrase' in TTS request {msg}")
 
         if 'volume' in msg:
@@ -209,12 +210,13 @@ class Sonos(PhonyZMWThing):
         if 'lang' in msg:
             lang = msg['lang']
 
-        return self.tts_announce(lang, msg['phrase'], volume, timeout_secs, force)
+        return self.tts_announce(
+            lang, msg['phrase'], volume, timeout_secs, force)
 
     def tts_announce(self, lang, phrase,
-            announcement_volume=50,
-            timeout_secs=10,
-            force=False):
+                     announcement_volume=50,
+                     timeout_secs=10,
+                     force=False):
         """ Say something on all available speakers """
         # Attempt to download a TTS asset, or throw
         tts_local_file = get_local_path_tts(
@@ -222,7 +224,11 @@ class Sonos(PhonyZMWThing):
 
         tts_asset_url = self._cfg['url_base_tts_asset_webserver'] + \
             url_for(self._cfg['webpath_tts_asset'], fname=tts_local_file)
-        self.play_announcement(tts_asset_url, announcement_volume, timeout_secs, force)
+        self.play_announcement(
+            tts_asset_url,
+            announcement_volume,
+            timeout_secs,
+            force)
         return tts_asset_url
 
     def tts_asset(self, fname):

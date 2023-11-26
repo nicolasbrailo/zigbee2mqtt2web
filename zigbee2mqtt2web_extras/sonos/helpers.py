@@ -1,6 +1,10 @@
-# Inspired from
-# https://github.com/SoCo/SoCo/blob/master/examples/snapshot/multi_zone_snap.py
-# https://github.com/jishi/node-sonos-http-api/blob/master/lib/helpers/all-player-announcement.js
+"""
+Random Sonos helpers.
+
+Alarm/announcement system inspired from
+https://github.com/SoCo/SoCo/blob/master/examples/snapshot/multi_zone_snap.py
+https://github.com/jishi/node-sonos-http-api/blob/master/lib/helpers/all-player-announcement.js
+"""
 
 import time
 from soco.snapshot import Snapshot
@@ -10,12 +14,16 @@ logger = logging.getLogger('ZMWSonos')
 
 
 def sonos_announce(zones, alert_uri, volume, timeout, force_play):
+    """ Send an announcement to all zones """
+
     # prepare all zones for playing the alert
     announce_zones = []
     for zone in zones:
         trans_state = zone.get_current_transport_info()
         if trans_state["current_transport_state"] == "PLAYING" and not force_play:
-            logger.info('Will skip %s from announcement, currently playing media', zone.player_name)
+            logger.info(
+                'Will skip %s from announcement, currently playing media',
+                zone.player_name)
             continue
 
         # Each Sonos group has one coordinator only these can play, pause, etc.
@@ -56,10 +64,11 @@ def sonos_announce(zones, alert_uri, volume, timeout, force_play):
     while not announcement_finished:
         logger.info('Waiting for announcement to finish...')
         for zone in announce_zones:
-            # transport info isn't reliable for all device types (eg Sonos amps may say they are always
-            # playing when line-in is connected), so we wait until any single device says that playback
-            # is fininshed: if announcement was sent to all devices, any of them finishing should be an
-            # indication that the real announcement is finished.
+            # transport info isn't reliable for all device types (eg Sonos amps may say they are
+            # always playing when line-in is connected), so we wait until any single device says
+            # that playback is fininshed: if announcement was sent to all devices, any of them
+            # finishing should be an indication that the real announcement is
+            # finished.
             trans_state = zone.get_current_transport_info()
             if trans_state["current_transport_state"] != "PLAYING":
                 announcement_finished = True
