@@ -3,6 +3,8 @@ class MediaPlayer extends React.Component {
     return {
       thing_registry: thing_registry,
       player: player,
+      can_tts: Object.keys(player.actions).includes("tts_announce"),
+      can_announce: Object.keys(player.actions).includes("play_announcement"),
     }
   }
 
@@ -26,6 +28,8 @@ class MediaPlayer extends React.Component {
     this.onVolumeChanged = this.onVolumeChanged.bind(this);
     this.onNextClicked = this.onNextClicked.bind(this);
     this.onPrevClicked = this.onPrevClicked.bind(this);
+    this.onTTSRequested = this.onTTSRequested.bind(this);
+    this.onAnnouncementRequested = this.onAnnouncementRequested.bind(this);
   }
 
   onPlayClicked() {
@@ -49,6 +53,24 @@ class MediaPlayer extends React.Component {
     this.props.thing_registry.set_thing(this.props.player.name, `volume=${vol}`);
   }
 
+  onTTSRequested() {
+    if (!this.props.can_tts) {
+      showGlobalError(`Requested unsupported action 'TTS' on player ${this.props.player.name}`);
+      return;
+    }
+
+    // TODO
+  }
+
+  onAnnouncementRequested() {
+    if (!this.props.can_announce) {
+      showGlobalError(`Requested unsupported action 'announcement' on player ${this.props.player.name}`);
+      return;
+    }
+
+    // TODO
+  }
+
   render() {
     if (this.state.is_authenticated == false) {
       return this.render_no_auth();
@@ -69,15 +91,46 @@ class MediaPlayer extends React.Component {
       </div>
   }
 
+  render_announce_or_tts() {
+    let announcements = [];
+    if (this.props.can_tts) {
+      announcements.push(
+        <button key={`MediaPlayer_${this.props.player.name}_tts_btn`}
+                className="player-button"
+                onClick={this.onTTSRequested}>
+          TTS
+        </button>
+      );
+    }
+
+    if (this.props.can_announce) {
+      announcements.push(
+        <button key={`MediaPlayer_${this.props.player.name}_announce_btn`}
+                className="player-button"
+                onClick={this.onAnnouncementRequested}>
+          Say
+        </button>
+      );
+    }
+
+    return announcements;
+  }
+
   render_no_media() {
-    return '';
+    return this.render_announce_or_tts();
+    return (
+      <div className="thing_div row container"
+           key={`${this.props.player.name}_media_player_div`}>
+        { this.render_announce_or_tts() }
+      </div>
+    );
   }
 
   render_playing_media() {
     return (
       <div className="thing_div row container"
            key={`${this.props.player.name}_media_player_div`}>
-
+        this.render_announce_or_tts();
         <table>
         <tbody>
         <tr>

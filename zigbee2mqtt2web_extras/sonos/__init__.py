@@ -86,6 +86,11 @@ class Sonos(PhonyZMWThing):
             'Play a (short) clip on all LAN Sonos. Request should contain either only'
             'a URL, or a message like {"uri": $, "volume": $, "timeout_secs": [$, $]}',
             setter=self._play_announcement)
+        self._add_action(
+            'tts_announce',
+            'Play a TTS clip on all LAN Sonos. Request should contain a message like '
+            '{"phrase": $, "lang": $, "volume": $, "timeout_secs": $}',
+            setter=self._tts_announce)
 
     def add_announcement_paths(self, webserver):
         """ Adds paths for announcements to a flask instance """
@@ -181,7 +186,36 @@ class Sonos(PhonyZMWThing):
         zones = soco.discover()
         sonos_announce(zones, uri, announcement_volume, timeout_secs, force)
 
-    def tts_announce(self, lang, phrase):
+    def _tts_announce(self, msg):
+        uri = None
+        volume = _DEFAULT_ANNOUNCEMENT_VOLUME
+        timeout_secs = _DEFAULT_ANNOUNCEMENT_TIMEOUT_SECS
+        force = []
+        lang = 'en'
+
+        try:
+            msg = json.loads(uri_or_msg)
+        except (JSONDecodeError, TypeError, KeyError):
+            return f"Can't parse TTS request {msg}", 400
+
+        if not 'phrase' in msg:
+            return f"Missing 'phrase' in TTS request {msg}", 400
+
+        if 'volume' in msg:
+            volume = msg['volume']
+        if 'timeout_secs' in msg:
+            timeout_secs = msg['timeout_secs']
+        if 'force' in msg:
+            force = msg['force']
+        if 'lang' in msg:
+            lang = msg['lang']
+
+        self.play_announcement(uri, volume, timeout_secs, force)
+
+    def tts_announce(self, lang, phrase,
+            announcement_volume=50,
+            timeout_secs=10,
+            force=False):
         """ Say something on all available speakers """
         try:
             tts_local_file = get_local_path_tts(
@@ -191,7 +225,7 @@ class Sonos(PhonyZMWThing):
 
         tts_asset_url = self._cfg['url_base_tts_asset_webserver'] + \
             url_for(self._cfg['webpath_tts_asset'], fname=tts_local_file)
-        self.play_announcement(tts_asset_url)
+        self.play_announcement(tts_asset_url, announcement_volume, timeout_secs, force)
         return tts_asset_url
 
     def tts_asset(self, fname):
