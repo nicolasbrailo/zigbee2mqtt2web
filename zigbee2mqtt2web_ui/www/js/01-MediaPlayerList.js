@@ -60,6 +60,7 @@ class MediaPlayer extends React.Component {
     }
 
     // TODO
+    this.props.thing_registry.set_thing(this.props.player.name, `tts_announce={"lang": "es", "phrase": "HOLA"}`);
   }
 
   onAnnouncementRequested() {

@@ -187,19 +187,18 @@ class Sonos(PhonyZMWThing):
         sonos_announce(zones, uri, announcement_volume, timeout_secs, force)
 
     def _tts_announce(self, msg):
-        uri = None
         volume = _DEFAULT_ANNOUNCEMENT_VOLUME
         timeout_secs = _DEFAULT_ANNOUNCEMENT_TIMEOUT_SECS
-        force = []
+        force = False
         lang = 'en'
 
         try:
-            msg = json.loads(uri_or_msg)
+            msg = json.loads(msg)
         except (JSONDecodeError, TypeError, KeyError):
-            return f"Can't parse TTS request {msg}", 400
+            raise ValueError(f"Can't parse TTS request {msg}")
 
         if not 'phrase' in msg:
-            return f"Missing 'phrase' in TTS request {msg}", 400
+            raise ValueError(f"Missing 'phrase' in TTS request {msg}")
 
         if 'volume' in msg:
             volume = msg['volume']
@@ -210,18 +209,16 @@ class Sonos(PhonyZMWThing):
         if 'lang' in msg:
             lang = msg['lang']
 
-        self.play_announcement(uri, volume, timeout_secs, force)
+        return self.tts_announce(lang, msg['phrase'], volume, timeout_secs, force)
 
     def tts_announce(self, lang, phrase,
             announcement_volume=50,
             timeout_secs=10,
             force=False):
         """ Say something on all available speakers """
-        try:
-            tts_local_file = get_local_path_tts(
-                self._cfg['tts_cache_path'], phrase, lang)
-        except RuntimeError as ex:
-            return str(ex), 507
+        # Attempt to download a TTS asset, or throw
+        tts_local_file = get_local_path_tts(
+            self._cfg['tts_cache_path'], phrase, lang)
 
         tts_asset_url = self._cfg['url_base_tts_asset_webserver'] + \
             url_for(self._cfg['webpath_tts_asset'], fname=tts_local_file)
