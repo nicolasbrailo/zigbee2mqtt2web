@@ -10,29 +10,36 @@ logger = logging.getLogger('ZMWSonos')
 
 
 def sonos_announce(zones, alert_uri, volume, timeout, force_play):
-    # Use soco.snapshot to capture current state of each zone to allow restore
-    for zone in zones:
-        zone.snap = Snapshot(zone)
-        zone.snap.snapshot()
-        print("snapshot of zone: {}".format(zone.player_name))
-
     # prepare all zones for playing the alert
+    announce_zones = []
     for zone in zones:
+        trans_state = zone.get_current_transport_info()
+        if trans_state["current_transport_state"] == "PLAYING" and not force_play:
+            logger.info('Will skip %s from announcement, currently playing media', zone.player_name)
+            continue
+
         # Each Sonos group has one coordinator only these can play, pause, etc.
-        if force_play and zone.is_coordinator:
-            if not zone.is_playing_tv:  # can't pause TV - so don't try!
-                # pause music for each coordinators if playing
-                trans_state = zone.get_current_transport_info()
-                if trans_state["current_transport_state"] == "PLAYING":
-                    zone.pause()
+        if zone.is_coordinator:
+            if zone.is_playing_tv:  # can't pause TV - so don't try!
+                continue
+            # pause music for each coordinators if playing
+            trans_state = zone.get_current_transport_info()
+            if trans_state["current_transport_state"] == "PLAYING":
+                zone.pause()
 
         # For every Sonos player set volume and mute for every zone
         zone.mute = False
         zone.volume = volume
 
+        # Save current state
+        zone.snap = Snapshot(zone)
+        zone.snap.snapshot()
+
+        announce_zones.append(zone)
+
     # play the sound (uri) on each sonos coordinator
     logger.info('Requesting Sonos to play announcement: %s', alert_uri)
-    for zone in zones:
+    for zone in announce_zones:
         logger.info('  ask %s to play announcement', zone.player_name)
         if zone.is_coordinator:
             try:
@@ -48,7 +55,7 @@ def sonos_announce(zones, alert_uri, volume, timeout, force_play):
     finished_waits = 0
     while not announcement_finished:
         logger.info('Waiting for announcement to finish...')
-        for zone in zones:
+        for zone in announce_zones:
             # transport info isn't reliable for all device types (eg Sonos amps may say they are always
             # playing when line-in is connected), so we wait until any single device says that playback
             # is fininshed: if announcement was sent to all devices, any of them finishing should be an
@@ -68,7 +75,7 @@ def sonos_announce(zones, alert_uri, volume, timeout, force_play):
                 break
 
     # restore each zone to previous state
-    for zone in zones:
+    for zone in announce_zones:
         logger.info('Restoring state for %s', zone.player_name)
         try:
             zone.snap.restore(fade=True)
