@@ -15,6 +15,7 @@ class MediaPlayer extends React.Component {
       is_authenticated: true,
       volume: 0,
       media_info: null,
+      show_announce_ui: false,
     };
 
     this.props.thing_registry.get_thing_action_state(this.props.player.name, 'media_player_state')
@@ -28,6 +29,8 @@ class MediaPlayer extends React.Component {
     this.onVolumeChanged = this.onVolumeChanged.bind(this);
     this.onNextClicked = this.onNextClicked.bind(this);
     this.onPrevClicked = this.onPrevClicked.bind(this);
+    this.onAnnouncementStart = this.onAnnouncementStart.bind(this);
+    this.onAnnouncementEnd = this.onAnnouncementEnd.bind(this);
     this.onTTSRequested = this.onTTSRequested.bind(this);
     this.onAnnouncementRequested = this.onAnnouncementRequested.bind(this);
   }
@@ -53,14 +56,37 @@ class MediaPlayer extends React.Component {
     this.props.thing_registry.set_thing(this.props.player.name, `volume=${vol}`);
   }
 
+  onAnnouncementStart() {
+    const st = this.state;
+    st.show_announce_ui = true;
+    this.setState(st);
+  }
+
+  onAnnouncementEnd() {
+    const st = this.state;
+    st.show_announce_ui = false;
+    this.setState(st);
+  }
+
   onTTSRequested() {
     if (!this.props.can_tts) {
       showGlobalError(`Requested unsupported action 'TTS' on player ${this.props.player.name}`);
       return;
     }
 
-    // TODO
-    this.props.thing_registry.set_thing(this.props.player.name, `tts_announce={"lang": "es", "phrase": "HOLA"}`);
+    const ttsElmId = `MediaPlayer_${this.props.player.name}_announce_tts_input`;
+    const ttsElm = document.getElementById(ttsElmId);
+    const phrase = ttsElm.value;
+
+    if (!!phrase && phrase.length > 0) {
+      // XXX XXX config default lang
+      this.props.thing_registry.set_thing(
+        this.props.player.name,
+        `tts_announce={"lang": "es", "phrase": "${phrase}"}`
+      );
+    }
+
+    this.onAnnouncementEnd();
   }
 
   onAnnouncementRequested() {
@@ -92,37 +118,70 @@ class MediaPlayer extends React.Component {
       </div>
   }
 
-  render_announce_or_tts() {
-    let announcements = [];
-    if (this.props.can_tts) {
-      announcements.push(
-        <button key={`MediaPlayer_${this.props.player.name}_tts_btn`}
-                className="player-button"
-                onClick={this.onTTSRequested}>
-          TTS
-        </button>
+  render_announce_or_tts_start() {
+    if (this.state.show_announce_ui) {
+      let announceMethods = [];
+      if (this.props.can_announce) {
+        announceMethods.push(
+          <li key={`MediaPlayerAnnounceMicRecord_${this.props.player.name}`}>
+            <button key={`MediaPlayer_${this.props.player.name}_announce_mic_rec_btn`}
+                  className="player-button"
+                  onClick={ this.onAnnouncementEnd /* XXX XXX */}>
+              Start mic record
+            </button>
+            <button key={`MediaPlayer_${this.props.player.name}_announce_mic_rec_send_btn`}
+                  className="player-button"
+                  onClick={ this.onAnnouncementEnd /* XXX XXX */}>
+              Send
+            </button>
+          </li>);
+      }
+      if (this.props.can_tts) {
+        announceMethods.push(
+          <li key={`MediaPlayerAnnounceTTS_${this.props.player.name}`}>
+            <input type="text"
+                id={`MediaPlayer_${this.props.player.name}_announce_tts_input`}
+                key={`MediaPlayer_${this.props.player.name}_announce_tts_input`}>
+            </input>
+            <button key={`MediaPlayer_${this.props.player.name}_announce_tts_btn`}
+                  className="player-button"
+                  onClick={ this.onTTSRequested }>
+              TTS
+            </button>
+          </li>);
+      }
+      return (
+        <ul id={`MediaPlayerAnnouncementMethods_${this.props.player.name}`}>
+          {announceMethods}
+          <li key={`MediaPlayerAnnounceCancel_${this.props.player.name}`}>
+            <button key={`MediaPlayer_${this.props.player.name}_announce_cancel_btn`}
+                  className="player-button"
+                  onClick={ this.onAnnouncementEnd }>
+              Cancel
+            </button>
+          </li>
+        </ul>
       );
     }
 
-    if (this.props.can_announce) {
-      announcements.push(
-        <button key={`MediaPlayer_${this.props.player.name}_announce_btn`}
+    if (this.props.can_tts || this.props.can_announce) {
+        return (
+          <button key={`MediaPlayer_${this.props.player.name}_tts_btn`}
                 className="player-button"
-                onClick={this.onAnnouncementRequested}>
-          Say
-        </button>
-      );
+                onClick={ this.onAnnouncementStart }>
+            Say
+          </button>
+        );
     }
 
-    return announcements;
+    return '';
   }
 
   render_no_media() {
-    return this.render_announce_or_tts();
     return (
       <div className="thing_div row container"
            key={`${this.props.player.name}_media_player_div`}>
-        { this.render_announce_or_tts() }
+        { this.render_announce_or_tts_start() }
       </div>
     );
   }
@@ -131,7 +190,7 @@ class MediaPlayer extends React.Component {
     return (
       <div className="thing_div row container"
            key={`${this.props.player.name}_media_player_div`}>
-        this.render_announce_or_tts();
+        this.render_announce_or_tts_start();
         <table>
         <tbody>
         <tr>
