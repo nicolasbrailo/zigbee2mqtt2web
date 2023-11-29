@@ -5,6 +5,7 @@ class MediaPlayer extends React.Component {
       player: player,
       can_tts: Object.keys(player.actions).includes("tts_announce"),
       can_announce: Object.keys(player.actions).includes("play_announcement"),
+      ttsLang: "es",
     }
   }
 
@@ -15,7 +16,8 @@ class MediaPlayer extends React.Component {
       is_authenticated: true,
       volume: 0,
       media_info: null,
-      show_announce_ui: false,
+      announce_ui_shown: false,
+      mic_recorder: null,
     };
 
     this.props.thing_registry.get_thing_action_state(this.props.player.name, 'media_player_state')
@@ -29,10 +31,11 @@ class MediaPlayer extends React.Component {
     this.onVolumeChanged = this.onVolumeChanged.bind(this);
     this.onNextClicked = this.onNextClicked.bind(this);
     this.onPrevClicked = this.onPrevClicked.bind(this);
-    this.onAnnouncementStart = this.onAnnouncementStart.bind(this);
+    this.onAnnouncementUiEnable = this.onAnnouncementUiEnable.bind(this);
     this.onAnnouncementEnd = this.onAnnouncementEnd.bind(this);
     this.onTTSRequested = this.onTTSRequested.bind(this);
-    this.onAnnouncementRequested = this.onAnnouncementRequested.bind(this);
+    this.onMicRecRequested = this.onMicRecRequested.bind(this);
+    this.onMicRecSend = this.onMicRecSend.bind(this);
   }
 
   onPlayClicked() {
@@ -56,15 +59,16 @@ class MediaPlayer extends React.Component {
     this.props.thing_registry.set_thing(this.props.player.name, `volume=${vol}`);
   }
 
-  onAnnouncementStart() {
+  onAnnouncementUiEnable() {
     const st = this.state;
-    st.show_announce_ui = true;
+    st.announce_ui_shown = true;
     this.setState(st);
   }
 
   onAnnouncementEnd() {
     const st = this.state;
-    st.show_announce_ui = false;
+    st.announce_ui_shown = false;
+    st.mic_recorder = null; // TODO cleanup
     this.setState(st);
   }
 
@@ -74,28 +78,70 @@ class MediaPlayer extends React.Component {
       return;
     }
 
-    const ttsElmId = `MediaPlayer_${this.props.player.name}_announce_tts_input`;
-    const ttsElm = document.getElementById(ttsElmId);
-    const phrase = ttsElm.value;
-
+    const phrase = prompt(`What should ${this.props.player.name} say?`);
     if (!!phrase && phrase.length > 0) {
-      // XXX XXX config default lang
       this.props.thing_registry.set_thing(
         this.props.player.name,
-        `tts_announce={"lang": "es", "phrase": "${phrase}"}`
+        `tts_announce={"lang": "${this.props.ttsLang}", "phrase": "${phrase}"}`
       );
     }
 
     this.onAnnouncementEnd();
   }
 
-  onAnnouncementRequested() {
+  onMicRecRequested() {
     if (!this.props.can_announce) {
       showGlobalError(`Requested unsupported action 'announcement' on player ${this.props.player.name}`);
+      this.onAnnouncementEnd();
       return;
     }
 
-    // TODO
+    if (!navigator.mediaDevices) {
+      showGlobalError(`Can't access microphone (hint: this only works on https pages)`);
+      this.onAnnouncementEnd();
+      return;
+    }
+
+    navigator.mediaDevices.getUserMedia({video: false, audio: true})
+    .then(mic => {
+      const mediaRecorder = new MediaRecorder(mic);
+      mediaRecorder.mic = mic;
+      mediaRecorder.chunks = [];
+      mediaRecorder.ondataavailable = e => { console.log(e.data); mediaRecorder.chunks.push(e.data); };
+      mediaRecorder.start();
+
+      const st = this.state;
+      st.mic_recorder = mediaRecorder;
+      st.announce_ui_shown = false;
+      this.setState(st);
+    }).catch(err => {
+      showGlobalError(`Can't find microphone to record message: ${err}`);
+      this.onAnnouncementEnd();
+    });
+  }
+
+  onMicRecSend() {
+    if (this.state.mic_recorder == null) {
+      showGlobalError("Application state error: can't find mic");
+      this.onAnnouncementEnd();
+      return;
+    }
+
+    const micRec = this.state.mic_recorder;
+    micRec.addEventListener("stop", _ => {
+      console.log(micRec.chunks);
+      const blob = new Blob(micRec.chunks, { type: 'audio/ogg; codecs=opus' });
+      const audioElement = new Audio();
+      audioElement.src = URL.createObjectURL(blob);
+      audioElement.play();
+      audioElement.controls = true;
+      micRec.audioElement = audioElement;
+      document.getElementById('ConfigPane_config_options').appendChild(audioElement);
+      // TODO send
+    });
+
+    micRec.stop();
+    this.onAnnouncementEnd();
   }
 
   render() {
@@ -118,31 +164,43 @@ class MediaPlayer extends React.Component {
       </div>
   }
 
-  render_announce_or_tts_start() {
-    if (this.state.show_announce_ui) {
+  render_announce_ui() {
+    if (this.state.announce_ui_shown) {
+      return this.render_active_announce_ui();
+    }
+
+    if (this.state.mic_recorder) {
+      return this.render_announce_ui_mic_recording();
+    }
+
+    if (this.props.can_tts || this.props.can_announce) {
+        return (
+          <button key={`MediaPlayer_${this.props.player.name}_tts_ui_start_btn`}
+                className="player-tts-button"
+                onClick={ this.onAnnouncementUiEnable }>
+            {this.props.player.name} Say
+          </button>
+        );
+    }
+
+    return '';
+  }
+
+  render_active_announce_ui() {
       let announceMethods = [];
       if (this.props.can_announce) {
         announceMethods.push(
           <li key={`MediaPlayerAnnounceMicRecord_${this.props.player.name}`}>
             <button key={`MediaPlayer_${this.props.player.name}_announce_mic_rec_btn`}
                   className="player-button"
-                  onClick={ this.onAnnouncementEnd /* XXX XXX */}>
-              Start mic record
-            </button>
-            <button key={`MediaPlayer_${this.props.player.name}_announce_mic_rec_send_btn`}
-                  className="player-button"
-                  onClick={ this.onAnnouncementEnd /* XXX XXX */}>
-              Send
+                  onClick={ this.onMicRecRequested }>
+              Record
             </button>
           </li>);
       }
       if (this.props.can_tts) {
         announceMethods.push(
           <li key={`MediaPlayerAnnounceTTS_${this.props.player.name}`}>
-            <input type="text"
-                id={`MediaPlayer_${this.props.player.name}_announce_tts_input`}
-                key={`MediaPlayer_${this.props.player.name}_announce_tts_input`}>
-            </input>
             <button key={`MediaPlayer_${this.props.player.name}_announce_tts_btn`}
                   className="player-button"
                   onClick={ this.onTTSRequested }>
@@ -151,7 +209,8 @@ class MediaPlayer extends React.Component {
           </li>);
       }
       return (
-        <ul id={`MediaPlayerAnnouncementMethods_${this.props.player.name}`}>
+        <ul className="player-announce-methods"
+            id={`MediaPlayerAnnouncementMethods_${this.props.player.name}`}>
           {announceMethods}
           <li key={`MediaPlayerAnnounceCancel_${this.props.player.name}`}>
             <button key={`MediaPlayer_${this.props.player.name}_announce_cancel_btn`}
@@ -162,26 +221,35 @@ class MediaPlayer extends React.Component {
           </li>
         </ul>
       );
-    }
+  }
 
-    if (this.props.can_tts || this.props.can_announce) {
-        return (
-          <button key={`MediaPlayer_${this.props.player.name}_tts_btn`}
-                className="player-button"
-                onClick={ this.onAnnouncementStart }>
-            Say
-          </button>
-        );
-    }
-
-    return '';
+  render_announce_ui_mic_recording() {
+      return (
+        <ul className="player-announce-methods"
+            id={`MediaPlayerAnnouncementMethods_${this.props.player.name}`}>
+          <li key={`MediaPlayerAnnounce_${this.props.player.name}_mic_send_li`}>
+            <button key={`MediaPlayer_${this.props.player.name}_mic_rec_send_btn`}
+                  className="player-button"
+                  onClick={ this.onMicRecSend }>
+              Send
+            </button>
+          </li>
+          <li key={`MediaPlayerAnnounce_${this.props.player.name}_mic_rec_cancel_li`}>
+            <button key={`MediaPlayer_${this.props.player.name}_mic_rec_cancel_btn`}
+                  className="player-button"
+                  onClick={ this.onAnnouncementEnd }>
+              Cancel
+            </button>
+          </li>
+        </ul>
+      );
   }
 
   render_no_media() {
     return (
       <div className="thing_div row container"
            key={`${this.props.player.name}_media_player_div`}>
-        { this.render_announce_or_tts_start() }
+        { this.render_announce_ui() }
       </div>
     );
   }
@@ -190,7 +258,7 @@ class MediaPlayer extends React.Component {
     return (
       <div className="thing_div row container"
            key={`${this.props.player.name}_media_player_div`}>
-        this.render_announce_or_tts_start();
+        this.render_announce_ui();
         <table>
         <tbody>
         <tr>

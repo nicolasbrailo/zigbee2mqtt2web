@@ -3,6 +3,11 @@ Pipfile
 config.json
 config.spotify_cache.json
 zigbee2mqtt2web_ui/build/
+zmw.cert
+zmw.key
+
+# Cache
+tts_cache
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -58,3 +58,33 @@
     width:100px;
   }
 }
+
+#MediaPlayerList .player-tts-button {
+  background: transparent;
+  font-size: x-large;
+  width: 100%;
+  opacity: 0.6;
+  margin: 5px;
+  border: 2px solid var(--color-primary);
+}
+
+#MediaPlayerList .player-announce-methods {
+  font-size: medium;
+  width: 100%;
+  margin: 5px;
+  padding: 5px;
+  border: 2px solid var(--color-primary);
+}
+
+#MediaPlayerList .player-announce-methods li {
+  display: inline;
+}
+
+#MediaPlayerList .player-announce-methods li button {
+  border: 2px solid var(--color-secondary);
+  opacity: 0.6;
+  padding: 5px;
+  margin: 5px;
+  font-size: medium;
+}
+

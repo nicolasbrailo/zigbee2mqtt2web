@@ -146,7 +146,9 @@ class Zigbee2Mqtt2Flask2js {
       }
     };
 
-    this.socket = io.connect('http://' + document.domain + ':' + location.port);
+    const sock_url = document.location.protocol + '//' + document.location.host;
+    console.log(`Connecting to websocket at ${sock_url}`)
+    this.socket = io.connect(sock_url);
     //this.socket.onAny(console.log);
     this.socket.on('mqtt_thing_msg', forward_msg);
     this.socket.on('mqtt_networkmap', forward_msg);

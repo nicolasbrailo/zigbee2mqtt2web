@@ -27,6 +27,7 @@ def _validate(cfg):
         'ui_uri_prefix': '/www',
         'www_extra_local_path': None,
         'www_extra_uri_prefix': None,
+        'ssl': None,
     }
 
     if 'ui_local_path' in cfg:
@@ -52,6 +53,20 @@ def _validate(cfg):
             raise RuntimeError(
                 f"www extra URI prefix ({ok_cfg['www_extra_uri_prefix']}) can't be "
                 f"the same as www UI URI prefix ({ok_cfg['ui_uri_prefix']})")
+
+    if 'www_https' in cfg:
+        if cfg['www_https'] == "" or cfg['www_https'] == "adhoc":
+            ok_cfg['ssl'] = 'adhoc'
+        else:
+            crt = os.path.join(cfg['www_https'], 'zmw.cert')
+            if not os.path.isfile(crt):
+                raise FileNotFoundError(f"SSL/HTTPS mode enabled, but can't find {crt} (hint: use `make ssl`")
+
+            key = os.path.join(cfg['www_https'], 'zmw.key')
+            if not os.path.isfile(key):
+                raise FileNotFoundError(f"SSL/HTTPS mode enabled, but can't find {key} (hint: use `make ssl`")
+
+            ok_cfg['ssl'] = (crt, key)
 
     return ok_cfg
 
@@ -239,15 +254,24 @@ class FlaskBridge:
             'zigbee2mqtt2flask active on [%s]:%d',
             self._cfg["host"],
             self._cfg["port"])
-        self._flask_socketio.run(
-            self._flask,
-            host=self._cfg["host"],
-            port=self._cfg["port"],
-            # werkzeug may not be recommended, but it's the only server
-            # that works reliably in a RPi and doesn't cause a mess with
-            # dependencies. It also seems to be performant enough for this app
-            allow_unsafe_werkzeug=True,
-            debug=False)
+        kw = {
+                "host": self._cfg["host"],
+                "port": self._cfg["port"],
+                # werkzeug may not be recommended, but it's the only server
+                # that works reliably in a RPi and doesn't cause a mess with
+                # dependencies. It also seems to be performant enough for this app
+                "allow_unsafe_werkzeug": True,
+                "debug": False,
+        }
+        if self._cfg['ssl']:
+            kw['ssl_context'] = self._cfg['ssl']
+        try:
+            self._flask_socketio.run(self._flask, **kw)
+        except TypeError as ex:
+            if 'ssl_context' in kw:
+                logger.info("Can't start flask, are you sure ssl is installed?", exc_info=True)
+                exit(0)
+            raise ex
 
     def _register_socket_fwds(self):
         logger.info('FlaskBridge: register socket forwarder for mqtt messages')
