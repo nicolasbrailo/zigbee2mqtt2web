@@ -52,15 +52,16 @@
   "sonos": {
        "debug_log": false,
 
-       "COMMENT_webpath_prefix": "url prefix for sonos REST interface",
-       "webpath_prefix": "sonos",
+       "COMMENT_zmw_thing_name": "Used as url prefix for sonos REST interface and general id for the web interface",
+       "zmw_thing_name": "sonos",
 
-       "COMMENT_tts_cache_path": "Where to store TTS asset files after downloading",
+       "COMMENT_cache_paths": "Where to store audio asset files after (TTS or adhoc user uploads)",
        "tts_cache_path": "./tts_cache",
+       "user_audio_cache_path": "./user_audio_cache",
 
        "COMMENT1_url_base_tts_asset_webserver": "URL that can serve TTS assets; needs to be reachable by all Sonos speakers",
        "COMMENT2_url_base_tts_asset_webserver": "Hint: you probably want http://$LAN_VISIBLE_IP:$THIS_CONFIG_HTTP_ONLY_PORT",
-       "url_base_tts_asset_webserver": "http://192.168.1.152:1235"
+       "url_base_asset_webserver": "http://192.168.1.152:1235"
   },
 
   "COMMENT": "Security cam settings. Read FTPD.py for info",

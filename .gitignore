@@ -8,6 +8,7 @@ zmw.key
 
 # Cache
 tts_cache
+user_audio_cache
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

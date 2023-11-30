@@ -107,7 +107,7 @@ class MediaPlayer extends React.Component {
       const mediaRecorder = new MediaRecorder(mic);
       mediaRecorder.mic = mic;
       mediaRecorder.chunks = [];
-      mediaRecorder.ondataavailable = e => { console.log(e.data); mediaRecorder.chunks.push(e.data); };
+      mediaRecorder.ondataavailable = e => { mediaRecorder.chunks.push(e.data); };
       mediaRecorder.start();
 
       const st = this.state;
@@ -129,15 +129,29 @@ class MediaPlayer extends React.Component {
 
     const micRec = this.state.mic_recorder;
     micRec.addEventListener("stop", _ => {
-      console.log(micRec.chunks);
       const blob = new Blob(micRec.chunks, { type: 'audio/ogg; codecs=opus' });
-      const audioElement = new Audio();
-      audioElement.src = URL.createObjectURL(blob);
-      audioElement.play();
-      audioElement.controls = true;
-      micRec.audioElement = audioElement;
-      document.getElementById('ConfigPane_config_options').appendChild(audioElement);
-      // TODO send
+      // Useful to debug
+      if (false) {
+        const audioElement = new Audio();
+        audioElement.src = URL.createObjectURL(blob);
+        audioElement.controls = true;
+        document.getElementById('ConfigPane_config_options').appendChild(audioElement);
+      }
+
+      var audioForm = new FormData();
+      audioForm.append("audio_data", blob, "mic_cap.mp3");
+
+      $.ajax({
+        url: `/${this.props.player.name}/announce_user_recording`,
+        data: audioForm,
+        cache: false,
+        contentType: false,
+        processData: false,
+        method: 'POST',
+        type: 'POST',
+        success: _ => { console.log('Sent user recording for announcement'); },
+        error: showGlobalError,
+      });
     });
 
     micRec.stop();

@@ -62,11 +62,13 @@ def _validate(cfg):
         else:
             crt = os.path.join(cfg['www_https'], 'zmw.cert')
             if not os.path.isfile(crt):
-                raise FileNotFoundError(f"SSL/HTTPS mode enabled, but can't find {crt} (hint: use `make ssl`")
+                raise FileNotFoundError(
+                    f"SSL/HTTPS mode enabled, but can't find {crt} (hint: use `make ssl`")
 
             key = os.path.join(cfg['www_https'], 'zmw.key')
             if not os.path.isfile(key):
-                raise FileNotFoundError(f"SSL/HTTPS mode enabled, but can't find {key} (hint: use `make ssl`")
+                raise FileNotFoundError(
+                    f"SSL/HTTPS mode enabled, but can't find {key} (hint: use `make ssl`")
 
             ok_cfg['ssl'] = (crt, key)
 
@@ -260,7 +262,8 @@ class FlaskBridge:
         """ Same as add_url_rule, but will ensure requests are accepted over http or
         over https; this is useful when using https mode with a self-signed cert """
         if self._http_only_flask_proc is not None:
-            raise RuntimeError("Can't add a new http-only asset rule after the http server has started")
+            raise RuntimeError(
+                "Can't add a new http-only asset rule after the http server has started")
 
         if methods is None:
             methods = ['GET']
@@ -281,13 +284,13 @@ class FlaskBridge:
             self._cfg["host"],
             self._cfg["port"])
         kw = {
-                "host": self._cfg["host"],
-                "port": self._cfg["port"],
-                # werkzeug may not be recommended, but it's the only server
-                # that works reliably in a RPi and doesn't cause a mess with
-                # dependencies. It also seems to be performant enough for this app
-                "allow_unsafe_werkzeug": True,
-                "debug": False,
+            "host": self._cfg["host"],
+            "port": self._cfg["port"],
+            # werkzeug may not be recommended, but it's the only server
+            # that works reliably in a RPi and doesn't cause a mess with
+            # dependencies. It also seems to be performant enough for this app
+            "allow_unsafe_werkzeug": True,
+            "debug": False,
         }
         if self._cfg['ssl']:
             kw['ssl_context'] = self._cfg['ssl']
@@ -295,19 +298,22 @@ class FlaskBridge:
             self._flask_socketio.run(self._flask, **kw)
         except TypeError as ex:
             if 'ssl_context' in kw:
-                logger.info("Can't start flask, are you sure ssl is installed?", exc_info=True)
+                logger.info(
+                    "Can't start flask, are you sure ssl is installed?",
+                    exc_info=True)
                 exit(0)
             raise ex
 
         if self._http_only_flask_proc is not None:
             # At this point, the logger won't work (http_only is forking and may close the fd
-            # before we get here), so logging anything may result in an exception
+            # before we get here), so logging anything may result in an
+            # exception
             self._http_only_flask_proc.kill()
             self._http_only_flask_proc.join(timeout=10)
             if self._http_only_flask_proc.exitcode is None:
-                logger.info('zigbee2mqtt2flask http-only failed to shut down, terminating...')
+                logger.info(
+                    'zigbee2mqtt2flask http-only failed to shut down, terminating...')
                 self._http_only_flask_proc.terminate()
-
 
     def _start_http_server(self):
         """ https probably won't work for all use cases, as using self-signed certs will
@@ -330,16 +336,15 @@ class FlaskBridge:
         # eg multiprocessing.set_start_method('spawn')
 
         kw = {
-                "host": self._cfg["host"],
-                "port": self._cfg["http_port"],
-                "debug": False,
+            "host": self._cfg["host"],
+            "port": self._cfg["http_port"],
+            "debug": False,
         }
         self._http_only_flask_proc = Process(
-                    target=self._http_only_flask.run,
-                    name="ZMW_Flask_httponly",
-                    kwargs=kw)
+            target=self._http_only_flask.run,
+            name="ZMW_Flask_httponly",
+            kwargs=kw)
         self._http_only_flask_proc.start()
-
 
     def _register_socket_fwds(self):
         logger.info('FlaskBridge: register socket forwarder for mqtt messages')
