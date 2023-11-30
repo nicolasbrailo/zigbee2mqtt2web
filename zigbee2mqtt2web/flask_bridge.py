@@ -11,6 +11,7 @@ import dataclasses
 import json
 import os
 import subprocess
+from multiprocessing import Process
 
 import logging
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ def _validate(cfg):
         'host': cfg['server_listen_host'] if (
             'server_listen_host' in cfg) else '0.0.0.0',
         'port': cfg['server_listen_port'],
+        'http_port': cfg['httponly_listen_port'] if 'httponly_listen_port' in cfg else None,
         'server_systemd_name': cfg['server_systemd_name'],
         'socketio_topic': cfg['mqtt_socketio_topic'],
         'ui_local_path': None,
@@ -82,6 +84,12 @@ class FlaskBridge:
         self._last_graphvizmap = None
 
         self._flask = Flask(self._cfg['server_systemd_name'])
+        self._http_only_flask_proc = None
+        if self._cfg['http_port'] is None:
+            self._http_only_flask = None
+        else:
+            httpName = self._cfg['server_systemd_name'] + '_httponly'
+            self._http_only_flask = Flask(httpName)
 
         # If websockets break, try this instead:
         #
@@ -248,8 +256,26 @@ class FlaskBridge:
             view_func=view_func,
             methods=methods)
 
+    def add_asset_url_rule(self, url, view_func, methods=None):
+        """ Same as add_url_rule, but will ensure requests are accepted over http or
+        over https; this is useful when using https mode with a self-signed cert """
+        if self._http_only_flask_proc is not None:
+            raise RuntimeError("Can't add a new http-only asset rule after the http server has started")
+
+        if methods is None:
+            methods = ['GET']
+
+        self.add_url_rule(url, view_func, methods)
+
+        return self._http_only_flask.add_url_rule(
+            rule=url,
+            endpoint=url,
+            view_func=view_func,
+            methods=methods)
+
     def start(self):
-        """ Start Flask and socket.io """
+        """ Start Flask, socket.io and http-only Flask """
+        self._start_http_server()
         logger.info(
             'zigbee2mqtt2flask active on [%s]:%d',
             self._cfg["host"],
@@ -272,6 +298,48 @@ class FlaskBridge:
                 logger.info("Can't start flask, are you sure ssl is installed?", exc_info=True)
                 exit(0)
             raise ex
+
+        if self._http_only_flask_proc is not None:
+            # At this point, the logger won't work (http_only is forking and may close the fd
+            # before we get here), so logging anything may result in an exception
+            self._http_only_flask_proc.kill()
+            self._http_only_flask_proc.join(timeout=10)
+            if self._http_only_flask_proc.exitcode is None:
+                logger.info('zigbee2mqtt2flask http-only failed to shut down, terminating...')
+                self._http_only_flask_proc.terminate()
+
+
+    def _start_http_server(self):
+        """ https probably won't work for all use cases, as using self-signed certs will
+        run into security warnings. This means for LAN use cases, some actions may only
+        be possible with http only (eg Sonos picking up a static asset for playback).
+
+        Note this extra http server is started as a new process, and there is no interaction
+        possible with it once it starts (eg no new routes may be added)
+        """
+
+        if self._http_only_flask is None:
+            return
+
+        logger.info(
+            'zigbee2mqtt2flask starting http-only subprocess [%s]:%d',
+            self._cfg["host"],
+            self._cfg["http_port"])
+
+        # If things act up, try with different fork mechanisms
+        # eg multiprocessing.set_start_method('spawn')
+
+        kw = {
+                "host": self._cfg["host"],
+                "port": self._cfg["http_port"],
+                "debug": False,
+        }
+        self._http_only_flask_proc = Process(
+                    target=self._http_only_flask.run,
+                    name="ZMW_Flask_httponly",
+                    kwargs=kw)
+        self._http_only_flask_proc.start()
+
 
     def _register_socket_fwds(self):
         logger.info('FlaskBridge: register socket forwarder for mqtt messages')

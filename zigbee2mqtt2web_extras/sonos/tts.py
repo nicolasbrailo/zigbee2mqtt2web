@@ -19,7 +19,7 @@ def get_local_path_tts(cache_path, phrase, lang):
     Path(cache_path).mkdir(parents=True, exist_ok=True)
 
     # Get a url, and the local path to the cache
-    url_base = 'http://translate.google.com/translate_tts?client=tw-ob&tl={lang}&q={phrase}'
+    url_base = 'https://translate.google.com/translate_tts?client=tw-ob&tl={lang}&q={phrase}'
     url = url_base.format(lang=lang, phrase=quote(phrase))
     cache_fname = hashlib.md5(url.encode('utf-8')).hexdigest() + '.mp3'
     cached = Path(os.path.join(cache_path, cache_fname))

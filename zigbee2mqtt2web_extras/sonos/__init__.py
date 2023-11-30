@@ -101,9 +101,9 @@ class Sonos(PhonyZMWThing):
         webserver.add_url_rule(
             f'/{self._cfg["webpath_prefix"]}/tts_announce/<lang>/<phrase>',
             self.tts_announce)
-        webserver.add_url_rule(
+        webserver.add_asset_url_rule(
             self._cfg["webpath_tts_asset"],
-            self.tts_asset)
+            self._serve_tts_asset)
 
     def _announce_test_ui(self):
         """ Creates a trivial form to test announcmenets """
@@ -231,6 +231,6 @@ class Sonos(PhonyZMWThing):
             force)
         return tts_asset_url
 
-    def tts_asset(self, fname):
+    def _serve_tts_asset(self, fname):
         """ Serve a file asset created from tts_announce """
         return send_from_directory(self._cfg['tts_cache_path'], fname)

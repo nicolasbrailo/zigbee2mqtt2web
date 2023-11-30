@@ -16,6 +16,10 @@ logger = logging.getLogger('ZMWSonos')
 def sonos_announce(zones, alert_uri, volume, timeout, force_play):
     """ Send an announcement to all zones """
 
+    logger.info(
+        'Preparing announcement %s volume %s timeout %s',
+        alert_uri, volume, timeout)
+
     # prepare all zones for playing the alert
     announce_zones = []
     for zone in zones:
