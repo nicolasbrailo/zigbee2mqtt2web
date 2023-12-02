@@ -57,6 +57,8 @@ install_service:
 	@# authbind -> run in port 80 with no root
 	sudo touch /etc/authbind/byport/80
 	sudo chmod 777 /etc/authbind/byport/80
+	sudo touch /etc/authbind/byport/443
+	sudo chmod 777 /etc/authbind/byport/443
 	cat ./scripts/zigbee2mqtt2web.service.template | \
 		sed "s|#INSTALL_DIR#|$(SRC_DIR)|g" | \
 		sudo tee >/dev/null /etc/systemd/system/zigbee2mqtt2web.service
