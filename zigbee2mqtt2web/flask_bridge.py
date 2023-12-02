@@ -7,11 +7,12 @@ from flask import send_from_directory
 from flask import url_for
 from flask_socketio import SocketIO
 
+from multiprocessing import Process
 import dataclasses
 import json
 import os
 import subprocess
-from multiprocessing import Process
+import sys
 
 import logging
 logger = logging.getLogger(__name__)
@@ -90,10 +91,13 @@ class FlaskBridge:
         if self._cfg['http_port'] is None:
             self._http_only_flask = None
         else:
-            httpName = self._cfg['server_systemd_name'] + '_httponly'
-            self._http_only_flask = Flask(httpName)
+            http_name = self._cfg['server_systemd_name'] + '_httponly'
+            self._http_only_flask = Flask(http_name)
 
-            https_redir = lambda: redirect(FlaskRequest.url.replace('http://', 'https://', 1), code=301)
+            def https_redir():
+                return redirect(
+                    FlaskRequest.url.replace(
+                        'http://', 'https://', 1), code=301)
             self._http_only_flask.add_url_rule(
                 rule='/',
                 endpoint='/',
@@ -283,6 +287,13 @@ class FlaskBridge:
                 view_func=view_func,
                 methods=methods)
 
+    def has_http_mode(self):
+        """ This server is using http mode there exists an http_only flask process, or if
+        ssl certs are not part of the configuration """
+        ssl_disabled = 'ssl' not in self._cfg or self._cfg['ssl'] is None
+        has_http_srv = self._http_only_flask is not None
+        return ssl_disabled or has_http_srv
+
     def start(self):
         """ Start Flask, socket.io and http-only Flask """
         self._start_http_server()
@@ -290,7 +301,7 @@ class FlaskBridge:
             'zigbee2mqtt2flask active on [%s]:%d',
             self._cfg["host"],
             self._cfg["port"])
-        kw = {
+        kwargs = {
             "host": self._cfg["host"],
             "port": self._cfg["port"],
             # werkzeug may not be recommended, but it's the only server
@@ -300,15 +311,15 @@ class FlaskBridge:
             "debug": False,
         }
         if self._cfg['ssl']:
-            kw['ssl_context'] = self._cfg['ssl']
+            kwargs['ssl_context'] = self._cfg['ssl']
         try:
-            self._flask_socketio.run(self._flask, **kw)
+            self._flask_socketio.run(self._flask, **kwargs)
         except TypeError as ex:
-            if 'ssl_context' in kw:
+            if 'ssl_context' in kwargs:
                 logger.info(
                     "Can't start flask, are you sure ssl is installed?",
                     exc_info=True)
-                exit(0)
+                sys.exit(0)
             raise ex
 
         if self._http_only_flask_proc is not None:
@@ -342,7 +353,7 @@ class FlaskBridge:
         # If things act up, try with different fork mechanisms
         # eg multiprocessing.set_start_method('spawn')
 
-        kw = {
+        kwargs = {
             "host": self._cfg["host"],
             "port": self._cfg["http_port"],
             "debug": False,
@@ -350,7 +361,7 @@ class FlaskBridge:
         self._http_only_flask_proc = Process(
             target=self._http_only_flask.run,
             name="ZMW_Flask_httponly",
-            kwargs=kw)
+            kwargs=kwargs)
         self._http_only_flask_proc.start()
 
     def _register_socket_fwds(self):

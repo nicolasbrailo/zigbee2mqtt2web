@@ -155,7 +155,7 @@ class MqttProxy:
             last_seen_delta)
 
     def start_zigbee2mqtt_ping(self):
-        """ Send a ping to Z2M (the response is async, will be delivered on 
+        """ Send a ping to Z2M (the response is async, will be delivered on
         _Z2M_ALIVE_RESPONSE_TOPIC """
         self.broadcast(_Z2M_ALIVE_REQUEST_TOPIC, '')
 

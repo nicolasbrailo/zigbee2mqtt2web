@@ -59,12 +59,9 @@ def is_this_sonos_playing_something(device):
 class Sonos(PhonyZMWThing):
     """ Wraps all Sonos in the LAN as a ZMW thing """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, webserver):
         # Ensure we have all needed cfgs
         cfg['zmw_thing_name']  # pylint: disable=pointless-statement
-        cfg['tts_cache_path']  # pylint: disable=pointless-statement
-        cfg['user_audio_cache_path']  # pylint: disable=pointless-statement
-        cfg['url_base_asset_webserver']  # pylint: disable=pointless-statement
 
         super().__init__(
             name=cfg['zmw_thing_name'],
@@ -73,11 +70,13 @@ class Sonos(PhonyZMWThing):
         )
 
         _config_logger(cfg['debug_log'])
-
-        cfg['webpath_tts_asset'] = f'/{cfg["zmw_thing_name"]}/tts_asset/<fname>'
-        cfg['webpath_user_audio_asset'] = f'/{cfg["zmw_thing_name"]}/user_audio/<fname>'
         self._cfg = cfg
+        self._add_base_zmw_actions()
+        self._add_tts_actions(webserver)
+        self._add_user_audio_actions(webserver)
 
+    def _add_base_zmw_actions(self):
+        """ Add ZMW general actions, like stop or announce """
         self._add_action('stop',
                          'Stop all Sonos in the LAN from playing anything',
                          setter=self._stop)
@@ -94,34 +93,74 @@ class Sonos(PhonyZMWThing):
             'Play a (short) clip on all LAN Sonos. Request should contain either only'
             'a URL, or a message like {"uri": $, "volume": $, "timeout_secs": [$, $]}',
             setter=self._play_announcement)
+
+    def _add_user_audio_actions(self, webserver):
+        """ Add user recording playback actions + webserver routes """
+        if 'enable_user_audio_annoucements' not in self._cfg or \
+                self._cfg['enable_user_audio_annoucements'] is not True:
+            logger.info(
+                'Skip user audio announcmenets, disabled in configuration')
+            return
+
+        if not webserver.has_http_mode():
+            raise RuntimeError(
+                'Sonos user audio announce is enabled, but HTTP mode is not enabled. '
+                'HTTP required for asset delivery')
+
+        # Check if we have all required configs
+        self._cfg['user_audio_cache_path']  # pylint: disable=pointless-statement
+        self._cfg['url_base_asset_webserver']  # pylint: disable=pointless-statement
+
+        self._add_action(
+           'user_audio_announce',
+           'Upload a user audio clip and play it as announcement on all known Sonos',
+           setter=self._user_audio_announce_start)
+        self._cfg['webpath_user_audio_asset'] = f'/{self._cfg["zmw_thing_name"]}/user_audio/<fname>'
+        webserver.add_url_rule(
+            f'/{self._cfg["zmw_thing_name"]}/say',
+            self._announce_test_ui)
+        webserver.add_url_rule(
+            f'/{self._cfg["zmw_thing_name"]}/announce_user_recording',
+            self._announce_user_recording, methods=['POST'])
+        webserver.add_asset_url_rule(
+            self._cfg["webpath_user_audio_asset"],
+            self._serve_user_audio_asset)
+
+        logger.info(
+            '%s supports user audio announcmenets',
+            self._cfg["zmw_thing_name"])
+
+    def _add_tts_actions(self, webserver):
+        """ Add TTS playback actions + webserver routes """
+        if 'enable_tts_annoucements' not in self._cfg or \
+                self._cfg['enable_tts_annoucements'] is not True:
+            logger.info('Skip TTS init, disabled in configuration')
+            return
+
+        if not webserver.has_http_mode():
+            raise RuntimeError('Sonos TTS is enabled, but HTTP mode is not. '
+                'HTTP required for asset delivery')
+
+        # Verify required config exists
+        self._cfg['tts_cache_path']  # pylint: disable=pointless-statement
+        self._cfg['url_base_asset_webserver']  # pylint: disable=pointless-statement
+
+        self._cfg['webpath_tts_asset'] = f'/{self._cfg["zmw_thing_name"]}/tts_asset/<fname>'
         self._add_action(
             'tts_announce',
             'Play a TTS clip on all LAN Sonos. Request should contain a message like '
             '{"phrase": $, "lang": $, "volume": $, "timeout_secs": $}',
             setter=self._tts_announce)
-        # TODO: Check PUT support
-        # self._add_action(
-        #    'user_audio_announce',
-        #    'Play a user audio clip on all LAN Sonos',
-        #    setter=self._todo)
-
-    def add_announcement_paths(self, webserver):
-        """ Adds paths for announcements to a flask instance """
-        webserver.add_url_rule(
-            f'/{self._cfg["zmw_thing_name"]}/say',
-            self._announce_test_ui)
         webserver.add_url_rule(
             f'/{self._cfg["zmw_thing_name"]}/tts_announce/<lang>/<phrase>',
             self.tts_announce)
-        webserver.add_url_rule(
-            f'/{self._cfg["zmw_thing_name"]}/announce_user_recording',
-            self._announce_user_recording, methods=['POST'])
         webserver.add_asset_url_rule(
             self._cfg["webpath_tts_asset"],
             self._serve_tts_asset)
-        webserver.add_asset_url_rule(
-            self._cfg["webpath_user_audio_asset"],
-            self._serve_user_audio_asset)
+
+        logger.info(
+            '%s supports TTS announcmenets',
+            self._cfg["zmw_thing_name"])
 
     def _announce_test_ui(self):
         """ Creates a trivial form to test announcmenets """
@@ -190,10 +229,11 @@ class Sonos(PhonyZMWThing):
 
         if uri is None or len(uri) == 0:
             logger.warning(
-                f"Received request to Sonos-announce invalid uri '{uri}'")
+                'Received request to Sonos-announce invalid uri %s', uri)
             return f"Can't play {uri}", 406
 
         self.play_announcement(uri, volume, timeout_secs, force)
+        return "OK", 200
 
     def play_announcement(
             self,
@@ -235,6 +275,10 @@ class Sonos(PhonyZMWThing):
 
         return self.tts_announce(
             lang, msg['phrase'], volume, timeout_secs, force)
+
+    def _user_audio_announce_start(self):
+        # TODO: Check PUT support
+        raise RuntimeError('Not implemented')
 
     def tts_announce(self, lang, phrase,
                      announcement_volume=50,
@@ -291,29 +335,26 @@ class Sonos(PhonyZMWThing):
             # ask the user to retry.
             return "Error saving user audio, please try again", 429
 
-        fileContents = FlaskRq.files['audio_data']
-        fileContents.save(user_audio_path)
+        FlaskRq.files['audio_data'].save(user_audio_path)
         if not user_audio_path.is_file():
             return "Error saving user audio, please try again", 500
-        logger.info(f'Saved raw user audio to {user_audio_path}')
+        logger.info('Saved raw user audio to %s', user_audio_path)
 
         # Give user upload a pass through ffmpeg, to ensure it's on a format
         # that we support
         cmd = f"ffmpeg -i {user_audio_path} -acodec mp3 {user_audio_cleaned_path}"
         try:
-            proc = subprocess.run(
+            subprocess.run(
                 cmd.split(),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
                 check=True,
                 timeout=10)
-        except subprocess.CalledProcessError as ex:
+        except subprocess.CalledProcessError:
             logger.warning(
-                f"Can't validate user uploaded audio file {user_audio_path}",
+                "Can't validate user uploaded audio file %s", user_audio_path,
                 exc_info=True)
-            logger.info(proc.stdout)
-            logger.info(proc.stderr)
             return "Can't validate uploaded file", 406
 
         if not user_audio_cleaned_path.is_file():
@@ -321,9 +362,10 @@ class Sonos(PhonyZMWThing):
 
         try:
             os.remove(user_audio_path)
-        except FileNotFoundError as OSError:
+        except (FileNotFoundError, OSError):
             logger.warning(
-                f"Can't cleanup temporary user uploaded audio file {user_audio_path}",
+                "Can't cleanup temporary user uploaded audio file %s",
+                user_audio_path,
                 exc_info=True)
 
         user_audio_url = self._cfg['url_base_asset_webserver'] + url_for(
@@ -332,17 +374,16 @@ class Sonos(PhonyZMWThing):
             user_audio_url,
             announcement_volume=40,
             timeout_secs=10)
-        logger.info(
-            f'Requested user audio announcement, asset url {user_audio_url}')
+        logger.info('Requested user audio announcement, asset url %s', user_audio_url)
 
         return "User audio sent for announcement", 200
 
     def _serve_tts_asset(self, fname):
         """ Serve a file asset created from tts_announce """
-        logger.info(f'Serve TTS Asset {fname}')
+        logger.info('Serve TTS Asset %s', fname)
         return send_from_directory(self._cfg['tts_cache_path'], fname)
 
     def _serve_user_audio_asset(self, fname):
         """ Serve a file asset created from user upload """
-        logger.info(f'Serve user audio Asset {fname}')
+        logger.info('Serve user audio Asset %s', fname)
         return send_from_directory(self._cfg['user_audio_cache_path'], fname)

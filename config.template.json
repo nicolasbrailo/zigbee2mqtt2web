@@ -55,9 +55,11 @@
        "COMMENT_zmw_thing_name": "Used as url prefix for sonos REST interface and general id for the web interface",
        "zmw_thing_name": "sonos",
 
-       "COMMENT_cache_paths": "Where to store audio asset files after (TTS or adhoc user uploads)",
+       "COMMENT_cache_paths": "Where to store audio asset files after (TTS or adhoc user uploads). Delete to disable functionality.",
        "tts_cache_path": "./tts_cache",
        "user_audio_cache_path": "./user_audio_cache",
+       "enable_user_audio_annoucements": true,
+       "enable_tts_annoucements": true,
 
        "COMMENT1_url_base_tts_asset_webserver": "URL that can serve TTS assets; needs to be reachable by all Sonos speakers",
        "COMMENT2_url_base_tts_asset_webserver": "Hint: you probably want http://$LAN_VISIBLE_IP:$THIS_CONFIG_HTTP_ONLY_PORT",
