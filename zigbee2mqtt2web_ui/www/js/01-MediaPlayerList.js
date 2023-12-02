@@ -4,7 +4,9 @@ class MediaPlayer extends React.Component {
       thing_registry: thing_registry,
       player: player,
       can_tts: Object.keys(player.actions).includes("tts_announce"),
-      can_announce: Object.keys(player.actions).includes("play_announcement"),
+      can_announce: Object.keys(player.actions).includes("user_audio_announce"),
+      // Mobile browsers don't accept calls to getUserMedia if no https
+      can_record_mic: 'https:' == document.location.protocol,
       ttsLang: "es",
     }
   }
@@ -92,6 +94,12 @@ class MediaPlayer extends React.Component {
   onMicRecRequested() {
     if (!this.props.can_announce) {
       showGlobalError(`Requested unsupported action 'announcement' on player ${this.props.player.name}`);
+      this.onAnnouncementEnd();
+      return;
+    }
+
+    if (!this.props.can_record_mic) {
+      showGlobalError('Requested mic recording, but this only works on https mode');
       this.onAnnouncementEnd();
       return;
     }
@@ -202,7 +210,7 @@ class MediaPlayer extends React.Component {
 
   render_active_announce_ui() {
       let announceMethods = [];
-      if (this.props.can_announce) {
+      if (this.props.can_announce && this.props.can_record_mic) {
         announceMethods.push(
           <li key={`MediaPlayerAnnounceMicRecord_${this.props.player.name}`}>
             <button key={`MediaPlayer_${this.props.player.name}_announce_mic_rec_btn`}
@@ -272,7 +280,7 @@ class MediaPlayer extends React.Component {
     return (
       <div className="thing_div row container"
            key={`${this.props.player.name}_media_player_div`}>
-        this.render_announce_ui();
+        { this.render_announce_ui() }
         <table>
         <tbody>
         <tr>

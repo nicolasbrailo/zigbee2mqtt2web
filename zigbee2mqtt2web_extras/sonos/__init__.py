@@ -112,9 +112,9 @@ class Sonos(PhonyZMWThing):
         self._cfg['url_base_asset_webserver']  # pylint: disable=pointless-statement
 
         self._add_action(
-           'user_audio_announce',
-           'Upload a user audio clip and play it as announcement on all known Sonos',
-           setter=self._user_audio_announce_start)
+            'user_audio_announce',
+            'Upload a user audio clip and play it as announcement on all known Sonos',
+            setter=self._user_audio_announce_start)
         self._cfg['webpath_user_audio_asset'] = f'/{self._cfg["zmw_thing_name"]}/user_audio/<fname>'
         webserver.add_url_rule(
             f'/{self._cfg["zmw_thing_name"]}/say',
@@ -139,7 +139,7 @@ class Sonos(PhonyZMWThing):
 
         if not webserver.has_http_mode():
             raise RuntimeError('Sonos TTS is enabled, but HTTP mode is not. '
-                'HTTP required for asset delivery')
+                               'HTTP required for asset delivery')
 
         # Verify required config exists
         self._cfg['tts_cache_path']  # pylint: disable=pointless-statement
@@ -299,15 +299,13 @@ class Sonos(PhonyZMWThing):
         return tts_asset_url
 
     def _announce_user_recording(self):
-        if FlaskRq.files is None or len(FlaskRq.files) != 1:
+        request_not_valid = FlaskRq.files is None or \
+                            len(FlaskRq.files) != 1 or \
+                            'audio_data' not in FlaskRq.files
+        if request_not_valid:
             logger.warning(
                 "Received request to store audio asset, but can't understand it")
             return "Can't find file in audio asset store request", 406
-
-        if 'audio_data' not in FlaskRq.files:
-            logger.warning(
-                "Received request to store audio asset, but has no audio")
-            return "Non audio data detected, can't accept file", 406
 
         # Try to create cache path, throw on fail
         Path(
@@ -374,7 +372,9 @@ class Sonos(PhonyZMWThing):
             user_audio_url,
             announcement_volume=40,
             timeout_secs=10)
-        logger.info('Requested user audio announcement, asset url %s', user_audio_url)
+        logger.info(
+            'Requested user audio announcement, asset url %s',
+            user_audio_url)
 
         return "User audio sent for announcement", 200
 

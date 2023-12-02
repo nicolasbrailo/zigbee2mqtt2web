@@ -29,9 +29,9 @@ def get_local_path_tts(cache_path, phrase, lang):
         logger.info('Phrase not cached, need to download...')
 
         try:
-            req = urllib.request.urlopen(url)
-            with open(cached, 'wb') as cache_f:
-                cache_f.write(req.read())
+            with urllib.request.urlopen(url) as req:
+                with open(cached, 'wb') as cache_f:
+                    cache_f.write(req.read())
         except urllib.error.HTTPError as ex:
             raise RuntimeError(
                 f'Failed to retrieve TTS from {url}: {str(ex)}') from ex

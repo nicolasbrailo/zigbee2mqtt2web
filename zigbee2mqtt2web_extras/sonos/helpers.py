@@ -56,7 +56,7 @@ def sonos_announce(zones, alert_uri, volume, timeout, force_play):
         if zone.is_coordinator:
             try:
                 zone.play_uri(uri=alert_uri, title="Sonos Alert")
-            except Exception:
+            except Exception: # pylint: disable=broad-except
                 logging.error(
                     'Failed to announce on %s',
                     zone.player_name,
@@ -92,7 +92,7 @@ def sonos_announce(zones, alert_uri, volume, timeout, force_play):
         logger.info('Restoring state for %s', zone.player_name)
         try:
             zone.snap.restore(fade=True)
-        except Exception:
+        except Exception: # pylint: disable=broad-except
             logging.error(
                 'Failed to restore state on %s',
                 zone.player_name,
