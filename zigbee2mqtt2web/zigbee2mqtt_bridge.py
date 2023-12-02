@@ -123,7 +123,8 @@ class Zigbee2MqttBridge:
         if thing.name in self._known_things:
             if thing.name != thing.real_name and thing.real_name not in self._known_things:
                 logger.warning(
-                    "Thing with MQTT name %s is being ignored, because it's aliased by %s. Aliasing things to the same name is a bad idea.",
+                    "Thing with MQTT name %s is being ignored, because it's aliased by %s. "
+                    "Aliasing things to the same name is a bad idea.",
                     thing.real_name,
                     thing.name)
             else:

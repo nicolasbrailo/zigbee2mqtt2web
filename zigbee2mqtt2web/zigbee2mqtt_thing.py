@@ -206,9 +206,7 @@ class Zigbee2MqttActionValue:
             sub_dbgs = ';'.join(sub_dbgs)
             return f'{self._current} {{Composite: {sub_dbgs}}}'
         if self.meta['type'] == 'user_defined':
-            if self.meta["on_get"] is not None:
-                return f'{self.meta["on_get"]()} user_defined'
-            return 'User defined function, no getter'
+            return f'User defined function {self.meta["on_get"]()}'
 
         return f'{self._current} UNKNOWN ({self.meta["type"]})'
 
