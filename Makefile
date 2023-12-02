@@ -45,10 +45,10 @@ ui:
 	make -C zigbee2mqtt2web_ui all
 
 install_system_deps:
-	sudo apt-get --assume-yes install python3-pip authbind python3-autopep8
+	sudo apt-get --assume-yes install python3-pip authbind python3-autopep8 pipenv
 	make -C zigbee2mqtt2web_extras install_system_deps
 	make -C zigbee2mqtt2web_ui install_system_deps
-	pip3 install pipenv
+	#pip3 install pipenv
 
 MKFILE_PATH=$(abspath $(lastword $(MAKEFILE_LIST)))
 SRC_DIR=$(patsubst %/,%,$(dir $(MKFILE_PATH)))

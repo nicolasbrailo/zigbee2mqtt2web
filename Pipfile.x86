@@ -1,14 +1,14 @@
 [packages]
-requests = "*"
+apscheduler = "*"
+astral = "*"
 flask = "*"
 flask-socketio = "*"
 paho-mqtt = "*"
 pylint = "*"
-spotipy = {git = "https://github.com/plamere/spotipy.git"}
-apscheduler = "*"
-astral = "*"
+requests = "*"
 simple-websocket = "*"
 soco = "*"
+spotipy = {git = "https://github.com/plamere/spotipy.git"}
 
 [dev-packages]
 
