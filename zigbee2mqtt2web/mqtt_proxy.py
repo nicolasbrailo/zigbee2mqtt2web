@@ -1,8 +1,12 @@
 """ All non-Zigbee specific MQTT logic """
 
-import threading
-import json
+import datetime
 from json import JSONDecodeError
+import json
+import threading
+import time
+
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from paho.mqtt import publish
 import paho.mqtt.client as mqtt
@@ -10,6 +14,18 @@ import paho.mqtt.client as mqtt
 import logging
 logger = logging.getLogger(__name__)
 
+_SCHEDULER = BackgroundScheduler()
+_SCHEDULER.start()
+
+# Period to check if Zigbee2Mqtt is alive
+_Z2M_PING_INTERVAL = 5 * 60
+# If Zigbee2Mqtt has sent any messages in last $PING_TIMEOUT seconds, consider it alive
+_Z2M_PING_TIMEOUT = 10 * 60
+# If Zigbee2Mqtt has sent no messages in last $ALIVE_TIMEOUT seconds, consider it dead
+_Z2M_ALIVE_TIMEOUT = 15 * 60
+# Message to send Z2M as a ping
+_Z2M_ALIVE_REQUEST_TOPIC = 'zigbee2mqtt/bridge/request/health_check'
+_Z2M_ALIVE_RESPONSE_TOPIC = 'zigbee2mqtt/bridge/response/health_check'
 
 class FakeMqttProxy:
     """ Mqtt mock, for dev server """
@@ -59,6 +75,16 @@ class MqttProxy:
         self.client.on_unsubscribe = self._on_unsubscribe
         self.client.on_message = self._on_message
 
+        # last_seen = now() - ping_timeout, so that we'll ping the server on the
+        # first try. Also, last_seen > now() - alive_timeout, so that we don't
+        # declare it dead just yet
+        self._z2m_last_seen = time.time() - _Z2M_PING_TIMEOUT
+        _SCHEDULER.add_job(
+            func=self._ping_z2m,
+            trigger="interval",
+            next_run_time=datetime.datetime.now(),
+            seconds=_Z2M_PING_INTERVAL)
+
     def _on_connect(self, client, _userdata, _flags, ret_code):
         if ret_code == 0:
             logger.info(
@@ -88,6 +114,10 @@ class MqttProxy:
             self._mqtt_port)
 
     def _on_message(self, _client, _userdata, msg):
+        if msg.topic == _Z2M_ALIVE_RESPONSE_TOPIC:
+            self._z2m_last_seen = time.time()
+            return
+
         is_json = True
         try:
             parsed_msg = json.loads(msg.payload)
@@ -103,6 +133,24 @@ class MqttProxy:
             logger.critical(
                 'Error on MQTT message handling. Topic %s, payload %s. '
                 'Ex: {%s}', msg.topic, msg.payload, ex, exc_info=True)
+
+    def _ping_z2m(self):
+        now = time.time()
+        last_seen_delta = now - self._z2m_last_seen
+        if last_seen_delta < _Z2M_PING_TIMEOUT:
+            # We've seen Zigbee2Mqtt in the last period, skip ping
+            return
+
+        self.start_zigbee2mqtt_ping()
+        if last_seen_delta < _Z2M_ALIVE_TIMEOUT:
+            # Ping Z2M and wait a bit more
+            return
+
+        # Z2M hasn't sent any messages for a long time, it's probably down
+        logger.error('Zigbee2Mqtt is down: no response for %s seconds', last_seen_delta)
+
+    def start_zigbee2mqtt_ping(self):
+        self.broadcast(_Z2M_ALIVE_REQUEST_TOPIC, '')
 
     def start(self):
         """ Connects to MQTT and launches a bg thread for the net loop """
@@ -138,6 +186,11 @@ class MqttProxy:
 
     def broadcast(self, topic, msg):
         """ JSONises and broadcasts a message to MQTT """
+        last_seen_delta = time.time() - self._z2m_last_seen
+        if last_seen_delta > _Z2M_ALIVE_TIMEOUT:
+            logger.critical("Zigbee2Mqtt may be down: Sending message on topic %s, "
+                            "but Z2M hasn't sent replies for %s seconds", topic, last_seen_delta)
+
         msg = json.dumps(msg)
         publish.single(
             qos=1,
