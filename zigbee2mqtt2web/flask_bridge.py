@@ -93,6 +93,12 @@ class FlaskBridge:
             httpName = self._cfg['server_systemd_name'] + '_httponly'
             self._http_only_flask = Flask(httpName)
 
+            https_redir = lambda: redirect(FlaskRequest.url.replace('http://', 'https://', 1), code=301)
+            self._http_only_flask.add_url_rule(
+                rule='/',
+                endpoint='/',
+                view_func=https_redir)
+
         # If websockets break, try this instead:
         #
         # self._flask_socketio = SocketIO(self._flask, async_mode='threading')
@@ -270,11 +276,12 @@ class FlaskBridge:
 
         self.add_url_rule(url, view_func, methods)
 
-        return self._http_only_flask.add_url_rule(
-            rule=url,
-            endpoint=url,
-            view_func=view_func,
-            methods=methods)
+        if self._http_only_flask is not None:
+            self._http_only_flask.add_url_rule(
+                rule=url,
+                endpoint=url,
+                view_func=view_func,
+                methods=methods)
 
     def start(self):
         """ Start Flask, socket.io and http-only Flask """
