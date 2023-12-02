@@ -19,13 +19,16 @@ _SCHEDULER.start()
 
 # Period to check if Zigbee2Mqtt is alive
 _Z2M_PING_INTERVAL = 5 * 60
-# If Zigbee2Mqtt has sent any messages in last $PING_TIMEOUT seconds, consider it alive
+# If Zigbee2Mqtt has sent any messages in last $PING_TIMEOUT seconds,
+# consider it alive
 _Z2M_PING_TIMEOUT = 10 * 60
-# If Zigbee2Mqtt has sent no messages in last $ALIVE_TIMEOUT seconds, consider it dead
+# If Zigbee2Mqtt has sent no messages in last $ALIVE_TIMEOUT seconds,
+# consider it dead
 _Z2M_ALIVE_TIMEOUT = 15 * 60
 # Message to send Z2M as a ping
 _Z2M_ALIVE_REQUEST_TOPIC = 'zigbee2mqtt/bridge/request/health_check'
 _Z2M_ALIVE_RESPONSE_TOPIC = 'zigbee2mqtt/bridge/response/health_check'
+
 
 class FakeMqttProxy:
     """ Mqtt mock, for dev server """
@@ -114,8 +117,8 @@ class MqttProxy:
             self._mqtt_port)
 
     def _on_message(self, _client, _userdata, msg):
+        self._z2m_last_seen = time.time()
         if msg.topic == _Z2M_ALIVE_RESPONSE_TOPIC:
-            self._z2m_last_seen = time.time()
             return
 
         is_json = True
@@ -147,9 +150,13 @@ class MqttProxy:
             return
 
         # Z2M hasn't sent any messages for a long time, it's probably down
-        logger.error('Zigbee2Mqtt is down: no response for %s seconds', last_seen_delta)
+        logger.error(
+            'Zigbee2Mqtt is down: no response for %s seconds',
+            last_seen_delta)
 
     def start_zigbee2mqtt_ping(self):
+        """ Send a ping to Z2M (the response is async, will be delivered on 
+        _Z2M_ALIVE_RESPONSE_TOPIC """
         self.broadcast(_Z2M_ALIVE_REQUEST_TOPIC, '')
 
     def start(self):
@@ -188,8 +195,9 @@ class MqttProxy:
         """ JSONises and broadcasts a message to MQTT """
         last_seen_delta = time.time() - self._z2m_last_seen
         if last_seen_delta > _Z2M_ALIVE_TIMEOUT:
-            logger.critical("Zigbee2Mqtt may be down: Sending message on topic %s, "
-                            "but Z2M hasn't sent replies for %s seconds", topic, last_seen_delta)
+            logger.critical(
+                "Zigbee2Mqtt may be down: Sending message on topic %s, "
+                "but Z2M hasn't sent replies for %s seconds", topic, last_seen_delta)
 
         msg = json.dumps(msg)
         publish.single(
