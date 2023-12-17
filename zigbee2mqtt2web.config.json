@@ -17,7 +17,7 @@
   "DISABLED_httponly_listen_port": 1235,
 
   "COMMENT": "MQTT settings: how to connect to MQTT",
-  "mqtt_skip_connect_for_dev": true,
+  "mqtt_skip_connect_for_dev": false,
   "mqtt_ip": "127.0.0.1",
   "mqtt_port": 1883,
 

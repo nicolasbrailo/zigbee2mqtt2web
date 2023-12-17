@@ -1,3 +1,6 @@
+#!/usr/bin/bash
+set -euo pipefail
+
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 SRC_ROOT="$(dirname "$SCRIPT_DIR")"
 
@@ -37,7 +40,7 @@ cat "$SCRIPT_DIR/zigbee2mqtt2web.service.template" | \
   sed "s|#RUN_USER#|$(whoami)|g" | \
 	sudo tee >/dev/null /etc/systemd/system/zigbee2mqtt2web.service
 
-cp "$SRC_ROOT/config.template.json" "$Z2M2W_RUN_PATH/config.template.json"
+cp "$SRC_ROOT/zigbee2mqtt2web.config.json" "$Z2M2W_RUN_PATH/zigbee2mqtt2web.config.json"
 
 pushd "$Z2M2W_RUN_PATH"
 PIPENV_PIPFILE="$SRC_ROOT/Pipfile" python3 -m pipenv --python $(which python3) install
@@ -45,7 +48,6 @@ popd
 
 sudo systemctl stop zigbee2mqtt2web | true
 sudo systemctl daemon-reload
-sudo systemctl disable zigbee2mqtt2web
-sudo systemctl enable zigbee2mqtt2web
-sudo systemctl start zigbee2mqtt2web
-sudo systemctl status zigbee2mqtt2web
+#sudo systemctl enable zigbee2mqtt2web
+#sudo systemctl start zigbee2mqtt2web
+#sudo systemctl status zigbee2mqtt2web
