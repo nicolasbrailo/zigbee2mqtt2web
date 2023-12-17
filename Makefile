@@ -64,24 +64,28 @@ zmw.key zmw.cert:
 	#openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
 
 
-.PHONY: install_system_deps install_services system_has_dep_svcs
+.PHONY: install_system_deps install_dep_svcs install_as_service system_has_dep_svcs
 
 install_system_deps:
 	sudo apt-get --assume-yes install python3-pip pipenv authbind python3-autopep8
 	make -C zigbee2mqtt2web_extras install_system_deps
 	make -C zigbee2mqtt2web_ui install_system_deps
 
-install_services:
-	./scripts/install_svcs.sh
+install_as_service:
+	echo "Install as service with default values"
+	./scripts/install_as_service.sh
+
+install_dep_svcs:
+	./scripts/install_dep_svcs.sh
 
 system_has_dep_svcs: mosquitto.service zigbee2mqtt.service
 
 %.service:
-	@if [ $(shell systemctl is-active --quiet $@) ]; then \
+	@if [ "$(shell systemctl is-active $@)" = "active" ]; then \
 		true; \
 	else \
 		echo "\033[0;31m"; \
-		echo "System seems to be missing $@. Run 'make install_services' for help."; \
+		echo "System seems to be missing $@. Run 'make install_dep_svcs' for help."; \
 		echo "If service is installed in a way this Makefile can't find, do 'touch $@'"; \
 		echo "\033[0m"; \
 		false; \

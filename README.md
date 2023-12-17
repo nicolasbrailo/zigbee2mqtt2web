@@ -5,7 +5,7 @@ zigbee2mqtt2web will expose a Zigbee network as a small set of REST endpoints, a
 
 ## What does it do?
 
-The aim of the project is to read mqtt messages broadcasted by Zigbee2mqtt and translate them to objects with an API accessible through REST(ish) URLs, with a very limited set of dependencies, and very little configuration required. The goal is to enable developers to easily configure and extend a zigbee network using Python. It also includes an example web application that can show the objects registered in the network and perform actions on them. The project core is small and extensible so that new thing types may be supported (even non-MQTT based things, like media players with 3rd party API integrations).
+The aim of the project is to read mqtt messages broadcasted by Zigbee2mqtt and translate them to objects with an API accessible through REST(ish) URLs, with a very limited set of dependencies, and very little configuration required. The goal is to enable developers to easily configure and extend a zigbee network using Python. It also includes an example web application that can show the objects registered in the network and perform actions on them. The project core is small and extensible so that new thing types may be supported; even non-MQTT based things, like media players with 3rd party API integrations. The project includes extensions for Sonos, Spotify and possibly other non-MQTT things I find useful.
 
 The server is designed to be low footprint, so that it may run in a RaspberryPi. Even an RPI W Zero might work, though the lag in mqtt messages might get noticeable.
 
@@ -14,12 +14,13 @@ The server is designed to be low footprint, so that it may run in a RaspberryPi.
 
 Running this project should be trivial in any Linuxy (RaspberryPi) environment:
 
-* Set up Zigbee2mqtt, configure a few Zigbee devices
 * Clone this repo
+* Run `make install_system_deps` (to get a bunch of apt-get dependencies)
+* Run `make install_dep_svcs` (to install zigbee2mqtt and mosquitto - optional if you already have these)
 * Run `make install` - this will create a Python virtualenv for all the dependencies
 * Run `make run`
 
-You should now see a list of URLs being served. Going to $YOUR_HOST_IP:1234 in a browser should land you in a minimal UI that can be used to manage your Zigbee network. Note if your Zigbee2mqtt server is running in a different host, you'll need to edit config.json to connect to the right server.
+You should now see a list of URLs being served. Going to $YOUR_HOST_IP:1234 in a browser should land you in a minimal UI that can be used to manage your Zigbee network. Note if your Zigbee2mqtt server is running in a different host, you'll need to edit zigbee2mqtt2web.conf.json to connect to the right server.
 
 
 ## Real run, extending
