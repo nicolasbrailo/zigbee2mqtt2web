@@ -19,7 +19,7 @@ handler.setFormatter(logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 root.addHandler(handler)
 
-with open('config.template.json', 'r') as fp:
+with open('zigbee2mqtt2web.config.json', 'r') as fp:
     CFG = json.loads(fp.read())
 
 zmw = Zigbee2Mqtt2Web(CFG)

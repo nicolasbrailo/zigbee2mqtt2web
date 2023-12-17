@@ -34,6 +34,7 @@ sudo chmod 777 /etc/authbind/byport/443
 cat "$SCRIPT_DIR/zigbee2mqtt2web.service.template" | \
 	sed "s|#SRC_ROOT#|$SRC_ROOT|g" | \
   sed "s|#Z2M2W_RUN_PATH#|$Z2M2W_RUN_PATH|g" | \
+  sed "s|#RUN_USER#|$(whoami)|g" | \
 	sudo tee >/dev/null /etc/systemd/system/zigbee2mqtt2web.service
 
 cp "$SRC_ROOT/config.template.json" "$Z2M2W_RUN_PATH/config.template.json"
@@ -45,6 +46,6 @@ popd
 sudo systemctl stop zigbee2mqtt2web | true
 sudo systemctl daemon-reload
 sudo systemctl disable zigbee2mqtt2web
-#sudo systemctl enable zigbee2mqtt2web
-#sudo systemctl start zigbee2mqtt2web
-#sudo systemctl status zigbee2mqtt2web
+sudo systemctl enable zigbee2mqtt2web
+sudo systemctl start zigbee2mqtt2web
+sudo systemctl status zigbee2mqtt2web
