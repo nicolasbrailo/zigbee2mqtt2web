@@ -1,6 +1,6 @@
+#!/usr/bin/bash
+set -euo pipefail
 echo "Scanning..."
 mosquitto_pub -t 'zigbee2mqtt/bridge/request/touchlink/scan' -m ''
-sleep 10
-journalctl -u zigbee2mqtt.service | grep touchlink/scan
-
+journalctl -f -u zigbee2mqtt.service | grep touchlink/scan
 

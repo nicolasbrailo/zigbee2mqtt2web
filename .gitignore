@@ -10,6 +10,11 @@ zmw.key
 tts_cache
 user_audio_cache
 
+# fw updater hacks
+scripts/zigbee_adapter_fw_update/Pipfile
+scripts/zigbee_adapter_fw_update/Pipfile.lock
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
