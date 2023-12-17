@@ -4,10 +4,15 @@ SRC_ROOT="$(dirname "$SCRIPT_DIR")"
 Z2M2W_RUN_PATH="$1"
 
 if [ ! -f "$SRC_ROOT/Pipfile" ]; then
-  echo -e "\033[0;31m"
-  echo "Can't find Pipfile, make sure you select between Pipfile.x86 or Pipfile.arm"
-  echo -e "\033[0m"
-  exit 1
+  if [[ $(arch) -eq "x86_64" ]]; then
+    echo "Automatically selecting x86 Pipfile"
+    cp "$SRC_ROOT/Pipfile.x86" "$SRC_ROOT/Pipfile"
+  else
+    echo -e "\033[0;31m"
+    echo "Can't find Pipfile, make sure you select between Pipfile.x86 or Pipfile.arm"
+    echo -e "\033[0m"
+    exit 1
+  fi
 fi
 
 echo "systemctl status zigbee2mqtt2web.service" > "$Z2M2W_RUN_PATH/zigbee2mqtt2web_active.sh"

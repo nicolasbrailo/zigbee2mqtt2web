@@ -19,8 +19,12 @@ ui:
 	make -C zigbee2mqtt2web_ui all
 
 Pipfile:
-	echo 'You need to `mv Pipfile.arm Pipfile` or `mv Pipfile.x86 Pipfile` first'
-	false
+	@if [ "$(shell arch)" = "x86_64" ]; then \
+		cp Pipfile.x86 Pipfile; \
+	else \
+		echo 'You need to `mv Pipfile.arm Pipfile` or `mv Pipfile.x86 Pipfile` first'; \
+		false; \
+	fi
 
 install: Pipfile
 	python3 -m pipenv --python $(shell which python3)

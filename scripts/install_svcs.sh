@@ -9,7 +9,7 @@ Z2M_INSTALL_PATH="/home/$USER/zigbee2mqtt"
 Z2M2W_RUN_PATH="/home/$USER/$Z2M2W_INSTALL_NAME"
 
 # -e, fail if already exists or any dep fails
-mkdir "$Z2M2W_RUN_PATH"
+#mkdir "$Z2M2W_RUN_PATH"
 
 #"$SCRIPT_DIR/install_mosquitto.sh" "$Z2M2W_RUN_PATH"
 #"$SCRIPT_DIR/install_zigbee2mqtt.sh" "$Z2M_INSTALL_PATH" "$Z2M2W_RUN_PATH"
