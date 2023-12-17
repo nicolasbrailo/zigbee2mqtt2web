@@ -1,0 +1,18 @@
+homeassistant: false
+permit_join: true
+mqtt:
+  base_topic: zigbee2mqtt
+  server: mqtt://localhost
+serial:
+  disable_led: true
+  port: #ZIGBEE_ADAPTER_PATH#
+advanced:
+  ikea_ota_use_test_url: true
+  log_symlink_current: true
+  homeassistant_legacy_entity_attributes: false
+  legacy_api: false
+  legacy_availability_payload: false
+  log_level: debug
+device_options:
+  legacy: false
+

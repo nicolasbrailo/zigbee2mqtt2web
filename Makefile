@@ -1,26 +1,29 @@
-.PHONY: test run install install_system_deps install_service ui restart_and_tail_logs tail_logs ssl
+.PHONY: test run shell install ui restart_and_tail_logs tail_logs ssl reinstall_pipenv_deps
 
 test:
 	python3 -m pipenv run python -m unittest tests/*
 
-run:
+run: system_has_dep_svcs
 	python3 -m pipenv run python ./main.py | tee run.log
 
 shell:
 	python3 -m pipenv run python
 
-lint:
+lint.log:
 	autopep8 -r --in-place --aggressive --aggressive zigbee2mqtt2web/ | tee lint.log
 	python3 -m pipenv run python -m pylint zigbee2mqtt2web --disable=C0411 | tee --append lint.log
 	autopep8 -r --in-place --aggressive --aggressive zigbee2mqtt2web_extras/ | tee --append lint.log
 	python3 -m pipenv run python -m pylint zigbee2mqtt2web_extras --disable=C0411 | tee --append lint.log
 
+ui:
+	make -C zigbee2mqtt2web_ui all
+
 Pipfile:
-	echo "Select one of Pipfile.arm or Pipfile.x86, and mv to Pipfile"
+	echo 'You need to `mv Pipfile.arm Pipfile` or `mv Pipfile.x86 Pipfile` first'
 	false
 
 install: Pipfile
-	python3 -m pipenv --python $(shell which python3 )
+	python3 -m pipenv --python $(shell which python3)
 	python3 -m pipenv install requests
 
 reinstall_pipenv_deps:
@@ -41,33 +44,6 @@ reinstall_pipenv_deps:
 	# May not work nicely in an rpi
 	#python3 -m pipenv install pyopenssl
 
-ui:
-	make -C zigbee2mqtt2web_ui all
-
-install_system_deps:
-	sudo apt-get --assume-yes install python3-pip authbind python3-autopep8 pipenv
-	make -C zigbee2mqtt2web_extras install_system_deps
-	make -C zigbee2mqtt2web_ui install_system_deps
-	#pip3 install pipenv
-
-MKFILE_PATH=$(abspath $(lastword $(MAKEFILE_LIST)))
-SRC_DIR=$(patsubst %/,%,$(dir $(MKFILE_PATH)))
-
-install_service:
-	@# authbind -> run in port 80 with no root
-	sudo touch /etc/authbind/byport/80
-	sudo chmod 777 /etc/authbind/byport/80
-	sudo touch /etc/authbind/byport/443
-	sudo chmod 777 /etc/authbind/byport/443
-	cat ./scripts/zigbee2mqtt2web.service.template | \
-		sed "s|#INSTALL_DIR#|$(SRC_DIR)|g" | \
-		sudo tee >/dev/null /etc/systemd/system/zigbee2mqtt2web.service
-	sudo systemctl stop zigbee2mqtt2web | true
-	sudo systemctl daemon-reload
-	sudo systemctl enable zigbee2mqtt2web
-	sudo systemctl start zigbee2mqtt2web
-	sudo systemctl status zigbee2mqtt2web
-
 restart_and_tail_logs:
 	sudo systemctl restart zigbee2mqtt2web.service && journalctl -fu zigbee2mqtt2web
 
@@ -83,3 +59,27 @@ zmw.key zmw.cert:
 	#openssl rsa -in server.key.org -out server.key
 	#openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
 
+
+.PHONY: install_system_deps install_services system_has_dep_svcs
+
+install_system_deps:
+	sudo apt-get --assume-yes install python3-pip pipenv authbind python3-autopep8
+	make -C zigbee2mqtt2web_extras install_system_deps
+	make -C zigbee2mqtt2web_ui install_system_deps
+	#pip3 install pipenv
+
+install_services:
+	./scripts/install_svcs.sh
+
+system_has_dep_svcs: mosquitto.service zigbee2mqtt.service
+
+%.service:
+	@if [ $(shell systemctl is-active --quiet $@) ]; then \
+		true; \
+	else \
+		echo "\033[0;31m"; \
+		echo "System seems to be missing $@. Run 'make install_services' for help."; \
+		echo "If service is installed in a way this Makefile can't find, do 'touch $@'"; \
+		echo "\033[0m"; \
+		false; \
+	fi

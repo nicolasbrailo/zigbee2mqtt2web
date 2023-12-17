@@ -3,8 +3,8 @@ Description=Zigbee2Mqtt2Web
 After=zigbee2mqtt.target
 
 [Service]
-ExecStart=/usr/bin/authbind --deep /usr/bin/python3 -m pipenv run python ./main.py
-WorkingDirectory=#INSTALL_DIR#
+ExecStart=/usr/bin/authbind --deep /usr/bin/python3 -m pipenv run python #SRC_ROOT#/main.py
+WorkingDirectory=#RUN_DIR#
 StandardOutput=inherit
 StandardError=inherit
 Restart=always

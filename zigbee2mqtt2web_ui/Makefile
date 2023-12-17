@@ -23,4 +23,4 @@ localize_js_deps:
 	./localize_js_deps.sh
 
 install_system_deps:
-	sudo apt-get install npm
+	sudo apt-get --assume-yes install npm
