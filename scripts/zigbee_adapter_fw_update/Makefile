@@ -20,4 +20,6 @@ ping: Pipfile
 flash: ping $(FW_IMG).hex
 	@echo "This may be dangerous, run manually:"
 	@echo PIPENV_PIPFILE=./Pipfile python3 -m pipenv run python ./cc2538-bsl/cc2538-bsl.py -p $(ADAPTER_DEV) -Vvew $(FW_IMG).hex
+	@echo "It's also a good idea to check 'PIPENV_PIPFILE=./Pipfile python3 -m pipenv run python ./cc2538-bsl/cc2538-bsl.py --help'"
+	@echo Also, Sonoff sticks may need option --bootloader-sonoff-usb to work
 
