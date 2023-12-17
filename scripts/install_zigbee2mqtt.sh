@@ -8,6 +8,13 @@ Z2M2W_RUN_PATH="$2"
 Z2M_RUN_PATH="$Z2M2W_RUN_PATH/zigbee2mqtt"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
+echo "systemctl status zigbee2mqtt.service" > "$Z2M2W_RUN_PATH/zigbee2mqtt_active.sh"
+echo "sudo journalctl --follow --unit zigbee2mqtt" > "$Z2M2W_RUN_PATH/zigbee2mqtt_logs.sh"
+echo "sudo systemctl restart zigbee2mqtt.service" > "$Z2M2W_RUN_PATH/zigbee2mqtt_restart.sh"
+chmod +x "$Z2M2W_RUN_PATH/zigbee2mqtt_active.sh"
+chmod +x "$Z2M2W_RUN_PATH/zigbee2mqtt_logs.sh"
+chmod +x "$Z2M2W_RUN_PATH/zigbee2mqtt_restart.sh"
+
 systemctl is-active --quiet zigbee2mqtt.service && echo "Zigbee2Mqtt is running!" && exit 0
 
 if [[ -d "$Z2M_INSTALL_PATH" ]]; then
@@ -15,7 +22,7 @@ if [[ -d "$Z2M_INSTALL_PATH" ]]; then
   exit 0
 fi
 
-sudo apt-get install --assume-yes nodejs git make g++ gcc
+sudo apt-get install --assume-yes nodejs git make g++ gcc > /dev/null
 
 # With set -e, this will terminate the script if node or npm are not present
 node --version > /dev/null
@@ -71,17 +78,10 @@ cat "$SCRIPT_DIR/zigbee2mqtt.service.template" | \
 
 sudo mv ./zigbee2mqtt.service /etc/systemd/system/zigbee2mqtt.service
 
-sudo systemctl stop zigbee2mqtt.service | true
+sudo systemctl stop zigbee2mqtt.service | true > /dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable zigbee2mqtt.service
 sudo systemctl start zigbee2mqtt.service
-
-echo "systemctl status zigbee2mqtt.service" > "$Z2M2W_RUN_PATH/zigbee2mqtt_active.sh"
-echo "sudo journalctl --follow --unit zigbee2mqtt" > "$Z2M2W_RUN_PATH/zigbee2mqtt_logs.sh"
-echo "sudo systemctl restart zigbee2mqtt.service" > "$Z2M2W_RUN_PATH/zigbee2mqtt_restart.sh"
-chmod +x "$Z2M2W_RUN_PATH/zigbee2mqtt_active.sh"
-chmod +x "$Z2M2W_RUN_PATH/zigbee2mqtt_logs.sh"
-chmod +x "$Z2M2W_RUN_PATH/zigbee2mqtt_restart.sh"
 
 if ! systemctl is-active --quiet zigbee2mqtt.service ; then
   echo -e "\033[0;31m"

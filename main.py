@@ -54,9 +54,7 @@ zmw.registry.on_mqtt_network_discovered(on_net_discovery)
 
 # Load extras
 if 'sonos' in CFG:
-    sonos = Sonos(CFG['sonos'])
-    sonos.add_announcement_paths(zmw.webserver)
-    zmw.registry.register(sonos)
+    zmw.registry.register(Sonos(CFG['sonos'], zmw.webserver))
 
 if 'spotify' in CFG:
     spotify = Spotify(CFG['spotify'])

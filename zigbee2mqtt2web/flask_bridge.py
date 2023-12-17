@@ -11,12 +11,41 @@ from multiprocessing import Process
 import dataclasses
 import json
 import os
+import pathlib
 import subprocess
 import sys
 
 import logging
 logger = logging.getLogger(__name__)
 
+
+def _guess_path_or_fail(maybePath):
+    if os.path.isdir(maybePath):
+        return maybePath
+
+    thisFilePath = pathlib.Path(__file__).parent.resolve()
+
+    # Try to access this dir by making the path relative to this file
+    fileRelUiPath = os.path.join(thisFilePath, maybePath)
+    fileRelUiPath = pathlib.Path(fileRelUiPath).resolve()
+    if os.path.isdir(fileRelUiPath):
+        logger.info(
+                'Assuming path %s is relative to flask_bridge and resolves to %s',
+                maybePath,
+                fileRelUiPath)
+        return fileRelUiPath
+
+    # Try to access this dir by making the path relative to the project (which lives in ..)
+    prjRelUiPath = os.path.join(thisFilePath, '..', maybePath)
+    prjRelUiPath = pathlib.Path(prjRelUiPath).resolve()
+    if os.path.isdir(prjRelUiPath):
+        logger.info(
+                'Assuming path %s is relative to project and resolves to %s',
+                maybePath,
+                prjRelUiPath)
+        return prjRelUiPath
+
+    raise RuntimeError(f"Can't access www path {maybePath}")
 
 def _validate(cfg):
     ok_cfg = {
@@ -34,10 +63,7 @@ def _validate(cfg):
     }
 
     if 'ui_local_path' in cfg:
-        ok_cfg['ui_local_path'] = cfg['ui_local_path']
-        if not os.path.isdir(ok_cfg['ui_local_path']):
-            raise RuntimeError(
-                f"Can't access UI web path {ok_cfg['ui_local_path']}")
+        ok_cfg['ui_local_path'] = _guess_path_or_fail(cfg['ui_local_path'])
 
     missing_prefix = 'www_extra_local_path' in cfg and 'www_extra_uri_prefix' not in cfg
     missing_path = 'www_extra_local_path' not in cfg and 'www_extra_uri_prefix' in cfg
@@ -48,10 +74,7 @@ def _validate(cfg):
 
     if 'www_extra_local_path' in cfg:
         ok_cfg['www_extra_uri_prefix'] = cfg['www_extra_uri_prefix']
-        ok_cfg['www_extra_local_path'] = cfg['www_extra_local_path']
-        if not os.path.isdir(ok_cfg['www_extra_local_path']):
-            raise RuntimeError(
-                f"Can't access extra web path {ok_cfg['www_extra_local_path']}")
+        ok_cfg['www_extra_local_path'] =  _guess_path_or_fail(cfg['www_extra_local_path'])
         if cfg['www_extra_uri_prefix'] == ok_cfg['ui_uri_prefix']:
             raise RuntimeError(
                 f"www extra URI prefix ({ok_cfg['www_extra_uri_prefix']}) can't be "

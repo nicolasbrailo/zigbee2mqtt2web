@@ -66,7 +66,6 @@ install_system_deps:
 	sudo apt-get --assume-yes install python3-pip pipenv authbind python3-autopep8
 	make -C zigbee2mqtt2web_extras install_system_deps
 	make -C zigbee2mqtt2web_ui install_system_deps
-	#pip3 install pipenv
 
 install_services:
 	./scripts/install_svcs.sh
