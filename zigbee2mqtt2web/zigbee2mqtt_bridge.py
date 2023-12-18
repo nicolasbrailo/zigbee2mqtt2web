@@ -45,6 +45,7 @@ class Zigbee2MqttBridge:
         self.cb_for_mqtt_topic('bridge/extensions', _ignore_msg)
         self.cb_for_mqtt_topic('bridge/logging', _ignore_msg)
         self.cb_for_mqtt_topic('bridge/info', _ignore_msg)
+        self.cb_for_mqtt_topic('bridge/config', _ignore_msg)
 
         def ignore_group_messages(_topic, payload):
             for group in payload:

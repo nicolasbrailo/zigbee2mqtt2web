@@ -256,6 +256,67 @@ def get_a_lamp():
     }''')
 
 
+def get_lamp_multiple_types():
+    return json.loads('''{
+        "date_code": "20200312",
+        "definition": {
+          "description": "TRADFRI LED bulb E27 1000 lumen, dimmable, white spectrum, opal white",
+          "exposes": [
+            {
+              "features": [
+                {
+                  "access": 7,
+                  "description": "On/off state of this light",
+                  "label": "State",
+                  "name": "state",
+                  "property": "state",
+                  "type": "binary",
+                  "value_off": "OFF",
+                  "value_on": "ON",
+                  "value_toggle": "TOGGLE"
+                }
+              ],
+              "type": "first_thing_type"
+            },
+            {
+              "access": 7,
+              "description": "Advanced color behavior",
+              "features": [
+                {
+                  "access": 2,
+                  "description": "Controls whether color and color temperature can be set while light is off",
+                  "label": "Execute if off",
+                  "name": "execute_if_off",
+                  "property": "execute_if_off",
+                  "type": "binary",
+                  "value_off": 0,
+                  "value_on": 1
+                }
+              ],
+              "label": "Color options",
+              "name": "color_options",
+              "property": "color_options",
+              "type": "second_thing_type"
+            }
+          ],
+          "model": "LED1732G11",
+          "supports_ota": 1,
+          "vendor": "IKEA"
+        },
+        "disabled": 0,
+        "friendly_name": "Lamp2_IkeaWhiteColor",
+        "ieee_address": "0x847127fffecda276",
+        "interview_completed": 1,
+        "interviewing": 0,
+        "manufacturer": "IKEA of Sweden",
+        "model_id": "TRADFRI bulb E27 WS opal 1000lm",
+        "network_address": 51402,
+        "power_source": "Mains (single phase)",
+        "software_build_id": "2.0.029",
+        "supported": 1,
+        "type": "Router"
+      }''')
+
 def get_contact_sensor():
     return json.loads('''{
         "date_code": "20161128",

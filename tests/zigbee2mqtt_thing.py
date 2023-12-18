@@ -1,6 +1,7 @@
 from .setup import get_a_lamp
 from .setup import get_broken_thing
 from .setup import get_contact_sensor
+from .setup import get_lamp_multiple_types
 from .setup import get_lamp_with_composite_action
 from .setup import get_motion_sensor
 
@@ -550,6 +551,9 @@ class TestThings(unittest.TestCase):
         self.assertTrue(set_called)
         self.assertTrue(get_called)
 
+    def test_multiple_types(self):
+        t = parse_from_zigbee2mqtt(42, get_lamp_multiple_types())
+        self.assertEqual(t.thing_type, 'first_thing_type')
 
 if __name__ == '__main__':
     unittest.main()

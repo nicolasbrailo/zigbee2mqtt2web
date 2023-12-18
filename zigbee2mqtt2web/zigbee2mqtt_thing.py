@@ -544,7 +544,15 @@ def _parse_zigbee2mqtt_actions(thing_name, definition):
     actions = {}
     for node in definition.get('exposes', []):
         if 'features' in node:
-            thing_type = node.get('type', None)
+            maybe_thing_type = node.get('type', None)
+            if thing_type is None:
+                thing_type = maybe_thing_type
+            elif maybe_thing_type is None:
+                pass
+            else:
+                logger.warning(
+                    'Thing "%s" type-heuristic multiple match: first match is %s, new match is %s. Keeping first.',
+                    thing_name, thing_type, maybe_thing_type)
             for act in node['features']:
                 action = _parse_zigbee2mqtt_action(thing_name, act)
                 actions[action.name] = action
