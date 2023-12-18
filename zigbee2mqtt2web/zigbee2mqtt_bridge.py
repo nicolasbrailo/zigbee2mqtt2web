@@ -113,6 +113,7 @@ class Zigbee2MqttBridge:
     def register_or_replace(self, thing):
         """ Add or replace a thing to the MQTT registry """
         self._known_things[thing.name] = thing
+        self.cb_for_mqtt_topic(thing.real_name, thing.on_mqtt_update)
         self.cb_for_mqtt_topic(thing.name, thing.on_mqtt_update)
         self.cb_for_mqtt_topic(thing.address, thing.on_mqtt_update)
         self.cb_for_mqtt_topic(f'{thing.real_name}/set', thing.on_mqtt_update)
@@ -133,10 +134,17 @@ class Zigbee2MqttBridge:
             return False
 
         self.register(thing)
-        logger.info(
-            'Registered Zigbee2Mqtt device %s ID %d',
-            thing.name,
-            thing.thing_id)
+        if thing.name != thing.real_name:
+            logger.info(
+                'Registered Zigbee2Mqtt device %s (alias for %s) ID %d',
+                thing.name,
+                thing.real_name,
+                thing.thing_id)
+        else:
+            logger.info(
+                'Registered Zigbee2Mqtt device %s ID %d',
+                thing.name,
+                thing.thing_id)
         return True
 
     def replace(self, thing):

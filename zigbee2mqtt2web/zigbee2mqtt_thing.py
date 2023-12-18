@@ -83,15 +83,22 @@ class Zigbee2MqttThing:
                         changes.append(
                             (changed_action.value.on_change_from_mqtt, val))
             except AttributeError:
-                logger.critical(
-                    'Unsupported action in mqtt message: thing %s ID %d has no %s',
-                    self.name,
-                    self.thing_id,
-                    mqtt_msg_field)
-                logger.debug(
-                    'Exception in MQTT message %s',
-                    msg,
-                    exc_info=True)
+                # Some battery powered devices don't seem to respect their schema?
+                if mqtt_msg_field == 'battery':
+                    self.battery = val
+                elif mqtt_msg_field == 'voltage':
+                    self.voltage = val
+                else:
+                    logger.critical(
+                        'Unsupported action in mqtt message: thing %s ID %d has no %s',
+                        self.name,
+                        self.thing_id,
+                        mqtt_msg_field)
+                    logger.debug(
+                        'Exception in MQTT message %s',
+                        msg,
+                        exc_info=True)
+                logger.debug('Thing %s updated %s to %s, but field is not declared in schema', self.name, mqtt_msg_field, val)
 
         if len(changes) != 0:
             logger.debug(
