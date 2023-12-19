@@ -1,6 +1,6 @@
 """ Global representation of things, Zigbee and non-Zigbee """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 import json
 from json import JSONDecodeError
@@ -25,6 +25,9 @@ class ActionDict(dict):
         except KeyError as exc:
             raise AttributeError(f'{key} is not a known action') from exc
 
+    def dictify(self):
+        return {k:self[k].dictify() for k in self.keys()}
+
 
 @dataclass(frozen=False)
 class Zigbee2MqttThing:
@@ -45,6 +48,21 @@ class Zigbee2MqttThing:
     is_zigbee_mqtt: bool = True
     # Callback whenever any action is updated from MQTT
     on_any_change_from_mqtt: Callable = None
+
+    def dictify(self):
+        return {
+            "thing_id": self.thing_id,
+            "address": self.address,
+            "name": self.name,
+            "real_name": self.real_name,
+            "broken": self.broken,
+            "manufacturer": self.manufacturer,
+            "model": self.model,
+            "description": self.description,
+            "thing_type": self.thing_type,
+            "actions": self.actions.dictify(),
+            "is_zigbee_mqtt": self.is_zigbee_mqtt,
+        }
 
     def debug_str(self):
         """ Pretty print self, recursively """
@@ -190,6 +208,14 @@ class Zigbee2MqttActionValue:
     _needs_mqtt_propagation: bool = False
     # Triggered whenever this action is updated from MQTT
     on_change_from_mqtt: Callable = None
+
+    def dictify(self):
+        return {
+            "thing_name": self.thing_name,
+            "meta": self.meta,
+            "_current": self._current,
+            "_needs_mqtt_propagation": self._needs_mqtt_propagation,
+        }
 
     def debug_str(self):
         """ Pretty print """
@@ -396,6 +422,15 @@ class Zigbee2MqttAction:
     can_set: bool
     can_get: bool
     value: Zigbee2MqttActionValue
+
+    def dictify(self):
+        return {
+            "name": self.name,
+            "description": self.description,
+            "can_set": self.can_set,
+            "can_get": self.can_get,
+            "value": self.value.dictify(),
+        }
 
     def debug_str(self):
         """ Pretty print """

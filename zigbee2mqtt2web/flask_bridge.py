@@ -178,7 +178,12 @@ class FlaskBridge:
 
         def get_thing_meta(thing_name):
             thing = self._registry.get_thing(thing_name)
-            return dataclasses.asdict(thing)
+            try:
+                # Give the object a chance to dictify itself
+                return thing.dictify()
+            except AttributeError:
+                # If thing doesn't define dictify, default to dataclasses copying
+                return dataclasses.asdict(thing)
         self._thing_get('/meta/<thing_name>', get_thing_meta)
 
         def get_thing_action_meta(thing_name, prop_name):

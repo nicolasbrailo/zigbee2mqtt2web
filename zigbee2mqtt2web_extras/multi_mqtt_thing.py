@@ -93,6 +93,21 @@ class MultiMqttThing:
                     group_name,
                     thing.name)
 
+    def dictify(self):
+        return {
+            "name": self.name,
+            "broken": self.broken,
+            "manufacturer": self.manufacturer,
+            "model": self.model,
+            "description": self.description,
+            "thing_type": self.thing_type,
+            "actions": {k:self.actions[k].dictify() for k in self.actions.keys()},
+            "group_has_same_metadata": self.group_has_same_metadata,
+            "group_has_same_actions": self.group_has_same_actions,
+            "is_zigbee_mqtt": self.is_zigbee_mqtt,
+            "_wrapped_things_names": self._wrapped_things_names
+        }
+
     def get_broadcast_names(self):
         """ Return the MQTT-broadcast names under control of this group """
         return self._wrapped_things_names

@@ -84,6 +84,7 @@ class SceneManager:
             'World off',
             'Turns off everything that looks like it may be turned off',
             _make_scene_all_things_off(thing_registry))
+        thing_registry.register(self)
 
     def add_scene(self, name, description, callback):
         """ Make a new scene public to anyone with access to this thing """
