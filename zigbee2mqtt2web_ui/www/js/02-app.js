@@ -10,7 +10,7 @@ $('#global_error_ui_ack').on('click', () => {
 window.remote_thing_registry = new Zigbee2Mqtt2Flask2js(showGlobalError);
 window.local_storage = new LocalStorageManager();
 window.thing_registry = new ThingRegistry(local_storage, remote_thing_registry);
-const INTERESTING_PLOT_METRICS = ['temperature', 'humidity']
+const INTERESTING_PLOT_METRICS = ['temperature', 'humidity', 'pm25', 'voc_index'];
 
 const app_visibility = new VisibilityCallback();
 app_visibility.app_became_visible = () => {
