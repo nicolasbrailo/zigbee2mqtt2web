@@ -170,6 +170,10 @@ class FlaskBridge:
             return self._registry.get_all_known_thing_names()
         self._thing_get('/get_all_known_things', get_all_known_thing_names)
 
+        def get_known_things_hash():
+            return self._registry.get_known_things_hash()
+        self._thing_get('/get_known_things_hash', get_known_things_hash)
+
         def get_thing_names_supporting_action(action):
             return self._registry.get_thing_names_with_actions([action])
         self._thing_get(

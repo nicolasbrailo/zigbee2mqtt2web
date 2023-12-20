@@ -1,10 +1,12 @@
 class SensorsPane extends React.Component {
-  static SensorMetrics = ['temperature', 'humidity', 'occupancy', 'contact'];
+  static SensorMetrics = ['temperature', 'humidity', 'voc_index', 'pm25', 'occupancy', 'contact'];
 
   static prettyMetricName(metric) {
     switch (metric) {
       case 'temperature': return '';
       case 'humidity': return '';
+      case 'voc_index': return 'co2';
+      case 'pm25': return 'pm25';
       case 'update_time': return '@';
       case 'contact': return 'Closed';
       case 'occupancy': return 'Occupancy';
@@ -16,6 +18,8 @@ class SensorsPane extends React.Component {
     switch (metric) {
       case 'temperature': return '°C';
       case 'humidity': return '%RH';
+      case 'voc_index': return '';
+      case 'pm25': return '';
       case 'update_time': return '';
       case 'contact': return '';
       case 'occupancy': return '';

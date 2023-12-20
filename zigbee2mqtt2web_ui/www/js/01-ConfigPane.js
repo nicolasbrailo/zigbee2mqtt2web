@@ -1,4 +1,5 @@
 const ConfigPane_MQTT_MaxLogLines = 30;
+const ConfigPane_LowBatteryLimit = 20;
 
 class ConfigPane extends React.Component {
   static buildProps(thing_registry, remote_thing_registry, cbOnReorderThings) {
@@ -17,6 +18,7 @@ class ConfigPane extends React.Component {
     this.toggleExpanded = this.toggleExpanded.bind(this);
     this.toggleMqttFeed = this.toggleMqttFeed.bind(this);
     this.showMqttMapConfirm = this.showMqttMapConfirm.bind(this);
+    this.renderLowBatteryList = this.renderLowBatteryList.bind(this);
     this.userRequestedMqttNetworkmapRefresh = this.userRequestedMqttNetworkmapRefresh.bind(this);
 
     this.state = {
@@ -25,6 +27,7 @@ class ConfigPane extends React.Component {
       showMqttMapConfirm: false,
       newMqttMapAvailable: false,
       mqttLog: [],
+      thingsWithLowBattery: [],
     };
   }
 
@@ -108,6 +111,37 @@ class ConfigPane extends React.Component {
     return this.render_minimized();
   }
 
+  renderLowBatteryList() {
+    const batThings = this.props.thing_registry.battery_powered_things_state;
+    const lowBatThings = {};
+    let needsRender = false;
+    for (const thingName of Object.keys(batThings)) {
+      const bat = batThings[thingName];
+      if (bat && bat < ConfigPane_LowBatteryLimit) {
+        lowBatThings[thingName] = bat;
+        needsRender = true;
+      }
+    }
+
+    if (!needsRender) {
+      return '';
+    }
+
+    let low_bat = [];
+    for (const thingName of Object.keys(lowBatThings)) {
+      low_bat.push(
+        <li key={`ConfigPane_lowBattery_${thingName}_li`}>
+          <label>{thingName}: {lowBatThings[thingName]}%</label>
+        </li>
+      );
+    }
+
+    return (<div id="ConfigPane_low_battery" className="container">
+        Things with low battery:
+        <ul>{low_bat}</ul>
+      </div>);
+  }
+
   render_minimized() {
     return (<div id="ConfigPane_config_options">
                 <button className="modal-button" onClick={this.toggleExpanded}>Options</button>
@@ -131,6 +165,7 @@ class ConfigPane extends React.Component {
                       Syslog
                     </button></li>
               </ul>
+              {this.renderLowBatteryList()}
             </div>)
   }
 

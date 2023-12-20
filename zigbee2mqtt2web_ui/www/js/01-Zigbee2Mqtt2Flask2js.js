@@ -74,6 +74,10 @@ class Zigbee2Mqtt2Flask2js {
     return this._get('/get_world');
   }
 
+  get_known_things_hash() {
+    return this._get('/get_known_things_hash');
+  }
+
   get_thing_meta(thing_name) {
     return this._get(`/meta/${thing_name}`);
   }

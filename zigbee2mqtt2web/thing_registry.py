@@ -1,8 +1,9 @@
 """ Functionality for registering, managing and looking up MQTT based things """
 
+from ctypes import c_int32
+
 import logging
 logger = logging.getLogger(__name__)
-
 
 class ThingRegistry:
     """
@@ -48,6 +49,17 @@ class ThingRegistry:
         things = self._mqtt.get_all_known_thing_names()
         things.extend(self._known_things.keys())
         return things
+
+    def get_known_things_hash(self):
+        """ Returns a 32 bit hash of the names of all known things, to let clients determine if the
+        network of known devices has changed. Note this doesn't update on actions change. """
+        sortedNames = self.get_thing_names()
+        sortedNames.sort()
+        nethash = 0
+        for name in sortedNames:
+            for chrAsInt in list(map(lambda c: ord(c), list(name))):
+                nethash = c_int32((nethash << 2) - nethash + chrAsInt).value
+        return nethash
 
     def get_thing(self, name):
         """
