@@ -62,6 +62,10 @@ def sonos_announce(zones, alert_uri, volume, timeout, force_play):
                     zone.player_name,
                     exc_info=True)
 
+    # Sleep to synchronize: make sure we're not checking for announcement finished
+    # before the speaker had time to process the announce request
+    time.sleep(1)
+
     # Wait for alert to finish (or timeout)
     announcement_finished = False
     finished_waits = 0
