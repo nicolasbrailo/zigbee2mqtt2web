@@ -247,8 +247,7 @@ class Sonos(PhonyZMWThing):
         device will be restored after the announcement finishes. This call blocks until
         all devices have finished playing (and their volume restored) or until the timeout
         is reached. """
-        zones = soco.discover()
-        sonos_announce(zones, uri, announcement_volume, timeout_secs, force)
+        sonos_announce(uri, announcement_volume, timeout_secs, force)
 
     def _tts_announce(self, msg):
         volume = _DEFAULT_ANNOUNCEMENT_VOLUME
@@ -380,7 +379,7 @@ class Sonos(PhonyZMWThing):
 
     def _serve_tts_asset(self, fname):
         """ Serve a file asset created from tts_announce """
-        logger.info('Serve TTS Asset %s', fname)
+        logger.debug('Serve TTS Asset %s', fname)
         return send_from_directory(self._cfg['tts_cache_path'], fname)
 
     def _serve_user_audio_asset(self, fname):
