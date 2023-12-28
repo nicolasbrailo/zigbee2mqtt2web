@@ -64,7 +64,15 @@
 
        "COMMENT1_url_base_tts_asset_webserver": "URL that can serve TTS assets; needs to be reachable by all Sonos speakers",
        "COMMENT2_url_base_tts_asset_webserver": "Hint: you probably want http://$LAN_VISIBLE_IP:$THIS_CONFIG_HTTP_ONLY_PORT",
-       "url_base_asset_webserver": "http://192.168.1.152:1235"
+       "url_base_asset_webserver": "http://192.168.1.152:1235",
+
+       "COMMENT1_API": "An API key is needed to do graceful announcements in Sonos. Without an API key, announcements only work if",
+       "COMMENT2_API": "no other media is playing at the moment. You should register your own API key at developer.sonos.com.",
+       "COMMENT3_API": "You may use the example API keys below to test, but they belong to https://github.com/jjlawren/sonos-websocket/",
+       "COMMENT4_API": "and you shouldn't use them for your own system",
+       "COMMENT_EG_api_key": "123e4567-e89b-12d3-a456-426655440000",
+       "COMMENT_EG_key_app_id": "com.jjlawren.sonos_websocket",
+       "COMMENT_EG_api_key_name": "Sonos Websocket"
   },
 
   "COMMENT": "Security cam settings. Read FTPD.py for info",

@@ -17,13 +17,11 @@ from soco.snapshot import Snapshot
 import logging
 log = logging.getLogger('ZMWSonos')
 
-# XXX
-API_KEY = "123e4567-e89b-12d3-a456-426655440000"
 
-async def _sonos_ws_connect(ip_addr):
+async def _sonos_ws_connect(api_key, ip_addr):
     uri = f"wss://{ip_addr}:1443/websocket/api"
     headers = {
-        "X-Sonos-Api-Key": API_KEY,
+        "X-Sonos-Api-Key": api_key,
         "Sec-WebSocket-Protocol": "v1.api.smartspeaker.audio",
     }
 
@@ -40,9 +38,9 @@ async def _sonos_ws_connect(ip_addr):
         log.error("Unknown error connecting to Sonos speaker %s", uri, exc_info=True)
     return None
 
-async def _async_sonos_announce_one(ip_addr, soco_uid, alert_uri, volume=None):
+async def _async_sonos_announce_one(api_cfg, ip_addr, soco_uid, alert_uri, volume=None):
     # ~Inspired on~ stolen from https://github.com/jjlawren/sonos-websocket/blob/main/sonos_websocket/websocket.py
-    session = await _sonos_ws_connect(ip_addr)
+    session = await _sonos_ws_connect(api_cfg['api_key'], ip_addr)
     if session is None:
         return
 
@@ -55,8 +53,8 @@ async def _async_sonos_announce_one(ip_addr, soco_uid, alert_uri, volume=None):
         "playerId": soco_uid,
     }
     options: dict[str, Any] = {
-        "name": "Sonos Websocket",
-        "appId": "com.jjlawren.sonos_websocket",
+        "name": api_cfg['api_key_name'],
+        "appId": api_cfg['key_app_id'],
         "streamUrl": alert_uri,
     }
 
@@ -75,17 +73,20 @@ async def _async_sonos_announce_one(ip_addr, soco_uid, alert_uri, volume=None):
     await session.close()
     return True
 
-async def _async_sonos_announce_all(alert_uri, volume=None):
+async def _async_sonos_announce_all(api_cfg, alert_uri, volume=None):
     tasks = []
     for spk in soco.discover():
-        tasks.append(_async_sonos_announce_one(spk.ip_address, spk.uid, alert_uri, volume))
+        tasks.append(_async_sonos_announce_one(api_cfg, spk.ip_address, spk.uid, alert_uri, volume))
     await asyncio.gather(*tasks)
 
-def sonos_announce_ws(alert_uri, volume=None):
+def sonos_announce_ws(api_cfg, alert_uri, volume=None):
     """ Send an announcement to all zones, in a fancy way: should lower the volume of current media,
     play announce and then restore. Requires an API key """
-    asyncio.run(_async_sonos_announce_all(alert_uri, volume))
-
+    # Ensure we have the right cfg keys before launching an announcement
+    api_cfg['api_key']
+    api_cfg['api_key_name']
+    api_cfg['key_app_id']
+    asyncio.run(_async_sonos_announce_all(api_cfg, alert_uri, volume))
 
 
 def sonos_announce_local(alert_uri, volume, timeout, force_play):
@@ -181,12 +182,13 @@ def sonos_announce_local(alert_uri, volume, timeout, force_play):
 
 
 
-def sonos_announce(alert_uri, volume=None, timeout_secs=10, force_play=False):
-    try:
-        sonos_announce_ws(alert_uri, volume)
-        return
-    except:
-        logging.error('Failed to Sonos announce, fallback to local only announce')
+def sonos_announce(alert_uri, volume=None, timeout_secs=10, force_play=False, ws_api_cfg=None):
+    if ws_api_cfg is not None:
+        try:
+            sonos_announce_ws(ws_api_cfg, alert_uri, volume)
+            return
+        except:
+            logging.error('Failed to Sonos announce, fallback to local only announce', exc_info=True)
 
     sonos_announce_local(alert_uri, volume, timeout_secs, force_play)
 
