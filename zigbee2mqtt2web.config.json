@@ -96,5 +96,14 @@
     "from_number": "A_TEST_NUMBER_GO_READ_DOCS"
   },
 
+  "COMMENT": "Doorbell, based on Reolink",
+  "doorbell": {
+    "host": "192.168.1.200",
+    "user": "admin",
+    "pass": "",
+    "webhook_service": "http://192.168.1.20",
+    "webhook_base_path": "/camwebhook"
+  },
+
   "COMMENT": "JSON is silly"
 }

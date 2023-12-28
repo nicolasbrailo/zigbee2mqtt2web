@@ -239,3 +239,7 @@ class ReolinkDoorbell:
     def on_motion_cleared(self):
         log.info("Doorbell cam %s says no motion is detected", self._cam_host)
 
+    def get_snapshot(self, fpath):
+        with open(fpath, 'wb') as fp:
+            fp.write(self._runner.run_until_complete(self._cam.get_snapshot(0)))
+
