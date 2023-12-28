@@ -1,3 +1,6 @@
 [submodule "scripts/zigbee_adapter_fw_update/cc2538-bsl"]
 	path = scripts/adapter_fw_update/cc2538-bsl
 	url = https://github.com/JelmerT/cc2538-bsl.git
+[submodule "zigbee2mqtt2web_extras/thirdparty/reolink_aio"]
+	path = zigbee2mqtt2web_extras/thirdparty/reolink_aio
+	url = git@github.com:nicolasbrailo/reolink_aio.git
