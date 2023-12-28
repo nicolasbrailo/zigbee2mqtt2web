@@ -49,6 +49,37 @@ class WhatsApp:
             'Content-Type': 'application/json',
         }
 
+    def message_from_template(self, template_name):
+        """ Send template to number. This works even if the target hasn't interacted first, but target must be
+        enrolled in the test program || the origin should be a proper business account. """
+
+        def _message_from_template(to_number, template_name):
+            logger.info('WA send template %s to %s', template_name, to_number)
+            if self._test_mode:
+                return
+            msg = {
+                "to": to_number,
+                "type": "template",
+                "messaging_product": "whatsapp",
+                "template": {
+                    "name": template_name,
+                    "language": {
+                        "policy": "deterministic",
+                        "code": "en_US"
+                    },
+                },
+            }
+            return requests.post(
+                self._msg_url,
+                headers=self._json_headers,
+                data=json.dumps(msg))
+        return [_message_from_template(num, template_name)
+                for num in self._targets]
+
+    def send_hello_world_msg(self):
+        """ Use this to get a generic hello world message, to test the auth setup """
+        return self.message_from_template("hello_world")
+
     def upload_image(self, fpath):
         """ Upload image to WA server, returns media ID to use when sending a message """
         logger.info('WA uploaded image %s', fpath)
@@ -115,35 +146,8 @@ class WhatsApp:
                 data=json.dumps(msg))
         return [_send_image(num, image_id) for num in self._targets]
 
-    def message_from_template(self, template_name):
-        """ Send template to_number. This works even if the target hasn't interacted first, but target must be
-        enrolled in the test program || the origin should be a proper business account. """
-
-        def _message_from_template(to_number, template_name):
-            logger.info('WA send template %s to %s', template_name, to_number)
-            if self._test_mode:
-                return
-            msg = {
-                "to": to_number,
-                "type": "template",
-                "messaging_product": "whatsapp",
-                "template": {
-                    "name": template_name,
-                    "language": {
-                        "policy": "deterministic",
-                        "code": "en_us"
-                    },
-                },
-            }
-            return requests.post(
-                self._msg_url,
-                headers=self._json_headers,
-                data=json.dumps(msg))
-        return [_message_from_template(num, template_name)
-                for num in self._targets]
-
-    def message_from_params_template(self, media_id):
-        """ Send a templated messages, with a text and media params. Same restrictions as
+    def template_message_with_image(self, template_name, media_id, text_replace):
+        """ Send a templated message, with one text and one media param. Same restrictions as
         message_from_template apply. The template name must be configured in the dashboard, eg
         https://business.facebook.com/wa/manage/message-templates/
         """
@@ -161,7 +165,7 @@ class WhatsApp:
                 "recipient_type": "individual",
                 "messaging_product": "whatsapp",
                 "template": {
-                    "name": "sample_purchase_feedback",
+                    "name": template_name,
                     "language": {
                         "policy": "deterministic",
                         "code": "en_us"
@@ -181,7 +185,7 @@ class WhatsApp:
                         {
                             "type": "body",
                             "parameters": [
-                                {"type": "text", "text": "HOLA!"},
+                                {"type": "text", "text": text_replace},
                             ]
                         }
                     ],
