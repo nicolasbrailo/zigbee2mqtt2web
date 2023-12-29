@@ -79,6 +79,7 @@ class Sonos(PhonyZMWThing):
 
         _config_logger(cfg['debug_log'])
         self._cfg = cfg
+        self._www = webserver
         self._add_base_zmw_actions()
         self._add_tts_actions(webserver)
         self._add_user_audio_actions(webserver)
@@ -298,7 +299,7 @@ class Sonos(PhonyZMWThing):
             self._cfg['tts_cache_path'], phrase, lang)
 
         tts_asset_url = self._cfg['url_base_asset_webserver'] + \
-            url_for(self._cfg['webpath_tts_asset'], fname=tts_local_file)
+                            self._www.url_for(self._cfg['webpath_tts_asset'], tts_local_file)
         self.play_announcement(
             tts_asset_url,
             announcement_volume,

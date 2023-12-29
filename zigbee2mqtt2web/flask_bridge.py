@@ -420,3 +420,8 @@ class FlaskBridge:
         self._registry.cb_for_mqtt_topic(
             'bridge/response/networkmap',
             _on_graphvizmap_complete)
+
+    def url_for(self, base, fname):
+        """ Use to build a url for an asset without being in an active request """
+        with self._flask.app_context(), self._flask.test_request_context():
+            return url_for(base, fname=fname)
