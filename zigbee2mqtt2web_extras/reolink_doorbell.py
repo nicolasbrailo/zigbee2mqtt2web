@@ -31,6 +31,8 @@ log = logging.getLogger(__name__)
 _CAM_SUBSCRIPTION_CHECK_INTERVAL_SECS=60
 # If ONVIF messages arrive in this timewindow, we'll consider them duplicated
 _DEBOUNCE_TIMEOUT_SEC = 15
+# How often should we check if movement is still detected after the event fires
+_CAM_MOVEMENT_ACTIVE_WATCHDOG=60
 
 
 def _register_webhook_url(cfg, zmw, cb):
@@ -65,7 +67,8 @@ async def _connect_to_cam(cfg, webhook_url):
     cam.construct_capabilities()
 
     # Cleanup old subscriptions, if there were any
-    await cam.unsubscribe()
+    #await cam.unsubscribe()
+    await cam.unsubscribe_all()
     await cam.subscribe(webhook_url)
 
     log.info("Connected to doorbell %s %s model %s - firmware %s",
@@ -102,6 +105,7 @@ class ReolinkDoorbell:
         # Object should be fully constructed now
         self._debounce_msg = {}
         self._motionEventLevel = 0
+        self._motionEventJob = None
         self._cfg = cfg
         self._webhook_url = webhook_url
         self._zmw = zmw
@@ -223,12 +227,42 @@ class ReolinkDoorbell:
         if debounce(msg, 'PeopleDetect', keyMustExist=False):
             self._motionEventLevel += 1
 
-        if prevMotionEventLevel > 0 and self._motionEventLevel == 0:
-            self.on_motion_cleared()
-        if self._motionEventLevel > 0:
+        if prevMotionEventLevel == 0 and self._motionEventLevel > 0:
             self.on_motion_detected(self._motionEventLevel)
+            self._motionEventJob = self._scheduler.add_job(
+                func=self._motion_check_active,
+                trigger="interval",
+                seconds=_CAM_MOVEMENT_ACTIVE_WATCHDOG)
+        elif prevMotionEventLevel > 0 and self._motionEventLevel > 0:
+            # Camera reports motion still detected, add more timeout
+            self._motionEventJob.remove()
+            self._motionEventJob = self._scheduler.add_job(
+                func=self._motion_check_active,
+                trigger="interval",
+                seconds=_CAM_MOVEMENT_ACTIVE_WATCHDOG)
+        elif prevMotionEventLevel > 0 and self._motionEventLevel == 0:
+            self._motionEventJob.remove()
+            self.on_motion_cleared()
 
         return
+
+    def _motion_check_active(self):
+        stateUpdated = self._runner.run_until_complete(self._cam.get_ai_state_all_ch())
+        if stateUpdated and self._cam.motion_detected(0):
+            log.info("Doorbell cam %s motion timeout, but motion still active. Waiting more.", self._cam_host)
+
+            self._motionEventJob = self._scheduler.add_job(
+                func=self._motion_check_active,
+                trigger="interval",
+                seconds=_CAM_MOVEMENT_ACTIVE_WATCHDOG)
+            return
+
+        if not stateUpdated:
+            log.info("Doorbell cam %s motion timeout, polling state failed", self._cam_host)
+        elif not self._cam.motion_detected(0):
+            log.info("Doorbell cam %s motion timeout, and motion not active: event lost?", self._cam_host)
+
+        self.on_motion_timeout()
 
     def on_doorbell_button_pressed(self):
         log.info("Doorbell cam %s says someone pressed the visitor button", self._cam_host)
@@ -238,6 +272,9 @@ class ReolinkDoorbell:
 
     def on_motion_cleared(self):
         log.info("Doorbell cam %s says no motion is detected", self._cam_host)
+
+    def on_motion_timeout(self):
+        log.info("Doorbell cam %s doesn't report motion, but never cleared the event", self._cam_host)
 
     def get_snapshot(self, fpath):
         with open(fpath, 'wb') as fp:

@@ -240,6 +240,13 @@ class TelegramLongpollBot:
         except TelegramRateLimitError:
             log.info('Telegram API rate limit, will try to connect later...')
 
+    def send_photo(self, *a, **kw):
+        self.connect()
+        if self._t is None:
+            log.error('Skipping request to send_photo, Telegram not connected')
+            return
+        self._t.send_photo(*a, **kw)
+
     def on_bot_connected(self, bot):
         """ Callback when bot successfully connects to Telegram """
         log.info('Connected to Telegram bot %s', bot.bot_info['first_name'])

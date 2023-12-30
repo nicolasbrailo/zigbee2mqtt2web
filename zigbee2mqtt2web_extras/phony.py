@@ -41,6 +41,25 @@ class PhonyZMWThing:
         each action .get() """
         return {}
 
+    def dictify(self):
+        actions = {}
+        for an in self.actions.keys():
+            actions[an] = {
+                    'name': an,
+                    'description': self.actions[an].description,
+                    'can_set': self.actions[an].can_set,
+                    'can_get': self.actions[an].can_get,
+                }
+        return {
+            "name": self.name,
+            "description": self.description,
+            "thing_type": self.thing_type,
+            "actions": self.actions,
+            "is_zigbee_mqtt": self.is_zigbee_mqtt,
+            "manufacturer": self.manufacturer,
+            "actions": actions,
+        }
+
     def get(self, action):
         """ Dummy forward getter """
         try:
