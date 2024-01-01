@@ -59,7 +59,7 @@ class FakeMqttProxy:
 
 
 class MqttProxy:
-    """ Thin wrapper for an MQTT client: manages connections, and translates messages to json """
+    """ Thin wrapper for an MQTT client listening to MQTT messages: manages connections, and translates messages to json """
 
     def __init__(self, cfg):
         if "mqtt_skip_connect_for_dev" in cfg and \
@@ -77,16 +77,6 @@ class MqttProxy:
         self.client.on_disconnect = self._on_disconnect
         self.client.on_unsubscribe = self._on_unsubscribe
         self.client.on_message = self._on_message
-
-        # last_seen = now() - ping_timeout, so that we'll ping the server on the
-        # first try. Also, last_seen > now() - alive_timeout, so that we don't
-        # declare it dead just yet
-        self._z2m_last_seen = time.time() - _Z2M_PING_TIMEOUT
-        _SCHEDULER.add_job(
-            func=self._ping_z2m,
-            trigger="interval",
-            next_run_time=datetime.datetime.now(),
-            seconds=_Z2M_PING_INTERVAL)
 
     def _on_connect(self, client, _userdata, _flags, ret_code):
         if ret_code == 0:
@@ -117,10 +107,6 @@ class MqttProxy:
             self._mqtt_port)
 
     def _on_message(self, _client, _userdata, msg):
-        self._z2m_last_seen = time.time()
-        if msg.topic == _Z2M_ALIVE_RESPONSE_TOPIC:
-            return
-
         is_json = True
         try:
             parsed_msg = json.loads(msg.payload)
@@ -136,28 +122,6 @@ class MqttProxy:
             logger.critical(
                 'Error on MQTT message handling. Topic %s, payload %s. '
                 'Ex: {%s}', msg.topic, msg.payload, ex, exc_info=True)
-
-    def _ping_z2m(self):
-        now = time.time()
-        last_seen_delta = now - self._z2m_last_seen
-        if last_seen_delta < _Z2M_PING_TIMEOUT:
-            # We've seen Zigbee2Mqtt in the last period, skip ping
-            return
-
-        self.start_zigbee2mqtt_ping()
-        if last_seen_delta < _Z2M_ALIVE_TIMEOUT:
-            # Ping Z2M and wait a bit more
-            return
-
-        # Z2M hasn't sent any messages for a long time, it's probably down
-        logger.error(
-            'Zigbee2Mqtt is down: no response for %s seconds',
-            last_seen_delta)
-
-    def start_zigbee2mqtt_ping(self):
-        """ Send a ping to Z2M (the response is async, will be delivered on
-        _Z2M_ALIVE_RESPONSE_TOPIC """
-        self.broadcast(_Z2M_ALIVE_REQUEST_TOPIC, '')
 
     def start(self):
         """ Connects to MQTT and launches a bg thread for the net loop """
@@ -206,3 +170,51 @@ class MqttProxy:
             port=self._mqtt_port,
             topic=topic,
             payload=msg)
+
+
+class Zigbee2MqttProxy(MqttProxy):
+    """ Thin wrapper for an MQTT client listening to Zigbee2MQTT messages """
+
+    def __init__(self, cfg):
+        super().__init__(cfg)
+
+        # last_seen = now() - ping_timeout, so that we'll ping the server on the
+        # first try. Also, last_seen > now() - alive_timeout, so that we don't
+        # declare it dead just yet
+        self._z2m_last_seen = time.time() - _Z2M_PING_TIMEOUT
+        _SCHEDULER.add_job(
+            func=self._ping_z2m,
+            trigger="interval",
+            next_run_time=datetime.datetime.now(),
+            seconds=_Z2M_PING_INTERVAL)
+
+
+    def _on_message(self, _client, _userdata, msg):
+        self._z2m_last_seen = time.time()
+        if msg.topic == _Z2M_ALIVE_RESPONSE_TOPIC:
+            return
+        super()._on_message(_client, _userdata, msg)
+
+    def _ping_z2m(self):
+        now = time.time()
+        last_seen_delta = now - self._z2m_last_seen
+        if last_seen_delta < _Z2M_PING_TIMEOUT:
+            # We've seen Zigbee2Mqtt in the last period, skip ping
+            return
+
+        self.start_zigbee2mqtt_ping()
+        if last_seen_delta < _Z2M_ALIVE_TIMEOUT:
+            # Ping Z2M and wait a bit more
+            return
+
+        # Z2M hasn't sent any messages for a long time, it's probably down
+        logger.error(
+            'Zigbee2Mqtt is down: no response for %s seconds',
+            last_seen_delta)
+
+    def start_zigbee2mqtt_ping(self):
+        """ Send a ping to Z2M (the response is async, will be delivered on
+        _Z2M_ALIVE_RESPONSE_TOPIC """
+        self.broadcast(_Z2M_ALIVE_REQUEST_TOPIC, '')
+
+
