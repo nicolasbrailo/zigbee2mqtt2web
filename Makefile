@@ -9,7 +9,7 @@ run: system_has_dep_svcs
 shell:
 	python3 -m pipenv run python
 
-lint.log:
+lint.log: zigbee2mqtt2web/*.py zigbee2mqtt2web_extras/*.py
 	autopep8 -r --in-place --aggressive --aggressive zigbee2mqtt2web/ | tee lint.log
 	python3 -m pipenv run python -m pylint zigbee2mqtt2web --disable=C0411 | tee --append lint.log
 	autopep8 -r --in-place --aggressive --aggressive zigbee2mqtt2web_extras/ | tee --append lint.log

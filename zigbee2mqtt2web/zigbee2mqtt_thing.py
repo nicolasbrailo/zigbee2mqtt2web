@@ -1,6 +1,6 @@
 """ Global representation of things, Zigbee and non-Zigbee """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable
 import json
 from json import JSONDecodeError
@@ -26,7 +26,8 @@ class ActionDict(dict):
             raise AttributeError(f'{key} is not a known action') from exc
 
     def dictify(self):
-        return {k:self[k].dictify() for k in self.keys()}
+        """ Get metadata on supported actions """
+        return {k: v.dictify() for k, v in self.items()}
 
 
 @dataclass(frozen=False)
@@ -50,6 +51,7 @@ class Zigbee2MqttThing:
     on_any_change_from_mqtt: Callable = None
 
     def dictify(self):
+        """ Get metadata on this thing """
         return {
             "thing_id": self.thing_id,
             "address": self.address,
@@ -101,7 +103,8 @@ class Zigbee2MqttThing:
                         changes.append(
                             (changed_action.value.on_change_from_mqtt, val))
             except AttributeError:
-                # Some battery powered devices don't seem to respect their schema?
+                # Some battery powered devices don't seem to respect their
+                # schema?
                 if mqtt_msg_field == 'battery':
                     self.battery = val
                 elif mqtt_msg_field == 'voltage':
@@ -116,7 +119,11 @@ class Zigbee2MqttThing:
                         'Exception in MQTT message %s',
                         msg,
                         exc_info=True)
-                logger.debug('Thing %s updated %s to %s, but field is not declared in schema', self.name, mqtt_msg_field, val)
+                logger.debug(
+                    'Thing %s updated %s to %s, but field is not declared in schema',
+                    self.name,
+                    mqtt_msg_field,
+                    val)
 
         if len(changes) != 0:
             logger.debug(
@@ -210,6 +217,7 @@ class Zigbee2MqttActionValue:
     on_change_from_mqtt: Callable = None
 
     def dictify(self):
+        """ Meta data on this thing's method's current value """
         return {
             "thing_name": self.thing_name,
             "meta": self.meta,
@@ -251,7 +259,7 @@ class Zigbee2MqttActionValue:
         """
         # The set may fail, but it's a good enough heuristic: if a propagation
         # isn't needed, there's no bad side effect other than an extra message
-        #logger.debug('User set %s.action = %s', self.thing_name, val)
+        # logger.debug('User set %s.action = %s', self.thing_name, val)
         self._needs_mqtt_propagation = True
 
         # Values for composites may come as a string (eg from Flask) instead of
@@ -374,7 +382,7 @@ class Zigbee2MqttActionValue:
             #    self.thing_name)
             return None
 
-        #logger.debug('Will send MQTT update for %s', self.thing_name)
+        # logger.debug('Will send MQTT update for %s', self.thing_name)
         self._needs_mqtt_propagation = False
 
         # Most value logic is in get_value, but bools are special: we need to send
@@ -424,6 +432,7 @@ class Zigbee2MqttAction:
     value: Zigbee2MqttActionValue
 
     def dictify(self):
+        """ Meta data on this thing's method """
         return {
             "name": self.name,
             "description": self.description,
@@ -593,8 +602,8 @@ def _parse_zigbee2mqtt_actions(thing_name, definition):
                 pass
             else:
                 logger.warning(
-                    'Thing "%s" type-heuristic multiple match: first match is %s, new match is %s. Keeping first.',
-                    thing_name, thing_type, maybe_thing_type)
+                    'Thing "%s" type-heuristic multiple match: first match is %s, new match is %s.'
+                    'Keeping type as first match.', thing_name, thing_type, maybe_thing_type)
             for act in node['features']:
                 action = _parse_zigbee2mqtt_action(thing_name, act)
                 actions[action.name] = action

@@ -31,15 +31,23 @@ async def _sonos_ws_connect(api_key, ip_addr):
         session.ws = await session.ws_connect(uri, headers=headers, verify_ssl=False)
         return session
     except aiohttp.ClientResponseError as exc:
-        log.error("HTTP return code %s connecting to Sonos speaker at %s", exc.code, uri)
+        log.error(
+            "HTTP return code %s connecting to Sonos speaker at %s",
+            exc.code,
+            uri)
     except (aiohttp.ClientConnectionError, asyncio.TimeoutError):
         log.error("Failed to connect to Sonos speaker at %s", uri)
     except Exception:  # pylint: disable=broad-except
-        log.error("Unknown error connecting to Sonos speaker %s", uri, exc_info=True)
+        log.error(
+            "Unknown error connecting to Sonos speaker %s",
+            uri,
+            exc_info=True)
     return None
 
+
 async def _async_sonos_announce_one(api_cfg, ip_addr, soco_uid, alert_uri, volume=None):
-    # ~Inspired on~ stolen from https://github.com/jjlawren/sonos-websocket/blob/main/sonos_websocket/websocket.py
+    # ~Inspired on~ stolen from
+    # https://github.com/jjlawren/sonos-websocket/blob/main/sonos_websocket/websocket.py
     session = await _sonos_ws_connect(api_cfg['api_key'], ip_addr)
     if session is None:
         return
@@ -52,7 +60,7 @@ async def _async_sonos_announce_one(api_cfg, ip_addr, soco_uid, alert_uri, volum
         "command": "loadAudioClip",
         "playerId": soco_uid,
     }
-    options: dict[str, Any] = {
+    options = {
         "name": api_cfg['api_key_name'],
         "appId": api_cfg['key_app_id'],
         "streamUrl": alert_uri,
@@ -67,25 +75,36 @@ async def _async_sonos_announce_one(api_cfg, ip_addr, soco_uid, alert_uri, volum
         msg = await session.ws.receive()
         log.debug("Speaker %s replies %s", ip_addr, str(msg))
     except Exception:  # pylint: disable=broad-except
-        log.error("Unknown error sending command to Sonos speaker %s", ip_addr, exc_info=True)
+        log.error(
+            "Unknown error sending command to Sonos speaker %s",
+            ip_addr,
+            exc_info=True)
 
     await session.ws.close()
     await session.close()
     return True
 
+
 async def _async_sonos_announce_all(api_cfg, alert_uri, volume=None):
     tasks = []
     for spk in soco.discover():
-        tasks.append(_async_sonos_announce_one(api_cfg, spk.ip_address, spk.uid, alert_uri, volume))
+        tasks.append(
+            _async_sonos_announce_one(
+                api_cfg,
+                spk.ip_address,
+                spk.uid,
+                alert_uri,
+                volume))
     await asyncio.gather(*tasks)
+
 
 def sonos_announce_ws(api_cfg, alert_uri, volume=None):
     """ Send an announcement to all zones, in a fancy way: should lower the volume of current media,
     play announce and then restore. Requires an API key """
     # Ensure we have the right cfg keys before launching an announcement
-    api_cfg['api_key']
-    api_cfg['api_key_name']
-    api_cfg['key_app_id']
+    api_cfg['api_key']  # pylint: disable=pointless-statement
+    api_cfg['api_key_name']  # pylint: disable=pointless-statement
+    api_cfg['key_app_id']  # pylint: disable=pointless-statement
     asyncio.run(_async_sonos_announce_all(api_cfg, alert_uri, volume))
 
 
@@ -134,7 +153,7 @@ def sonos_announce_local(alert_uri, volume, timeout, force_play):
         if zone.is_coordinator:
             try:
                 zone.play_uri(uri=alert_uri, title="Sonos Alert")
-            except Exception: # pylint: disable=broad-except
+            except Exception:  # pylint: disable=broad-except
                 logging.error(
                     'Failed to announce on %s',
                     zone.player_name,
@@ -174,21 +193,30 @@ def sonos_announce_local(alert_uri, volume, timeout, force_play):
         log.info('Restoring state for %s', zone.player_name)
         try:
             zone.snap.restore(fade=True)
-        except Exception: # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             logging.error(
                 'Failed to restore state on %s',
                 zone.player_name,
                 exc_info=True)
 
 
-
-def sonos_announce(alert_uri, volume=None, timeout_secs=10, force_play=False, ws_api_cfg=None):
+def sonos_announce(
+        alert_uri,
+        volume=None,
+        timeout_secs=10,
+        force_play=False,
+        ws_api_cfg=None):
+    """ Make an announcement over all discoverable speakers. If ws_api_cfg isn't false, it will
+    use a 'smart' announce method (lower volume of current media, announce, restore). This requires
+    an external API key. If this method isn't available, it will fallback to announce only on
+    speakers without active media. """
     if ws_api_cfg is not None:
         try:
             sonos_announce_ws(ws_api_cfg, alert_uri, volume)
             return
-        except:
-            logging.error('Failed to Sonos announce, fallback to local only announce', exc_info=True)
+        except Exception:  # pylint: disable=broad-except
+            logging.error(
+                'Failed to Sonos announce, fallback to local only announce',
+                exc_info=True)
 
     sonos_announce_local(alert_uri, volume, timeout_secs, force_play)
-

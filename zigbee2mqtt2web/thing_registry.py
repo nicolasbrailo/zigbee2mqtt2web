@@ -5,6 +5,7 @@ from ctypes import c_int32
 import logging
 logger = logging.getLogger(__name__)
 
+
 class ThingRegistry:
     """
     Wraps an MQTT bridge, adding the ability of operating on non-MQTT based
@@ -53,12 +54,12 @@ class ThingRegistry:
     def get_known_things_hash(self):
         """ Returns a 32 bit hash of the names of all known things, to let clients determine if the
         network of known devices has changed. Note this doesn't update on actions change. """
-        sortedNames = self.get_thing_names()
-        sortedNames.sort()
+        sorted_names = sorted(self.get_thing_names())
         nethash = 0
-        for name in sortedNames:
-            for chrAsInt in list(map(lambda c: ord(c), list(name))):
-                nethash = c_int32((nethash << 2) - nethash + chrAsInt).value
+        for name in sorted_names:
+            chr_list = list(name)
+            for chr_as_int in list(map(ord, chr_list)):
+                nethash = c_int32((nethash << 2) - nethash + chr_as_int).value
         return nethash
 
     def get_thing(self, name):

@@ -189,7 +189,7 @@ class Zigbee2MqttBridge:
         matching_cbs = []
         for rule, cb_for_topic in self._rules:
             if topic == rule:
-                #logger.debug('Applying rule %s for topic %s', rule, topic)
+                # logger.debug('Applying rule %s for topic %s', rule, topic)
                 matching_cbs.append(cb_for_topic)
 
         for cb_for_topic in matching_cbs:

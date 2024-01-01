@@ -72,9 +72,9 @@ class Sonos(PhonyZMWThing):
         self._api_cfg = None
         if 'api_key' in cfg or 'api_key_name' in cfg or 'key_app_id' in cfg:
             self._api_cfg = {
-                    'api_key': cfg['api_key'],
-                    'api_key_name': cfg['api_key_name'],
-                    'key_app_id': cfg['key_app_id'],
+                'api_key': cfg['api_key'],
+                'api_key_name': cfg['api_key_name'],
+                'key_app_id': cfg['key_app_id'],
             }
 
         _config_logger(cfg['debug_log'])
@@ -256,8 +256,12 @@ class Sonos(PhonyZMWThing):
         device will be restored after the announcement finishes. This call blocks until
         all devices have finished playing (and their volume restored) or until the timeout
         is reached. """
-        sonos_announce(uri, announcement_volume, timeout_secs=timeout_secs, force_play=force, ws_api_cfg=self._api_cfg)
-
+        sonos_announce(
+            uri,
+            announcement_volume,
+            timeout_secs=timeout_secs,
+            force_play=force,
+            ws_api_cfg=self._api_cfg)
 
     def _tts_announce(self, msg):
         volume = _DEFAULT_ANNOUNCEMENT_VOLUME
@@ -299,7 +303,7 @@ class Sonos(PhonyZMWThing):
             self._cfg['tts_cache_path'], phrase, lang)
 
         tts_asset_url = self._cfg['url_base_asset_webserver'] + \
-                            self._www.url_for(self._cfg['webpath_tts_asset'], tts_local_file)
+            self._www.url_for(self._cfg['webpath_tts_asset'], tts_local_file)
         self.play_announcement(
             tts_asset_url,
             announcement_volume,
@@ -309,8 +313,8 @@ class Sonos(PhonyZMWThing):
 
     def _announce_user_recording(self):
         request_not_valid = FlaskRq.files is None or \
-                            len(FlaskRq.files) != 1 or \
-                            'audio_data' not in FlaskRq.files
+            len(FlaskRq.files) != 1 or \
+            'audio_data' not in FlaskRq.files
         if request_not_valid:
             logger.warning(
                 "Received request to store audio asset, but can't understand it")

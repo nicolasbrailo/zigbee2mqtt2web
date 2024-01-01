@@ -1,11 +1,8 @@
 """ Doorbell/ONVIF-camera service """
 
 from threading import Lock
-import aiohttp
 import asyncio
 import logging
-import ssl
-import sys
 import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -20,29 +17,34 @@ logging.getLogger("apscheduler.executors.default").setLevel(logging.ERROR)
 logging.getLogger("reolink_aio.api").setLevel(logging.ERROR)
 logging.getLogger("reolink_aio.api.data").setLevel(logging.ERROR)
 logging.getLogger("reolink_aio.helpers").setLevel(logging.ERROR)
-logging.getLogger("zigbee2mqtt2web_extras.thirdparty.reolink_aio.reolink_aio.api").setLevel(logging.ERROR)
-logging.getLogger("zigbee2mqtt2web_extras.thirdparty.reolink_aio.reolink_aio.api.data").setLevel(logging.ERROR)
-logging.getLogger("zigbee2mqtt2web_extras.thirdparty.reolink_aio.reolink_aio.helpers").setLevel(logging.ERROR)
+logging.getLogger(
+    "zigbee2mqtt2web_extras.thirdparty.reolink_aio.reolink_aio.api").setLevel(logging.ERROR)
+logging.getLogger(
+    "zigbee2mqtt2web_extras.thirdparty.reolink_aio.reolink_aio.api.data").setLevel(logging.ERROR)
+logging.getLogger(
+    "zigbee2mqtt2web_extras.thirdparty.reolink_aio.reolink_aio.helpers").setLevel(logging.ERROR)
 
 log = logging.getLogger(__name__)
 
 
 # Watchdog for cam subscription
-_CAM_SUBSCRIPTION_CHECK_INTERVAL_SECS=60
+_CAM_SUBSCRIPTION_CHECK_INTERVAL_SECS = 60
 # If ONVIF messages arrive in this timewindow, we'll consider them duplicated
 _DEBOUNCE_TIMEOUT_SEC = 15
 # How often should we check if movement is still detected after the event fires
-_CAM_MOVEMENT_ACTIVE_WATCHDOG=60
+_CAM_MOVEMENT_ACTIVE_WATCHDOG = 60
 
 
 def _register_webhook_url(cfg, zmw, cb):
     # Ensure cfg has required keys
-    cfg['webhook_base_path']
-    if not 'webhook_service' in cfg or len(cfg['webhook_service']) == 0:
-        raise KeyError("webhook_service must be configured to a server accesible by the camera")
+    cfg['webhook_base_path']  # pylint: disable=pointless-statement
+    if 'webhook_service' not in cfg or len(cfg['webhook_service']) == 0:
+        raise KeyError(
+            "webhook_service must be configured to a server accesible by the camera")
 
     # Create a webhook endpoint in the zmw web server
-    if len(cfg['webhook_base_path']) > 0 and cfg['webhook_base_path'][0] == '/':
+    if len(cfg['webhook_base_path']
+           ) > 0 and cfg['webhook_base_path'][0] == '/':
         webhook_path = f"{cfg['webhook_base_path']}{cfg['host']}"
     else:
         webhook_path = f"/{cfg['webhook_base_path']}{cfg['host']}"
@@ -53,13 +55,20 @@ def _register_webhook_url(cfg, zmw, cb):
         webhook_url = f"{cfg['webhook_service']}/{webhook_path}"
 
     zmw.webserver.add_url_rule(webhook_path, cb, methods=['GET', 'POST'])
-    log.info("Registered webhook %s for camera %s...", webhook_url, cfg['host'])
+    log.info(
+        "Registered webhook %s for camera %s...",
+        webhook_url,
+        cfg['host'])
     return webhook_url
 
 
 async def _connect_to_cam(cfg, webhook_url):
     log.info("Connecting to doorbell at %s...", cfg['host'])
-    cam = ReolinkDoorbellHost(cfg['host'], cfg['user'], cfg['pass'], use_https=True)
+    cam = ReolinkDoorbellHost(
+        cfg['host'],
+        cfg['user'],
+        cfg['pass'],
+        use_https=True)
 
     # Fetch all cam state
     await cam.get_host_data()
@@ -67,18 +76,20 @@ async def _connect_to_cam(cfg, webhook_url):
     cam.construct_capabilities()
 
     # Cleanup old subscriptions, if there were any
-    #await cam.unsubscribe()
+    # await cam.unsubscribe()
     await cam.unsubscribe_all()
     await cam.subscribe(webhook_url)
 
     log.info("Connected to doorbell %s %s model %s - firmware %s",
-        cfg['host'],
-        cam.camera_name(0),
-        cam.camera_model(0),
-        cam.camera_sw_version(0))
+             cfg['host'],
+             cam.camera_name(0),
+             cam.camera_model(0),
+             cam.camera_sw_version(0))
 
     if not cam.is_doorbell(0):
-        log.error("Something is wrong, %s reports it isn't a doorbell!", cfg['host'])
+        log.error(
+            "Something is wrong, %s reports it isn't a doorbell!",
+            cfg['host'])
 
     return cam
 
@@ -93,7 +104,8 @@ class ReolinkDoorbell:
 
         webhook_url = _register_webhook_url(cfg, zmw, self._on_cam_webhook)
         self._runner = asyncio.get_event_loop()
-        cam = self._runner.run_until_complete(_connect_to_cam(cfg, webhook_url))
+        cam = self._runner.run_until_complete(
+            _connect_to_cam(cfg, webhook_url))
         self._cam_host = cfg['host']
 
         self._scheduler = BackgroundScheduler()
@@ -104,8 +116,8 @@ class ReolinkDoorbell:
 
         # Object should be fully constructed now
         self._debounce_msg = {}
-        self._motionEventLevel = 0
-        self._motionEventJob = None
+        self._motion_evt_lvl = 0
+        self._motion_evt_job = None
         self._cfg = cfg
         self._webhook_url = webhook_url
         self._zmw = zmw
@@ -136,26 +148,44 @@ class ReolinkDoorbell:
                 await self._cam.renew()
                 return
             except SubscriptionError:
-                log.error(f"Cam %s subscription error", self._cam_host, exc_info=True)
+                log.error(
+                    "Cam %s subscription error",
+                    self._cam_host,
+                    exc_info=True)
             except RuntimeError:
-                log.error(f"Runtime error renewing cam %s subscription", self._cam_host, exc_info=True)
+                log.error(
+                    "Runtime error renewing cam %s subscription",
+                    self._cam_host,
+                    exc_info=True)
 
             try:
                 await self._cam.unsubscribe()
                 await self._cam.subscribe(self._webhook_url)
-                log.info("Set up new subscription %s for cam %s...", self._webhook_url, self._cam_host)
+                log.info(
+                    "Set up new subscription %s for cam %s...",
+                    self._webhook_url,
+                    self._cam_host)
                 return
             except SubscriptionError:
-                log.error(f"Error creating new cam %s subscription", self._cam_host, exc_info=True)
+                log.error(
+                    "Error creating new cam %s subscription",
+                    self._cam_host,
+                    exc_info=True)
             except RuntimeError:
-                log.error(f"Runtime error creating new cam %s subscription", self._cam_host, exc_info=True)
+                log.error(
+                    "Runtime error creating new cam %s subscription",
+                    self._cam_host,
+                    exc_info=True)
 
-            log.error(f"All recovery attempts failed, start new connection to cam %s", self._cam_host)
+            log.error(
+                "All recovery attempts failed, start new connection to cam %s",
+                self._cam_host)
             try:
-                # Try to cleanup (but likely to fail, if we got here everything may be broken)
+                # Try to cleanup (but likely to fail, if we got here everything
+                # may be broken)
                 await self._cam.unsubscribe()
                 await self._cam.logout()
-            except:
+            except Exception:  # pylint: disable=broad-except
                 pass
             self._cam = await _connect_to_cam(self._cfg, self._webhook_url)
 
@@ -163,12 +193,17 @@ class ReolinkDoorbell:
         try:
             t = self._cam.renewtimer()
             if t <= 100:
-                log.debug("Subscription to cam %s has %s seconds remaining, renewing",
-                          self._cam_host, t)
+                log.debug(
+                    "Subscription to cam %s has %s seconds remaining, renewing",
+                    self._cam_host,
+                    t)
                 must_renew = True
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             must_renew = True
-            log.error(f"Error checking for cam %s subscription", self._cam_host, exc_info=True)
+            log.error(
+                "Error checking for cam %s subscription",
+                self._cam_host,
+                exc_info=True)
 
         if must_renew:
             self._runner.run_until_complete(_renew_async())
@@ -176,20 +211,28 @@ class ReolinkDoorbell:
     def _on_cam_webhook(self):
         try:
             msg = parse_reolink_onvif_event(FlaskRequest.data)
-            log.debug("Received event from camera %s: %s", self._cam_host, str(msg))
+            log.debug(
+                "Received event from camera %s: %s",
+                self._cam_host,
+                str(msg))
             # Flatten the message: we don't care about channels
             flatmsg = {}
             for k in msg.keys():
                 for kk in msg[k].keys():
                     if kk in flatmsg:
-                        log.error("Format error from camera %s: duplicated key %s", self._cam_host, k)
+                        log.error(
+                            "Format error from camera %s: duplicated key %s",
+                            self._cam_host,
+                            k)
                     flatmsg[kk] = msg[k][kk]
 
             with self._announce_lock:
                 self._on_cam_webhook_msg(flatmsg)
-        except:
-            log.error("Error processing event from camera %s: %s", self._cam_host, str(msg), exc_info=True)
-        # Tell the camera we succesfully processed the message, always
+        except Exception:  # pylint: disable=broad-except
+            log.error("Error processing event from camera %s: %s",
+                      self._cam_host, str(msg), exc_info=True)
+        # Tell the camera we succesfully processed the message, always, so it
+        # doesn't retry
         return "", 200
 
     def _on_cam_webhook_msg(self, msg):
@@ -198,85 +241,103 @@ class ReolinkDoorbell:
         #  'FaceDetect': False, 'PeopleDetect': False, 'VehicleDetect': False,
         # 'DogCatDetect': False}
 
-        def debounce(msg, key, keyMustExist=True):
+        def debounce(msg, key, key_must_exist=True):
             if key not in msg:
-                if keyMustExist:
-                    log.error("Camera %s missing expected key %s from subscription", self._cam_host, key)
+                if key_must_exist:
+                    log.error(
+                        "Camera %s missing expected key %s from subscription",
+                        self._cam_host,
+                        key)
                 return False
 
             # Event isn't active, skip debounce logic
-            if msg[key] == False:
+            if not msg[key]:
                 return False
 
             dt = 2 * _DEBOUNCE_TIMEOUT_SEC
             if f'{key}_last_true' in self._debounce_msg:
                 dt = time.time() - self._debounce_msg[f'{key}_last_true']
-            debounceActive = dt > _DEBOUNCE_TIMEOUT_SEC
+            debounced_active = dt > _DEBOUNCE_TIMEOUT_SEC
             self._debounce_msg[f'{key}_last_true'] = time.time()
-            return debounceActive
+            return debounced_active
 
         if debounce(msg, 'Visitor'):
             self.on_doorbell_button_pressed()
 
-        prevMotionEventLevel = self._motionEventLevel
-        self._motionEventLevel = 0
-        if debounce(msg, 'Motion', keyMustExist=False):
-            self._motionEventLevel += 1
-        if debounce(msg, 'MotionAlarm', keyMustExist=False):
-            self._motionEventLevel += 1
-        if debounce(msg, 'PeopleDetect', keyMustExist=False):
-            self._motionEventLevel += 1
+        prev_motion_event_lvl = self._motion_evt_lvl
+        self._motion_evt_lvl = 0
+        if debounce(msg, 'Motion', key_must_exist=False):
+            self._motion_evt_lvl += 1
+        if debounce(msg, 'MotionAlarm', key_must_exist=False):
+            self._motion_evt_lvl += 1
+        if debounce(msg, 'PeopleDetect', key_must_exist=False):
+            self._motion_evt_lvl += 1
 
-        if prevMotionEventLevel == 0 and self._motionEventLevel > 0:
-            self.on_motion_detected(self._motionEventLevel)
-            self._motionEventJob = self._scheduler.add_job(
+        if prev_motion_event_lvl == 0 and self._motion_evt_lvl > 0:
+            self.on_motion_detected(self._motion_evt_lvl)
+            self._motion_evt_job = self._scheduler.add_job(
                 func=self._motion_check_active,
                 trigger="interval",
                 seconds=_CAM_MOVEMENT_ACTIVE_WATCHDOG)
-        elif prevMotionEventLevel > 0 and self._motionEventLevel > 0:
+        elif prev_motion_event_lvl > 0 and self._motion_evt_lvl > 0:
             # Camera reports motion still detected, add more timeout
-            self._motionEventJob.remove()
-            self._motionEventJob = self._scheduler.add_job(
+            self._motion_evt_job.remove()
+            self._motion_evt_job = self._scheduler.add_job(
                 func=self._motion_check_active,
                 trigger="interval",
                 seconds=_CAM_MOVEMENT_ACTIVE_WATCHDOG)
-        elif prevMotionEventLevel > 0 and self._motionEventLevel == 0:
-            self._motionEventJob.remove()
+        elif prev_motion_event_lvl > 0 and self._motion_evt_lvl == 0:
+            self._motion_evt_job.remove()
             self.on_motion_cleared()
 
-        return
-
     def _motion_check_active(self):
-        stateUpdated = self._runner.run_until_complete(self._cam.get_ai_state_all_ch())
-        if stateUpdated and self._cam.motion_detected(0):
-            log.info("Doorbell cam %s motion timeout, but motion still active. Waiting more.", self._cam_host)
+        state_updated = self._runner.run_until_complete(
+            self._cam.get_ai_state_all_ch())
+        if state_updated and self._cam.motion_detected(0):
+            log.info(
+                "Doorbell cam %s motion timeout, but motion still active. Waiting more.",
+                self._cam_host)
 
-            self._motionEventJob = self._scheduler.add_job(
+            self._motion_evt_job = self._scheduler.add_job(
                 func=self._motion_check_active,
                 trigger="interval",
                 seconds=_CAM_MOVEMENT_ACTIVE_WATCHDOG)
             return
 
-        if not stateUpdated:
-            log.info("Doorbell cam %s motion timeout, polling state failed", self._cam_host)
+        if not state_updated:
+            log.info(
+                "Doorbell cam %s motion timeout, polling state failed",
+                self._cam_host)
         elif not self._cam.motion_detected(0):
-            log.info("Doorbell cam %s motion timeout, and motion not active: event lost?", self._cam_host)
+            log.info(
+                "Doorbell cam %s motion timeout, and motion not active: event lost?",
+                self._cam_host)
 
         self.on_motion_timeout()
 
     def on_doorbell_button_pressed(self):
-        log.info("Doorbell cam %s says someone pressed the visitor button", self._cam_host)
+        """ Visitor even triggered, someone pressed the doorbell button """
+        log.info(
+            "Doorbell cam %s says someone pressed the visitor button",
+            self._cam_host)
 
-    def on_motion_detected(self, motion_level):
+    def on_motion_detected(self, _motion_level):
+        """ Motion detect event fired. Higher motion level means more confidence. """
         log.info("Doorbell cam %s says someone is at the door", self._cam_host)
 
     def on_motion_cleared(self):
+        """ Camera reports no motion is detected now """
         log.info("Doorbell cam %s says no motion is detected", self._cam_host)
 
     def on_motion_timeout(self):
-        log.info("Doorbell cam %s doesn't report motion, but never cleared the event", self._cam_host)
+        """ Motion event started but never finished within a configured timeout """
+        log.info(
+            "Doorbell cam %s doesn't report motion, but never cleared the event",
+            self._cam_host)
 
     def get_snapshot(self, fpath):
+        """ Save a snapshot of the camera feed to fpath """
         with open(fpath, 'wb') as fp:
-            fp.write(self._runner.run_until_complete(self._cam.get_snapshot(0)))
-
+            fp.write(
+                self._runner.run_until_complete(
+                    self._cam.get_snapshot(0)))

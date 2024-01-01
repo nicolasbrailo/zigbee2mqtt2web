@@ -19,33 +19,38 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def _guess_path_or_fail(maybePath):
-    if os.path.isdir(maybePath):
-        return maybePath
+def _guess_path_or_fail(maybe_path):
+    """ Try to get a full path from a user supplied config path, by trying different
+    resolution methods """
 
-    thisFilePath = pathlib.Path(__file__).parent.resolve()
+    if os.path.isdir(maybe_path):
+        return maybe_path
+
+    this_file_path = pathlib.Path(__file__).parent.resolve()
 
     # Try to access this dir by making the path relative to this file
-    fileRelUiPath = os.path.join(thisFilePath, maybePath)
-    fileRelUiPath = pathlib.Path(fileRelUiPath).resolve()
-    if os.path.isdir(fileRelUiPath):
+    file_rel_ui_path = os.path.join(this_file_path, maybe_path)
+    file_rel_ui_path = pathlib.Path(file_rel_ui_path).resolve()
+    if os.path.isdir(file_rel_ui_path):
         logger.info(
-                'Assuming path %s is relative to flask_bridge and resolves to %s',
-                maybePath,
-                fileRelUiPath)
-        return fileRelUiPath
+            'Assuming path %s is relative to flask_bridge and resolves to %s',
+            maybe_path,
+            file_rel_ui_path)
+        return file_rel_ui_path
 
-    # Try to access this dir by making the path relative to the project (which lives in ..)
-    prjRelUiPath = os.path.join(thisFilePath, '..', maybePath)
-    prjRelUiPath = pathlib.Path(prjRelUiPath).resolve()
-    if os.path.isdir(prjRelUiPath):
+    # Try to access this dir by making the path relative to the project (which
+    # lives in ..)
+    prj_rel_ui_path = os.path.join(this_file_path, '..', maybe_path)
+    prj_rel_ui_path = pathlib.Path(prj_rel_ui_path).resolve()
+    if os.path.isdir(prj_rel_ui_path):
         logger.info(
-                'Assuming path %s is relative to project and resolves to %s',
-                maybePath,
-                prjRelUiPath)
-        return prjRelUiPath
+            'Assuming path %s is relative to project and resolves to %s',
+            maybe_path,
+            prj_rel_ui_path)
+        return prj_rel_ui_path
 
-    raise RuntimeError(f"Can't access www path {maybePath}")
+    raise RuntimeError(f"Can't access www path {maybe_path}")
+
 
 def _validate(cfg):
     ok_cfg = {
@@ -74,7 +79,8 @@ def _validate(cfg):
 
     if 'www_extra_local_path' in cfg:
         ok_cfg['www_extra_uri_prefix'] = cfg['www_extra_uri_prefix']
-        ok_cfg['www_extra_local_path'] =  _guess_path_or_fail(cfg['www_extra_local_path'])
+        ok_cfg['www_extra_local_path'] = _guess_path_or_fail(
+            cfg['www_extra_local_path'])
         if cfg['www_extra_uri_prefix'] == ok_cfg['ui_uri_prefix']:
             raise RuntimeError(
                 f"www extra URI prefix ({ok_cfg['www_extra_uri_prefix']}) can't be "
@@ -186,7 +192,8 @@ class FlaskBridge:
                 # Give the object a chance to dictify itself
                 return thing.dictify()
             except AttributeError:
-                # If thing doesn't define dictify, default to dataclasses copying
+                # If thing doesn't define dictify, default to dataclasses
+                # copying
                 return dataclasses.asdict(thing)
         self._thing_get('/meta/<thing_name>', get_thing_meta)
 

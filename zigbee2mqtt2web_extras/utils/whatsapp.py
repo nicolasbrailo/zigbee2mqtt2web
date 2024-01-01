@@ -146,7 +146,11 @@ class WhatsApp:
                 data=json.dumps(msg))
         return [_send_image(num, image_id) for num in self._targets]
 
-    def template_message_with_image(self, template_name, media_id, text_replace):
+    def template_message_with_image(
+            self,
+            template_name,
+            media_id,
+            text_replace):
         """ Send a templated message, with one text and one media param. Same restrictions as
         message_from_template apply. The template name must be configured in the dashboard, eg
         https://business.facebook.com/wa/manage/message-templates/

@@ -59,7 +59,8 @@ class FakeMqttProxy:
 
 
 class MqttProxy:
-    """ Thin wrapper for an MQTT client listening to MQTT messages: manages connections, and translates messages to json """
+    """ Thin wrapper for an MQTT client listening to MQTT messages: manages connections, and
+    translates messages to json """
 
     def __init__(self, cfg):
         if "mqtt_skip_connect_for_dev" in cfg and \
@@ -157,12 +158,6 @@ class MqttProxy:
 
     def broadcast(self, topic, msg):
         """ JSONises and broadcasts a message to MQTT """
-        last_seen_delta = time.time() - self._z2m_last_seen
-        if last_seen_delta > _Z2M_ALIVE_TIMEOUT:
-            logger.critical(
-                "Zigbee2Mqtt may be down: Sending message on topic %s, "
-                "but Z2M hasn't sent replies for %s seconds", topic, last_seen_delta)
-
         msg = json.dumps(msg)
         publish.single(
             qos=1,
@@ -187,7 +182,6 @@ class Zigbee2MqttProxy(MqttProxy):
             trigger="interval",
             next_run_time=datetime.datetime.now(),
             seconds=_Z2M_PING_INTERVAL)
-
 
     def _on_message(self, _client, _userdata, msg):
         self._z2m_last_seen = time.time()
@@ -217,4 +211,10 @@ class Zigbee2MqttProxy(MqttProxy):
         _Z2M_ALIVE_RESPONSE_TOPIC """
         self.broadcast(_Z2M_ALIVE_REQUEST_TOPIC, '')
 
-
+    def broadcast(self, topic, msg):
+        last_seen_delta = time.time() - self._z2m_last_seen
+        if last_seen_delta > _Z2M_ALIVE_TIMEOUT:
+            logger.critical(
+                "Zigbee2Mqtt may be down: Sending message on topic %s, "
+                "but Z2M hasn't sent replies for %s seconds", topic, last_seen_delta)
+        super().broadcast(topic, msg)

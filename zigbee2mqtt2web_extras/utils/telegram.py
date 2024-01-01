@@ -15,23 +15,29 @@ logging.getLogger('apscheduler.scheduler').setLevel(logging.ERROR)
 logging.getLogger('apscheduler.executors.default').setLevel(logging.ERROR)
 
 
-# If a message received from the user is longer than this, it will be discarded for security
-_MAX_USER_MESSAGE_LEN=100
-# If a user command can be split into more than N tokens, discard it for security
-_MAX_USER_CMD_TOKS=10
+# If a message received from the user is longer than this, it will be
+# discarded for security
+_MAX_USER_MESSAGE_LEN = 100
+# If a user command can be split into more than N tokens, discard it for
+# security
+_MAX_USER_CMD_TOKS = 10
+
 
 class TelegramApiError(RuntimeError):
     """ The Telegram API responded with something we don't know how to parse, or the
     message sent to Telegram caused an error """
     pass
 
+
 class TelegramRateLimitError(RuntimeError):
     """ Currently being ratelimited by the API """
     pass
 
+
 class TelegramHttpError(RuntimeError):
     """ Transport error """
     pass
+
 
 def _telegram_req(url, params=None, data=None, files=None, post=False):
     try:
@@ -41,7 +47,8 @@ def _telegram_req(url, params=None, data=None, files=None, post=False):
             raise TelegramRateLimitError()
 
         if req.status_code != 200:
-            raise TelegramHttpError(f'Telegram request {url} failed, status {req.status_code} - {req.reason}')
+            raise TelegramHttpError(
+                f'Telegram request {url} failed, status {req.status_code} - {req.reason}')
 
         jreq = req.json()
         if not jreq['ok']:
@@ -51,11 +58,14 @@ def _telegram_req(url, params=None, data=None, files=None, post=False):
     except requests.exceptions.RequestException as ex:
         raise TelegramHttpError(f'Telegram request {url} failed') from ex
 
-_telegram_get  = _telegram_req
+
+_telegram_get = _telegram_req
+
 
 def _telegram_post(*a, **kw):
     kw['post'] = True
     return _telegram_req(*a, **kw)
+
 
 def _validate_telegram_cmds(cmds):
     fmt_cmds = []
@@ -64,7 +74,8 @@ def _validate_telegram_cmds(cmds):
         try:
             cmd, descr, cb = cmd
         except ValueError as ex:
-            raise ValueError(f'TelegramBot {cmd} not valid: format should be tuple of (command, description, callback)') from ex
+            raise ValueError(
+                f'TelegramBot {cmd} not valid: format should be tuple of (command, description, callback)') from ex
 
         if cmd in known_commands:
             raise KeyError(f'TelegramBot command {cmd} is duplicated')
@@ -77,6 +88,7 @@ def _validate_telegram_cmds(cmds):
 
     return known_commands, str(json.dumps(fmt_cmds))
 
+
 def _telegram_sanitize_user_message(msg, known_cmds):
     if 'message' not in msg:
         log.debug('Ignoring non message update %s', msg)
@@ -84,7 +96,9 @@ def _telegram_sanitize_user_message(msg, known_cmds):
 
     msg = msg['message']
     if 'from' not in msg or 'chat' not in msg:
-        log.debug("Dropping dangerous looking message, can't find 'from' and 'chat' fields", msg)
+        log.debug(
+            "Dropping dangerous looking message, can't find 'from' and 'chat' fields",
+            msg)
         return None
 
     if 'text' not in msg:
@@ -92,7 +106,10 @@ def _telegram_sanitize_user_message(msg, known_cmds):
         return None
 
     if len(msg['text']) > _MAX_USER_MESSAGE_LEN:
-        log.debug('Message from user %s is longer than %s, discarding message', msg['from']['first_name'], _MAX_USER_MESSAGE_LEN)
+        log.debug(
+            'Message from user %s is longer than %s, discarding message',
+            msg['from']['first_name'],
+            _MAX_USER_MESSAGE_LEN)
         return None
 
     cmd = None
@@ -101,13 +118,19 @@ def _telegram_sanitize_user_message(msg, known_cmds):
         # Looks like a command
         toks = msg['text'].split(' ')
         if len(toks) > _MAX_USER_CMD_TOKS:
-            log.debug('Command from user %s has more than %s tokens, discarding message', msg['from']['first_name'], _MAX_USER_CMD_TOKS)
+            log.debug(
+                'Command from user %s has more than %s tokens, discarding message',
+                msg['from']['first_name'],
+                _MAX_USER_CMD_TOKS)
             return None
 
         cmd = toks[0]
-        cmd = cmd[1:] # Skip initial / of '/cmd'
+        cmd = cmd[1:]  # Skip initial / of '/cmd'
         if cmd not in known_cmds:
-            log.debug('User %s requested unknown command %s, discarding message', msg['from']['first_name'], cmd)
+            log.debug(
+                'User %s requested unknown command %s, discarding message',
+                msg['from']['first_name'],
+                cmd)
             return None
 
         cmd_args = toks[1:]
@@ -120,6 +143,7 @@ def _telegram_sanitize_user_message(msg, known_cmds):
         'cmd': cmd,
         'cmd_args': cmd_args,
     }
+
 
 class TelegramBot:
     """ Simple Telegram wrapper to send messages, receive chats, etc """
@@ -135,35 +159,53 @@ class TelegramBot:
 
         self.bot_info = _telegram_get(f'{self._api_base}/getMe')
         if not self.bot_info['is_bot']:
-            log.error("Telegram says the account under control isn't a bot, things may not work")
+            log.error(
+                "Telegram says the account under control isn't a bot, things may not work")
 
     def set_bot_name(self, bot_name):
         """ Replaces the name for this bot """
-        return _telegram_post(f'{self._api_base}/setMyName', data={'name': bot_name})
+        return _telegram_post(
+            f'{self._api_base}/setMyName',
+            data={
+                'name': bot_name})
 
     def set_bot_description(self, descr):
         """ Replaces the description for this bot """
-        return _telegram_post(f'{self._api_base}/setMyDescription', data={'description': descr})
+        return _telegram_post(
+            f'{self._api_base}/setMyDescription',
+            data={
+                'description': descr})
 
     def set_commands(self, cmds):
         """ Replaces the commands available to users of this bot """
         self._known_commands, fmt_cmds = _validate_telegram_cmds(cmds)
-        return _telegram_get(f'{self._api_base}/setMyCommands', data={'commands': fmt_cmds})
+        return _telegram_get(
+            f'{self._api_base}/setMyCommands',
+            data={
+                'commands': fmt_cmds})
 
     def send_message(self, chat_id, text):
         """ Send a text message to chat_id, or throw """
         msg = _telegram_post(f'{self._api_base}/sendMessage',
                              data={'chat_id': int(chat_id), 'text': text})
         if 'message_id' not in msg:
-            raise TelegramApiError(f'Failed to send message to chat {chat_id}: {msg}')
+            raise TelegramApiError(
+                f'Failed to send message to chat {chat_id}: {msg}')
 
     def send_photo(self, chat_id, fpath, caption=None):
         """ Send a picture to chat_id, or throw. fpath should be a path to a local file """
-        msg = _telegram_post(f'{self._api_base}/sendPhoto',
-                             data={'chat_id': int(chat_id), 'caption': str(caption)},
-                             files={'photo': open(fpath, 'rb')})
+        msg = _telegram_post(
+            f'{self._api_base}/sendPhoto',
+            data={
+                'chat_id': int(chat_id),
+                'caption': str(caption)},
+            files={
+                'photo': open(
+                    fpath,
+                    'rb')})
         if 'message_id' not in msg:
-            raise TelegramApiError(f'Failed to send message to chat {chat_id}: {msg}')
+            raise TelegramApiError(
+                f'Failed to send message to chat {chat_id}: {msg}')
         return True
 
     def poll_updates(self):
@@ -171,11 +213,18 @@ class TelegramBot:
         has a pending message, and it will ignore all other updates. """
         max_update_id = 0
         updates_prcd = 0
-        for update in _telegram_get(f'{self._api_base}/getUpdates', params=self._updates_offset):
+        for update in _telegram_get(
+            f'{self._api_base}/getUpdates',
+                params=self._updates_offset):
             try:
-                max_update_id = max(max_update_id, int(update['update_id']) + 1)
-            except:
-                log.debug('Failed to parse Telegram update %s', update, exc_info=True)
+                max_update_id = max(
+                    max_update_id, int(
+                        update['update_id']) + 1)
+            except BaseException:
+                log.debug(
+                    'Failed to parse Telegram update %s',
+                    update,
+                    exc_info=True)
                 continue
 
             msg = _telegram_sanitize_user_message(update, self._known_commands)
@@ -185,10 +234,13 @@ class TelegramBot:
                 try:
                     cb = self._known_commands[msg['cmd']]
                     cb(self, msg)
-                except:
+                except BaseException:
                     # Swallow all errors: if processing fails, we should continue from the next one,
                     # failing here means we'd retry them forever
-                    log.error('User error processing Telegram command %s', msg['cmd'], exc_info=True)
+                    log.error(
+                        'User error processing Telegram command %s',
+                        msg['cmd'],
+                        exc_info=True)
             else:
                 self.on_bot_received_message(msg)
 
@@ -226,7 +278,8 @@ class TelegramLongpollBot:
             return
 
         cnt = self._t.poll_updates()
-        log.debug('Telegram bot %s had %s updates', self._t.bot_info['first_name'], cnt)
+        log.debug('Telegram bot %s had %s updates',
+                  self._t.bot_info['first_name'], cnt)
 
     def connect(self):
         """ Requests bot to connect, if not connected yet """
@@ -250,4 +303,3 @@ class TelegramLongpollBot:
     def on_bot_connected(self, bot):
         """ Callback when bot successfully connects to Telegram """
         log.info('Connected to Telegram bot %s', bot.bot_info['first_name'])
-

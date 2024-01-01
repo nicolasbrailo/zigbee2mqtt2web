@@ -228,7 +228,7 @@ def _new_zmw_action(
 
     class _SpotifyAction:
         def __init__(self, cb_on_token_expired, getter=None, setter=None):
-            assert(getter is not None or setter is not None)
+            assert (getter is not None or setter is not None)
             self._sp = None
             self._cb_on_token_expired = cb_on_token_expired
             self._getter = getter
@@ -352,7 +352,7 @@ class Spotify(PhonyZMWThing):
         # After all actions are built, refresh their access token
         try:
             self._refresh_access_tok()
-        except BaseException: # pylint: disable=broad-except
+        except BaseException:  # pylint: disable=broad-except
             logging.error(
                 'Failed to authenticate Spotify, will retry later',
                 exc_info=True)

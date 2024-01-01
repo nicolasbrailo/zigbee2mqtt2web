@@ -91,7 +91,9 @@ class SensorsHistory:
         whenever $thing has an updated value """
         for metric in metrics:
             if metric not in thing.actions:
-                raise KeyError(f'Thing {thing.name} has no metric {metric}. Available actions: {thing.actions.keys()}')
+                raise KeyError(
+                    f'Thing {thing.name} has no metric {metric}. Available actions: '
+                    f'{thing.actions.keys()}')
 
         if thing.on_any_change_from_mqtt is not None:
             raise AttributeError(
