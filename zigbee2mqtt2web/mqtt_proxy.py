@@ -62,7 +62,7 @@ class MqttProxy:
     """ Thin wrapper for an MQTT client listening to MQTT messages: manages connections, and
     translates messages to json """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, topic='#'):
         if "mqtt_skip_connect_for_dev" in cfg and \
                 cfg["mqtt_skip_connect_for_dev"]:
             logger.warning('Skipping MQTT for dev server. Stuff may break')
@@ -70,6 +70,7 @@ class MqttProxy:
 
         self._mqtt_ip = cfg['mqtt_ip']
         self._mqtt_port = cfg['mqtt_port']
+        self._topic = f'{topic}/#'
 
         self.bg_thread = None
         self.client = mqtt.Client()
@@ -82,30 +83,34 @@ class MqttProxy:
     def _on_connect(self, client, _userdata, _flags, ret_code):
         if ret_code == 0:
             logger.info(
-                'Connected to MQTT broker [%s]:%d',
-                self._mqtt_ip,
-                self._mqtt_port)
-        else:
-            logger.warning(
-                'Connected to MQTT broker [%s]:%d with error code %d.',
+                'Connected to MQTT broker [%s]:%d topic %s',
                 self._mqtt_ip,
                 self._mqtt_port,
+                self._topic)
+        else:
+            logger.warning(
+                'Connected to MQTT broker [%s]:%d topic %s with error code %d.',
+                self._mqtt_ip,
+                self._mqtt_port,
+                self._topic,
                 ret_code)
 
-        client.subscribe("#", qos=1)
-        logger.info('Running MQTT listener thread')
+        client.subscribe(self._topic, qos=1)
+        logger.info('Running MQTT topic %s listener thread', self._topic)
 
     def _on_unsubscribe(self, client, _userdata, _msg_id):
-        logger.info('MQTT client [%s]:%d unsubscribed, will disconnect',
+        logger.info('MQTT client [%s]:%d %s unsubscribed, will disconnect',
                     self._mqtt_ip,
-                    self._mqtt_port)
+                    self._mqtt_port,
+                    self._topic)
         client.disconnect()
 
     def _on_disconnect(self, _client, _userdata, _ret_code):
         logger.info(
-            'Disconnected from MQTT broker [%s]:%d',
+            'Disconnected from MQTT broker [%s]:%d topic %s',
             self._mqtt_ip,
-            self._mqtt_port)
+            self._mqtt_port,
+            self._topic)
 
     def _on_message(self, _client, _userdata, msg):
         is_json = True
@@ -127,9 +132,10 @@ class MqttProxy:
     def start(self):
         """ Connects to MQTT and launches a bg thread for the net loop """
         logger.info(
-            'Connecting to MQTT broker [%s]:%d...',
+            'Connecting to MQTT broker [%s]:%d topic %s...',
             self._mqtt_ip,
-            self._mqtt_port)
+            self._mqtt_port,
+            self._topic)
         self.client.connect(self._mqtt_ip, self._mqtt_port, 10)
         self.bg_thread = threading.Thread(target=self.client.loop_forever)
         self.bg_thread.start()
@@ -152,8 +158,8 @@ class MqttProxy:
 
     def stop(self):
         """ Starts disconnect process """
-        logger.info('Requesting MQTT client disconnect...')
-        self.client.unsubscribe('#')
+        logger.info('Requesting MQTT topic %s client disconnect...', self._topic)
+        self.client.unsubscribe(self._topic)
         self.bg_thread.join()
 
     def broadcast(self, topic, msg):
@@ -171,7 +177,7 @@ class Zigbee2MqttProxy(MqttProxy):
     """ Thin wrapper for an MQTT client listening to Zigbee2MQTT messages """
 
     def __init__(self, cfg):
-        super().__init__(cfg)
+        super().__init__(cfg, topic=cfg['mqtt_topic_zigbee2mqtt'])
 
         # last_seen = now() - ping_timeout, so that we'll ping the server on the
         # first try. Also, last_seen > now() - alive_timeout, so that we don't

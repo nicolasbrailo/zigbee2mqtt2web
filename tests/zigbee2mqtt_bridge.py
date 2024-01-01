@@ -12,7 +12,7 @@ import unittest
 from zigbee2mqtt2web import Zigbee2MqttBridge
 
 
-CFG = {'mqtt_topic_prefix': 'topic_prefix', 'mqtt_device_aliases': {}}
+CFG = {'mqtt_topic_zigbee2mqtt': 'topic_prefix', 'mqtt_device_aliases': {}}
 
 
 class TestZigbee2MqttBridge(unittest.TestCase):
@@ -165,7 +165,7 @@ class TestZigbee2MqttBridge(unittest.TestCase):
     def test_devices_have_alias(self):
         mqtt = FakeMqtt()
         aliases = {"Oficina": "Oficina_aliased", "0x00158d0008ad5e77": "SensorPuertaEntrada_aliased"}
-        bridge = Zigbee2MqttBridge({'mqtt_topic_prefix': 'topic_prefix', 'mqtt_device_aliases': aliases}, mqtt)
+        bridge = Zigbee2MqttBridge({'mqtt_topic_zigbee2mqtt': 'topic_prefix', 'mqtt_device_aliases': aliases}, mqtt)
         bridge.start()
         mqtt.on_message(
             'topic_prefix/bridge/devices',

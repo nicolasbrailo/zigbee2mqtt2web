@@ -22,7 +22,9 @@
   "mqtt_port": 1883,
 
   "COMMENT": "The topic prefix that zibee2mqtt will be using",
-  "mqtt_topic_prefix": "zigbee2mqtt",
+  "mqtt_topic_zigbee2mqtt": "zigbee2mqtt",
+  "COMMENT": "The topic that the rest of the system will be using",
+  "mqtt_topic_zmw": "ZMW",
 
   "COMMENT": "Friendlier names for devices",
   "mqtt_device_aliases": {

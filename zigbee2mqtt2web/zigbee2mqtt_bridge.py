@@ -21,7 +21,7 @@ class Zigbee2MqttBridge:
     """
 
     def __init__(self, cfg, mqtt):
-        self._mqtt_topic_prefix = cfg['mqtt_topic_prefix']
+        self._mqtt_topic_prefix = cfg['mqtt_topic_zigbee2mqtt']
         self._aliases = cfg['mqtt_device_aliases']
         self._known_things = {}
         self._rules = []
