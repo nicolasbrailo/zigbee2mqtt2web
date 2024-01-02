@@ -115,6 +115,10 @@ class ReolinkDoorbell:
             seconds=_CAM_SUBSCRIPTION_CHECK_INTERVAL_SECS)
 
         # Object should be fully constructed now
+        self._snap_path_on_movement = None
+        if 'snap_path_on_movement' in cfg:
+            self._snap_path_on_movement = cfg['snap_path_on_movement']
+
         self._debounce_msg = {}
         self._motion_evt_lvl = 0
         self._motion_evt_job = None
@@ -274,20 +278,23 @@ class ReolinkDoorbell:
             self._motion_evt_lvl += 1
 
         if prev_motion_event_lvl == 0 and self._motion_evt_lvl > 0:
-            self.on_motion_detected(self._motion_evt_lvl)
             self._motion_evt_job = self._scheduler.add_job(
                 func=self._motion_check_active,
                 trigger="interval",
                 seconds=_CAM_MOVEMENT_ACTIVE_WATCHDOG)
+            self.on_motion_detected(self._motion_evt_lvl)
         elif prev_motion_event_lvl > 0 and self._motion_evt_lvl > 0:
             # Camera reports motion still detected, add more timeout
-            self._motion_evt_job.remove()
+            if self._motion_evt_job is not None:
+                self._motion_evt_job.remove()
             self._motion_evt_job = self._scheduler.add_job(
                 func=self._motion_check_active,
                 trigger="interval",
                 seconds=_CAM_MOVEMENT_ACTIVE_WATCHDOG)
         elif prev_motion_event_lvl > 0 and self._motion_evt_lvl == 0:
-            self._motion_evt_job.remove()
+            if self._motion_evt_job is not None:
+                self._motion_evt_job.remove()
+            self._motion_evt_job = None
             self.on_motion_cleared()
 
     def _motion_check_active(self):
@@ -313,6 +320,7 @@ class ReolinkDoorbell:
                 "Doorbell cam %s motion timeout, and motion not active: event lost?",
                 self._cam_host)
 
+        self._motion_evt_job = None
         self.on_motion_timeout()
 
     def on_doorbell_button_pressed(self):
@@ -320,20 +328,45 @@ class ReolinkDoorbell:
         log.info(
             "Doorbell cam %s says someone pressed the visitor button",
             self._cam_host)
+        self._zmw.announce_system_event({
+            'event': 'on_doorbell_button_pressed',
+            'doorbell_cam': self._cam_host,
+        })
 
     def on_motion_detected(self, _motion_level):
         """ Motion detect event fired. Higher motion level means more confidence. """
         log.info("Doorbell cam %s says someone is at the door", self._cam_host)
 
+        if self._snap_path_on_movement is not None:
+            try:
+                self.get_snapshot(self._snap_path_on_movement)
+            except:
+                log.error("Failed to save doorbell snapshot", exc_info=True)
+                return
+
+        self._zmw.announce_system_event({
+            'event': 'on_doorbell_cam_motion_detected',
+            'doorbell_cam': self._cam_host,
+            'snap': self._snap_path_on_movement,
+        })
+
     def on_motion_cleared(self):
         """ Camera reports no motion is detected now """
         log.info("Doorbell cam %s says no motion is detected", self._cam_host)
+        self._zmw.announce_system_event({
+            'event': 'on_doorbell_cam_motion_cleared',
+            'doorbell_cam': self._cam_host,
+        })
 
     def on_motion_timeout(self):
         """ Motion event started but never finished within a configured timeout """
         log.info(
             "Doorbell cam %s doesn't report motion, but never cleared the event",
             self._cam_host)
+        self._zmw.announce_system_event({
+            'event': 'on_doorbell_cam_motion_timeout',
+            'doorbell_cam': self._cam_host,
+        })
 
     def get_snapshot(self, fpath):
         """ Save a snapshot of the camera feed to fpath """

@@ -62,7 +62,7 @@ class MqttProxy:
     """ Thin wrapper for an MQTT client listening to MQTT messages: manages connections, and
     translates messages to json """
 
-    def __init__(self, cfg, topic='#'):
+    def __init__(self, cfg, topic=None):
         if "mqtt_skip_connect_for_dev" in cfg and \
                 cfg["mqtt_skip_connect_for_dev"]:
             logger.warning('Skipping MQTT for dev server. Stuff may break')
@@ -95,7 +95,8 @@ class MqttProxy:
                 self._topic,
                 ret_code)
 
-        client.subscribe(self._topic, qos=1)
+        if self._topic is not None:
+            client.subscribe(self._topic, qos=1)
         logger.info('Running MQTT topic %s listener thread', self._topic)
 
     def _on_unsubscribe(self, client, _userdata, _msg_id):

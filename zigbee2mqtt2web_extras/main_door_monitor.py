@@ -18,11 +18,6 @@ def _validate_cfg(cfg):
     cfg['on_contact_action_name']  # pylint: disable=pointless-statement
     cfg['lat_lon']  # pylint: disable=pointless-statement
 
-    if (cfg['sonos_name'] is None) != (cfg['chime_url'] is None):
-        raise KeyError(
-            'MainDoorMonitor bad config: sonos_name and chime_url must be both null or both'
-            'non-null')
-
     if 'skip_chime_timeout_secs' not in cfg:
         cfg['skip_chime_timeout_secs'] = 300
 
@@ -32,8 +27,7 @@ def _validate_cfg(cfg):
 
 
 class MainDoorMonitor:
-    """ When a contact sensor opens, will play a chime on Sonos and activate a set of lights for a
-    period of time """
+    """ When a contact sensor opens, will activate a set of lights for a period of time """
 
     def __init__(self, zmw, cfg):
         self.cfg = _validate_cfg(cfg)
@@ -54,6 +48,10 @@ class MainDoorMonitor:
             logger.info(
                 '%s: main door closed',
                 self.cfg['contact_sensor_name'])
+            self._zmw.announce_system_event({
+                'event': 'on_main_door_closed',
+                'thing_name': self.cfg['contact_sensor_name'],
+            })
         else:
             if not light_outside(self.cfg['lat_lon']):
                 logger.info(
@@ -64,16 +62,12 @@ class MainDoorMonitor:
                 logger.info(
                     '%s: main door open',
                     self.cfg['contact_sensor_name'])
-            self._door_open_announce_and_block()
 
-    def _door_open_announce_and_block(self):
-        if self._play_door_open_chime is True:
-            logger.info('Door open, announcing...')
-            self._zmw.registry.get_thing(
-                self.cfg['sonos_name']).play_announcement(
-                self.cfg['chime_url'], timeout_secs=20)
-        else:
-            logger.info("Door open, but we're skipping announcing...")
+            self._zmw.announce_system_event({
+                'event': 'on_main_door_open',
+                'thing_name': self.cfg['contact_sensor_name'],
+                'user_requested_mute_announcement': not self._play_door_open_chime,
+            })
 
     def skip_next_door_open_chime(self):
         """ If the next open-door event happens within a timeout, the speaker announcement will be

@@ -103,7 +103,7 @@ class SensorsHistory:
         logger.info('Registered sensor %s to sensor_history', thing.name)
 
     def _on_update(self, thing, metrics):
-        logger.debug('Sensor %s has an update, will save to DB', thing.name)
+        #logger.debug('Sensor %s has an update, will save to DB', thing.name)
         readings = [thing.get(metric_name) for metric_name in metrics]
 
         conn = sqlite3.connect(self._dbpath)

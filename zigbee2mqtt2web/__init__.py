@@ -22,11 +22,12 @@ class Zigbee2Mqtt2Web:
 
         if "mqtt_skip_connect_for_dev" in cfg and \
                 cfg["mqtt_skip_connect_for_dev"]:
-            self._mqtt_proxy = FakeMqttProxy(cfg)
+            self._mqtt = FakeMqttProxy(cfg)
         else:
-            self._mqtt_proxy = Zigbee2MqttProxy(cfg)
+            self._mqtt = Zigbee2MqttProxy(cfg)
 
-        self._mqtt_registry = Zigbee2MqttBridge(cfg, self._mqtt_proxy)
+        self._mqtt_topic_zmw = cfg['mqtt_topic_zmw'] if 'mqtt_topic_zmw' in cfg else None
+        self._mqtt_registry = Zigbee2MqttBridge(cfg, self._mqtt)
         self._mqtt_registry.on_mqtt_network_discovered(self._monkey_patch)
         self.registry = ThingRegistry(self._mqtt_registry)
         self.webserver = FlaskBridge(cfg, self.registry)
@@ -43,6 +44,14 @@ class Zigbee2Mqtt2Web:
     def add_thing_monkeypatch_rule(self, name, matcher, callback):
         """ Add a rule to be called when a network discovery message is published """
         self._monkeypatch_rules.append((name, matcher, callback))
+
+    def announce_system_event(self, json_like_map_evt):
+        if self._mqtt_topic_zmw is None:
+            logger.critical('Requested system announcement, but feature is disabled.'
+                            'Announcement: %s', json_like_map_evt)
+        else:
+            logger.debug('Broadcasting system event: %s', json_like_map_evt)
+            self._mqtt.broadcast(self._mqtt_topic_zmw, json_like_map_evt)
 
     def _monkey_patch(self):
         for name in self.registry.get_thing_names():
