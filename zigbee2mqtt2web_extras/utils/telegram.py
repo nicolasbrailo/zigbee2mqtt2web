@@ -278,8 +278,8 @@ class TelegramLongpollBot:
             return
 
         cnt = self._t.poll_updates()
-        log.debug('Telegram bot %s had %s updates',
-                  self._t.bot_info['first_name'], cnt)
+        #log.debug('Telegram bot %s had %s updates',
+        #          self._t.bot_info['first_name'], cnt)
 
     def connect(self):
         """ Requests bot to connect, if not connected yet """
