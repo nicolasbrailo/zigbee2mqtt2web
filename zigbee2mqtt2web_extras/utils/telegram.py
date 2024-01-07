@@ -185,21 +185,24 @@ class TelegramBot:
             data={
                 'commands': fmt_cmds})
 
-    def send_message(self, chat_id, text):
+    def send_message(self, chat_id, text, disable_notifications=False):
         """ Send a text message to chat_id, or throw """
         msg = _telegram_post(f'{self._api_base}/sendMessage',
-                             data={'chat_id': int(chat_id), 'text': text})
+                             data={'chat_id': int(chat_id),
+                                   'disable_notification': disable_notifications,
+                                   'text': text})
         if 'message_id' not in msg:
             raise TelegramApiError(
                 f'Failed to send message to chat {chat_id}: {msg}')
 
-    def send_photo(self, chat_id, fpath, caption=None):
+    def send_photo(self, chat_id, fpath, caption=None, disable_notifications=False):
         """ Send a picture to chat_id, or throw. fpath should be a path to a local file """
         msg = _telegram_post(
             f'{self._api_base}/sendPhoto',
             data={
                 'chat_id': int(chat_id),
-                'caption': str(caption)},
+                'disable_notification': disable_notifications,
+                'caption': str(caption) if caption is not None else ''},
             files={
                 'photo': open(
                     fpath,
