@@ -73,7 +73,7 @@ async def _async_sonos_announce_one(api_cfg, ip_addr, soco_uid, alert_uri, volum
         await session.ws.send_json([command, options])
         log.debug("Asked speaker %s to play %s", ip_addr, alert_uri)
         msg = await session.ws.receive()
-        log.debug("Speaker %s replies %s", ip_addr, str(msg))
+        #log.debug("Speaker %s replies %s", ip_addr, str(msg))
     except Exception:  # pylint: disable=broad-except
         log.error(
             "Unknown error sending command to Sonos speaker %s",

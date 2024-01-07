@@ -16,7 +16,7 @@ from soco.exceptions import SoCoUPnPException
 from soco.exceptions import SoCoSlaveException
 
 from ..phony import PhonyZMWThing
-from .helpers import sonos_announce
+from .announce import sonos_announce
 from .tts import get_local_path_tts
 
 import logging

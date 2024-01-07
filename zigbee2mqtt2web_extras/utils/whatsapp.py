@@ -24,7 +24,7 @@ import requests
 import base64
 
 import logging
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 # Comment out to see requests to WA's API
 logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
@@ -54,7 +54,7 @@ class WhatsApp:
         enrolled in the test program || the origin should be a proper business account. """
 
         def _message_from_template(to_number, template_name):
-            logger.info('WA send template %s to %s', template_name, to_number)
+            log.info('WA send template %s to %s', template_name, to_number)
             if self._test_mode:
                 return
             msg = {
@@ -82,7 +82,7 @@ class WhatsApp:
 
     def upload_image(self, fpath):
         """ Upload image to WA server, returns media ID to use when sending a message """
-        logger.info('WA uploaded image %s', fpath)
+        log.info('WA uploaded image %s', fpath)
         if self._test_mode:
             return 'DUMMY_WA_IMAGE_ID'
         msg = {
@@ -103,7 +103,7 @@ class WhatsApp:
         """ Send text. This won't work unless the target has interacted with the origin number in the last N hours """
 
         def _text(to_number, msg_text):
-            logger.info('WA Text %s: %s', to_number, msg_text)
+            log.info('WA Text %s: %s', to_number, msg_text)
             if self._test_mode:
                 return
             msg = {
@@ -127,7 +127,7 @@ class WhatsApp:
         """ Send image to_number. Same restrictions as text() apply """
 
         def _send_image(to_number, image_id):
-            logger.info('WA send image to %s, id %s', to_number, image_id)
+            log.info('WA send image to %s, id %s', to_number, image_id)
             if self._test_mode:
                 return
             msg = {
@@ -157,7 +157,7 @@ class WhatsApp:
         """
 
         def _message_from_params_template(to_number, media_id):
-            logger.info(
+            log.info(
                 'WA send template with media %s to %s',
                 media_id,
                 to_number)
@@ -201,3 +201,22 @@ class WhatsApp:
                 data=json.dumps(msg))
         return [_message_from_params_template(
             num, media_id) for num in self._targets]
+
+    def send_photo(self, img_path, caption, tmpl_name="sample_purchase_feedback"):
+        """ A photo can't be sent on its own to a user that hasn't interacted with the WA bot,
+        so instead we send a template message containing an image. Note the default template is
+        a random message with some unrelated text. """
+        imgid = None
+        try:
+            imgid = self.upload_image(img_path)
+            log.info("Uploaded %s to WA", img_path)
+        except:
+            log.error("Failed WA image upload", exc_info=True)
+            return
+
+        if imgid is not None:
+            try:
+                res = self.template_message_with_image(tmpl_name, imgid, caption)
+                log.info("Sent motion detect messages to WA: %s", str(res))
+            except:
+                log.error("Failed WA image send", exc_info=True)

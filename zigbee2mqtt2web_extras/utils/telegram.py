@@ -80,7 +80,8 @@ def _validate_telegram_cmds(cmds):
         if cmd in known_commands:
             raise KeyError(f'TelegramBot command {cmd} is duplicated')
 
-        if not cmd.isalnum():
+        # Allow only alnum and underscores as cmds
+        if not cmd.replace('_', '').isalnum():
             raise KeyError(f'TelegramBot command {cmd} is not alphanumeric')
 
         known_commands[cmd] = cb
@@ -95,7 +96,7 @@ def _telegram_sanitize_user_message(msg, known_cmds):
         return None
 
     msg = msg['message']
-    if 'from' not in msg or 'chat' not in msg:
+    if 'from' not in msg or 'chat' not in msg or 'id' not in msg['chat']:
         log.debug(
             "Dropping dangerous looking message, can't find 'from' and 'chat' fields",
             msg)
@@ -258,11 +259,14 @@ class TelegramLongpollBot:
     """ Creates a Telegram bot that will poll for updates. On connect failure, will
     ignore and try to create a new bot next round (to work around rate limits) """
 
-    def __init__(self, tok, poll_interval_secs, cmds):
+    def __init__(self, tok, poll_interval_secs, cmds=None, bot_name=None, bot_descr=None):
         """ See TelegramBot """
         self._t = None
         self._tok = tok
+
         self._commands = cmds
+        self._bot_name = bot_name
+        self._bot_descr = bot_descr
 
         self._scheduler = BackgroundScheduler()
         self._scheduler.start()
@@ -288,7 +292,12 @@ class TelegramLongpollBot:
 
         try:
             self._t = TelegramBot(self._tok)
-            self._t.set_commands(self._commands)
+            if self._commands is not None:
+                self._t.set_commands(self._commands)
+            if self._bot_name is not None:
+                self._t.set_bot_name(self._bot_name)
+            if self._bot_descr is not None:
+                self._t.set_bot_description(self._bot_descr)
             self.on_bot_connected(self._t)
         except TelegramRateLimitError:
             log.info('Telegram API rate limit, will try to connect later...')
