@@ -47,6 +47,8 @@ class Zigbee2MqttThing:
     thing_type: str
     actions: ActionDict
     is_zigbee_mqtt: bool = True
+    # Will skip some extra logs if set to True
+    is_mqtt_spammy: bool = False
     # Callback whenever any action is updated from MQTT
     on_any_change_from_mqtt: Callable = None
 
@@ -125,18 +127,19 @@ class Zigbee2MqttThing:
                     mqtt_msg_field,
                     val)
 
-        if len(changes) != 0:
-            logger.debug(
-                'MQTT message updated thing %s ID %d: %s',
-                self.name,
-                self.thing_id,
-                msg)
-        else:
-            logger.debug(
-                'MQTT message ignored by thing %s ID %d: %s',
-                self.name,
-                self.thing_id,
-                msg)
+        if not self.is_mqtt_spammy:
+            if len(changes) != 0:
+                logger.debug(
+                    'MQTT message updated thing %s ID %d: %s',
+                    self.name,
+                    self.thing_id,
+                    msg)
+            else:
+                logger.debug(
+                    'MQTT message ignored by thing %s ID %d: %s',
+                    self.name,
+                    self.thing_id,
+                    msg)
 
         # Once the update is done, invoke user callbacks. At this point
         # * The update is fully complete
