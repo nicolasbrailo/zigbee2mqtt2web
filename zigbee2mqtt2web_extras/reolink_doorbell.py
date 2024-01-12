@@ -266,7 +266,7 @@ class ReolinkDoorbell:
             return debounced_active
 
         if debounce(msg, 'Visitor'):
-            self.on_doorbell_button_pressed()
+            self.on_doorbell_button_pressed(msg)
 
         prev_motion_event_lvl = self._motion_evt_lvl
         self._motion_evt_lvl = 0
@@ -282,7 +282,7 @@ class ReolinkDoorbell:
                 func=self._motion_check_active,
                 trigger="interval",
                 seconds=_CAM_MOVEMENT_ACTIVE_WATCHDOG)
-            self.on_motion_detected(self._motion_evt_lvl)
+            self.on_motion_detected(self._motion_evt_lvl, msg)
         elif prev_motion_event_lvl > 0 and self._motion_evt_lvl > 0:
             # Camera reports motion still detected, add more timeout
             if self._motion_evt_job is not None:
@@ -295,7 +295,7 @@ class ReolinkDoorbell:
             if self._motion_evt_job is not None:
                 self._motion_evt_job.remove()
             self._motion_evt_job = None
-            self.on_motion_cleared()
+            self.on_motion_cleared(msg)
 
     def _motion_check_active(self):
         state_updated = self._runner.run_until_complete(
@@ -323,7 +323,7 @@ class ReolinkDoorbell:
         self._motion_evt_job = None
         self.on_motion_timeout()
 
-    def on_doorbell_button_pressed(self):
+    def on_doorbell_button_pressed(self, cam_msg):
         """ Visitor even triggered, someone pressed the doorbell button """
         log.info(
             "Doorbell cam %s says someone pressed the visitor button",
@@ -331,9 +331,10 @@ class ReolinkDoorbell:
         self._zmw.announce_system_event({
             'event': 'on_doorbell_button_pressed',
             'doorbell_cam': self._cam_host,
+            'msg': cam_msg,
         })
 
-    def on_motion_detected(self, _motion_level):
+    def on_motion_detected(self, motion_level, cam_msg):
         """ Motion detect event fired. Higher motion level means more confidence. """
         log.info("Doorbell cam %s says someone is at the door", self._cam_host)
 
@@ -348,14 +349,17 @@ class ReolinkDoorbell:
             'event': 'on_doorbell_cam_motion_detected',
             'doorbell_cam': self._cam_host,
             'snap': self._snap_path_on_movement,
+            'motion_level': motion_level,
+            'msg': cam_msg,
         })
 
-    def on_motion_cleared(self):
+    def on_motion_cleared(self, msg):
         """ Camera reports no motion is detected now """
         log.info("Doorbell cam %s says no motion is detected", self._cam_host)
         self._zmw.announce_system_event({
             'event': 'on_doorbell_cam_motion_cleared',
             'doorbell_cam': self._cam_host,
+            'msg': msg,
         })
 
     def on_motion_timeout(self):
