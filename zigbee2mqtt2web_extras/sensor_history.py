@@ -1,8 +1,10 @@
 """ Keeps a historical database of sensor readings """
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 import sqlite3
 import logging
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def _maybe_create_table(conn, sensor_name, metrics):
@@ -44,6 +46,16 @@ def _get_known_sensors(conn):
     return [x for (x,) in res]
 
 
+def _discard_old_samples_by_retention_days_all_tables(conn, retention_days):
+    for sensor_name in _get_known_sensors(conn):
+        _discard_old_samples_by_retention_days(conn, sensor_name, retention_days)
+
+
+def _discard_old_samples_by_retention_count_all_tables(conn, retention_days):
+    for sensor_name in _get_known_sensors(conn):
+        _discard_old_samples_by_retention_count(conn, sensor_name, retention_days)
+
+
 def _get_sensor_metrics(conn, sensor_name):
     res = conn.execute(f"SELECT name FROM PRAGMA_TABLE_INFO('{sensor_name}')")
     # unpack, so we return as a vector instead of a vec of tuples
@@ -75,6 +87,15 @@ class SensorsHistory:
         self._retention_days = retention_days
         self._dbpath = dbpath
 
+        self._scheduler = BackgroundScheduler()
+        self._scheduler.start()
+
+        self._scheduler.add_job(
+            self.gc_dead_sensors,
+            trigger=CronTrigger(hour=9, minute=12, second=0),
+            id='gc_sensor_history'
+        )
+
     def register_to_webserver(self, server):
         """ Will hook this object to a flask-like webserver, so that the sensor
         database is exposed over certain http endpoints """
@@ -85,6 +106,9 @@ class SensorsHistory:
         server.add_url_rule(
             '/sensors/get_single_metric_in_all_sensors_csv/<metric>',
             self.get_single_metric_in_all_sensors_csv)
+        server.add_url_rule(
+            '/sensors/gc_dead_sensors',
+            self.gc_dead_sensors)
 
     def register_sensor(self, thing, metrics):
         """ Will attach an observer to $thing and save a reading to a database
@@ -100,10 +124,10 @@ class SensorsHistory:
                 f'Thing {thing.name} already has an observer')
 
         thing.on_any_change_from_mqtt = lambda: self._on_update(thing, metrics)
-        logger.info('Registered sensor %s to sensor_history', thing.name)
+        log.info('Registered sensor %s to sensor_history', thing.name)
 
     def _on_update(self, thing, metrics):
-        #logger.debug('Sensor %s has an update, will save to DB', thing.name)
+        #log.debug('Sensor %s has an update, will save to DB', thing.name)
         readings = [thing.get(metric_name) for metric_name in metrics]
 
         conn = sqlite3.connect(self._dbpath)
@@ -130,7 +154,7 @@ class SensorsHistory:
         data for a single sensor, as far as the retention period allows """
         conn = sqlite3.connect(self._dbpath)
         if sensor_name not in _get_known_sensors(conn):
-            logger.error('Received request for unknown sensor %s', sensor_name)
+            log.error('Received request for unknown sensor %s', sensor_name)
             return ''
 
         metrics = _get_sensor_metrics(conn, sensor_name)
@@ -177,3 +201,11 @@ class SensorsHistory:
                 ") ORDER BY sample_time"
         res = conn.execute(query).fetchall()
         return _csv(['sample_time'] + all_sensors, res)
+
+    def gc_dead_sensors(self):
+        log.info('Sensor history: run GC to discard old sensors')
+        conn = sqlite3.connect(self._dbpath)
+        _discard_old_samples_by_retention_days_all_tables(conn, self._retention_days)
+        _discard_old_samples_by_retention_count_all_tables(conn, self._retention_rows)
+        conn.commit()
+
