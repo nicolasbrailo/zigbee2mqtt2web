@@ -268,6 +268,10 @@ class ReolinkDoorbell:
         if debounce(msg, 'Visitor'):
             self.on_doorbell_button_pressed(msg)
 
+        if msg['PeopleDetect'] and not msg['Motion'] and not msg['MotionAlarm']:
+            log.debug("Ignoring camera %s event: people detect outside alarm zone.", self._cam_host)
+            return
+
         prev_motion_event_lvl = self._motion_evt_lvl
         self._motion_evt_lvl = 0
         if debounce(msg, 'Motion', key_must_exist=False):
