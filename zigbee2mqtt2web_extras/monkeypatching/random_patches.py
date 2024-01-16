@@ -83,6 +83,19 @@ def _hack_add_light_transition_time_methods(thing):
         ))
 
 
+def _hack_ignore_light_temp_color_reports(thing):
+    thing.actions['color_temp'] = Zigbee2MqttAction(
+        name='color_temp',
+        description='Color temperature',
+        can_set=False,
+        can_get=False,
+        value=Zigbee2MqttActionValue(
+            thing_name=thing.name,
+            meta={'type': 'numeric', 'value_min': 0, 'value_max': 255}
+        ))
+
+
+
 # Things that declare color_* don't always declare color_temp
 monkeypatch_add_color_mode_support = \
     'Add color mode support, if color_xy, color_hs or color_temp actions are present', \
@@ -117,3 +130,10 @@ monkeypatch_add_light_transition_time_methods = \
     'Add transition time parameter for any state changes', \
     lambda t: t.thing_type == 'light', \
     _hack_add_light_transition_time_methods
+
+
+# Some lights report color_temp, but don't support setting it
+monkeypatch_philips_color_hue_ignore_color_temp = \
+    'Ignore color_temp reports if they can\'t be set', \
+    lambda t: t.manufacturer == 'Philips' and t.model == "7299760PH", \
+    _hack_ignore_light_temp_color_reports

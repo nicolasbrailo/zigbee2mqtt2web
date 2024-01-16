@@ -23,4 +23,6 @@ def add_all_known_monkeypatches(zigbee2mqtt2web_instance):
     zigbee2mqtt2web_instance.add_thing_monkeypatch_rule(
         *monkeypatch_philips_buttons)
     zigbee2mqtt2web_instance.add_thing_monkeypatch_rule(
+        *monkeypatch_philips_color_hue_ignore_color_temp)
+    zigbee2mqtt2web_instance.add_thing_monkeypatch_rule(
         *monkeypatch_sensor_classification)
