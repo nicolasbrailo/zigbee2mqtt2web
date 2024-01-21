@@ -95,6 +95,18 @@ def _hack_ignore_light_temp_color_reports(thing):
         ))
 
 
+def _hack_ignore_level_config_reports(thing):
+    thing.actions['level_config'] = Zigbee2MqttAction(
+        name='level_config',
+        description='State after powerloss',
+        can_set=False, # It should be settable, but we don't expose it
+        can_get=False,
+        value=Zigbee2MqttActionValue(
+            thing_name=thing.name,
+            meta={'type': 'enum', 'values': []}
+        ))
+
+
 
 # Things that declare color_* don't always declare color_temp
 monkeypatch_add_color_mode_support = \
@@ -137,3 +149,11 @@ monkeypatch_philips_color_hue_ignore_color_temp = \
     'Ignore color_temp reports if they can\'t be set', \
     lambda t: t.manufacturer == 'Philips' and t.model == "7299760PH", \
     _hack_ignore_light_temp_color_reports
+
+
+# Some things have a on/off state after powerloss reported as state, but not in schema
+monkeypatch_philips_color_hue_level_config = \
+    'Ignore level_config reports in lights', \
+    lambda t: t.thing_type == 'light' and t.model == 'LED1732G11', \
+    _hack_ignore_level_config_reports
+
