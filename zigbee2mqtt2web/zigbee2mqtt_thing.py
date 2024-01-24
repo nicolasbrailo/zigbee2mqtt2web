@@ -51,6 +51,7 @@ class Zigbee2MqttThing:
     is_mqtt_spammy: bool = False
     # Callback whenever any action is updated from MQTT
     on_any_change_from_mqtt: Callable = None
+    user_defined: map = None
 
     def dictify(self):
         """ Get metadata on this thing """
@@ -66,6 +67,7 @@ class Zigbee2MqttThing:
             "thing_type": self.thing_type,
             "actions": self.actions.dictify(),
             "is_zigbee_mqtt": self.is_zigbee_mqtt,
+            "user_defined": self.user_defined,
         }
 
     def debug_str(self):

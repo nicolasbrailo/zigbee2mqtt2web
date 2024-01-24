@@ -12,6 +12,16 @@ def _ignore_msg(_topic, _payload):
 def _debug_msg(topic, payload):
     logger.debug('DEBUG MQTT topic %s payload %s', topic, payload)
 
+def _attach_udd(thing, user_defined_data_map):
+    if thing.name in user_defined_data_map:
+        thing.user_defined = user_defined_data_map[thing.name]
+        return True
+    elif thing.real_name in user_defined_data_map:
+        thing.user_defined = user_defined_data_map[thing.real_name]
+        return True
+    elif thing.address in user_defined_data_map:
+        thing.user_defined = user_defined_data_map[thing.address]
+        return True
 
 class Zigbee2MqttBridge:
     """
@@ -23,6 +33,7 @@ class Zigbee2MqttBridge:
     def __init__(self, cfg, mqtt):
         self._mqtt_topic_prefix = cfg['mqtt_topic_zigbee2mqtt']
         self._aliases = cfg['mqtt_device_aliases']
+        self._thing_user_defined_data = cfg['thing_user_defined_data'] if 'thing_user_defined_data' in cfg else {}
         self._known_things = {}
         self._rules = []
         self._cb_on_device_discovery = []
@@ -60,6 +71,10 @@ class Zigbee2MqttBridge:
             for jsonthing in payload:
                 thing = parse_from_zigbee2mqtt(
                     self._last_device_id, jsonthing, known_aliases=self._aliases)
+                x = _attach_udd(thing, self._thing_user_defined_data)
+                if x:
+                    logger.info("XXXXXX %s", thing)
+                    logger.info("XXXXXX %s", thing.user_defined)
                 self._last_device_id += 1
                 if self.register_or_ignore(thing):
                     device_added = True
