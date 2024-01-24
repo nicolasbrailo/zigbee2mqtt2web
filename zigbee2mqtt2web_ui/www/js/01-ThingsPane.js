@@ -57,7 +57,6 @@ class ThingsPane extends React.Component {
     };
 
     this.props.showHiddenThings.toggle = () => {
-      console.log("XXXXXX", this.state)
       this.setState({showHiddenThings: !this.state.showHiddenThings});
     };
 
