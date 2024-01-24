@@ -71,10 +71,7 @@ class Zigbee2MqttBridge:
             for jsonthing in payload:
                 thing = parse_from_zigbee2mqtt(
                     self._last_device_id, jsonthing, known_aliases=self._aliases)
-                x = _attach_udd(thing, self._thing_user_defined_data)
-                if x:
-                    logger.info("XXXXXX %s", thing)
-                    logger.info("XXXXXX %s", thing.user_defined)
+                _attach_udd(thing, self._thing_user_defined_data)
                 self._last_device_id += 1
                 if self.register_or_ignore(thing):
                     device_added = True
