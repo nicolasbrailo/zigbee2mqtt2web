@@ -15,7 +15,6 @@ class Light extends React.Component {
       color_temp_presets: [],
       supports_rgb: false,
       user_defined: meta.user_defined,
-      start_hidden: meta.user_defined?.ui_hide,
     }
 
     for (const action_name of Object.keys(meta.actions)) {

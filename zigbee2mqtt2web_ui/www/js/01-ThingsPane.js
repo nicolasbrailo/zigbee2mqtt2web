@@ -18,15 +18,11 @@ class ThingsPane extends React.Component {
     };
   }
 
-  constructor(props) {
-    super(props);
-
+  _getOrderedThings(props) {
     // Create default order for list
     let default_things_order = [];
-    let things_lookup = {};
     for (const elm of props.things) {
       default_things_order.push(elm.props.name);
-      things_lookup[elm.props.name] = elm;
     }
 
     // Try to fetch from cache
@@ -52,6 +48,16 @@ class ThingsPane extends React.Component {
       }
     }
 
+    if (order_changed) {
+      this.props.local_storage.save('ThingsPane.things_order', cached_things_order);
+    }
+
+    return cached_things_order;
+  }
+
+  constructor(props) {
+    super(props);
+
     this.props.onReorderThings.toggle = () => {
       this.setState({reordering: !this.state.reordering});
     };
@@ -60,13 +66,14 @@ class ThingsPane extends React.Component {
       this.setState({showHiddenThings: !this.state.showHiddenThings});
     };
 
-    if (order_changed) {
-      this.props.local_storage.save('ThingsPane.things_order', cached_things_order);
+    const things_lookup = {};
+    for (const elm of props.things) {
+      things_lookup[elm.props.name] = elm;
     }
 
     this.state = {
       things_lookup: things_lookup,
-      things_order: cached_things_order,
+      things_order: this._getOrderedThings(props),
       reordering: false,
       showHiddenThings: false,
     };
@@ -87,17 +94,48 @@ class ThingsPane extends React.Component {
 
   render() {
     if (this.state.reordering) return this.render_reordering();
+    return <div key="global_thing_list_pane">
+             {this._buildList()}
+           </div>
+  }
 
-    const thing_list = this.state.things_order.map((thing_name, idx) => {
+  _buildList() {
+    const groupedThingList = new Map();
+    groupedThingList.set(null, []);
+    let current_group = null;
+    for (const thing_name of this.state.things_order) {
       const thing = this.state.things_lookup[thing_name];
-      const classNames = (!this.state.showHiddenThings && thing.props.start_hidden)? 'is-hidden' : '';
-      return <li className={classNames} key={`${thing.props.name}_thing_li`}>
-              {thing}
-            </li>
-    });
-    return <ul key="global_thing_list_pane">
-             {thing_list}
-           </ul>
+      const classNames = (!this.state.showHiddenThings && thing.props.user_defined?.ui_hide)? 'is-hidden' : '';
+
+      let group = thing.props.user_defined?.ui_group;
+      if (group === undefined) group = null;
+      if (group != current_group) {
+        current_group = group;
+        if (!groupedThingList.has(current_group)) {
+          groupedThingList.set(current_group, []);
+        }
+      }
+
+      groupedThingList.get(current_group).push(
+        <li className={classNames} key={`${thing.props.name}_thing_li`}>
+          {thing}
+        </li>)
+    }
+
+    const groupList = [];
+    for (const e of groupedThingList.entries()) {
+      const group = e[0];
+      const thinglist = e[1];
+      groupList.push(
+        <div className="card" key={`${group}_thing_pane_group`}>
+        <b>{group}</b>
+        <ul key={`${group}_thing_pane_group_ul`}>
+          {thinglist}
+        </ul>
+        </div>);
+    }
+
+    return groupList;
   }
 
   render_reordering() {

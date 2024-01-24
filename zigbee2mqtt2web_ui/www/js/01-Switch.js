@@ -7,7 +7,6 @@ class Switch extends React.Component {
       manufacturer: meta.manufacturer,
       model: meta.model,
       user_defined: meta.user_defined,
-      start_hidden: meta.user_defined?.ui_hide,
     }
   }
 
