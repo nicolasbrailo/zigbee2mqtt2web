@@ -32,6 +32,13 @@
     "example_mqtt_friendly_name": "friendlier_name"
   },
 
+  "COMMENT": "Attach arbitrary user defined data to a thing, by name, alias or address",
+  "COMMENT": "Will be ignored if specified thing doesn't exist",
+  "thing_user_defined_data": {
+    "ExampleThing": {"group": "MyGroup", "ui_hide": true},
+    "OtherExampleThing": {"random": "thing"}
+  },
+
   "COMMENT": "The topic to use when forwarding messages to websocket",
   "mqtt_socketio_topic": "mqtt_thing_msg",
 
