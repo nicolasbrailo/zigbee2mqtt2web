@@ -48,7 +48,7 @@ thing_registry.rebuild_network_map_if_unknown().then(_ => {
   ]);
 
   ReactDOM.createRoot(document.querySelector('#config')).render([
-    React.createElement(ConfigPane, ConfigPane.buildProps(thing_registry, remote_thing_registry, thingsPaneProps.onReorderThings)),
+    React.createElement(ConfigPane, ConfigPane.buildProps(thing_registry, remote_thing_registry, thingsPaneProps)),
   ]);
 });
 

@@ -1,13 +1,20 @@
 class ThingsPane extends React.Component {
   static buildProps(local_storage, things) {
-    const cbObjReorderThings = {};
-    cbObjReorderThings.real_cb = () => console.log("You shouldn't see this message");
-    cbObjReorderThings.toggle = () => cbObjReorderThings.real_cb()
+    // Expose state through props... surely that's the intended purpose, right?
+    const cbObjReorderThings = {
+      toggle: null,
+    };
+
+    const cbShowHiddenThings = {
+      toggle: null,
+    }
+
     return {
       key: 'global_thing_list',
       things: things,
       local_storage: local_storage,
       onReorderThings: cbObjReorderThings,
+      showHiddenThings: cbShowHiddenThings,
     };
   }
 
@@ -45,8 +52,12 @@ class ThingsPane extends React.Component {
       }
     }
 
-    this.props.onReorderThings.real_cb = () => {
+    this.props.onReorderThings.toggle = () => {
       this.setState({reordering: !this.state.reordering});
+    };
+
+    this.props.showHiddenThings.toggle = () => {
+      this.setState({showHiddenThings: !this.state.showHiddenThings});
     };
 
     if (order_changed) {
@@ -57,6 +68,7 @@ class ThingsPane extends React.Component {
       things_lookup: things_lookup,
       things_order: cached_things_order,
       reordering: false,
+      showHiddenThings: false,
     };
   }
 

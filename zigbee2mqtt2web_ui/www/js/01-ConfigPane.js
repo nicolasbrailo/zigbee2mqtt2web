@@ -2,12 +2,12 @@ const ConfigPane_MQTT_MaxLogLines = 30;
 const ConfigPane_LowBatteryLimit = 20;
 
 class ConfigPane extends React.Component {
-  static buildProps(thing_registry, remote_thing_registry, cbOnReorderThings) {
+  static buildProps(thing_registry, remote_thing_registry, thingsPane) {
     return {
       key: 'global_config',
       thing_registry: thing_registry,
       remote_thing_registry: remote_thing_registry,
-      cbOnReorderThings: cbOnReorderThings,
+      thingsPane: thingsPane,
     };
   }
 
@@ -15,6 +15,7 @@ class ConfigPane extends React.Component {
     super(props);
     this.reorderThings = this.reorderThings.bind(this);
     this.reloadThings = this.reloadThings.bind(this);
+    this.showHiddenThings = this.showHiddenThings.bind(this);
     this.toggleExpanded = this.toggleExpanded.bind(this);
     this.toggleMqttFeed = this.toggleMqttFeed.bind(this);
     this.showMqttMapConfirm = this.showMqttMapConfirm.bind(this);
@@ -66,12 +67,16 @@ class ConfigPane extends React.Component {
   }
 
   reorderThings() {
-    this.props.cbOnReorderThings.toggle();
+    this.props.thingsPane.onReorderThings.toggle();
   }
 
   reloadThings() {
     // Reload and triggers page refresh
     this.props.thing_registry.reloadThings();
+  }
+
+  showHiddenThings() {
+    this.props.thingsPane.showHiddenThings.toggle();
   }
 
   toggleExpanded() {
@@ -154,7 +159,7 @@ class ConfigPane extends React.Component {
               <ul key="ConfigPane_config_options">
                 <li><button onClick={this.reorderThings}>Reorder things</button></li>
                 <li><button onClick={this.reloadThings}>Reload things</button></li>
-                <li><button>List hidden / broken things</button></li>
+                <li><button onClick={this.showHiddenThings}>List hidden / broken things</button></li>
                 <li>{this.renderMqttNetworkMapOptions()}</li>
                 <li>
                   <button onClick={this.toggleMqttFeed}>Show MQTT message feed</button>
