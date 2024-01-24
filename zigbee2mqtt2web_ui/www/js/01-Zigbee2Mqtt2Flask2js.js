@@ -30,8 +30,8 @@ class Zigbee2Mqtt2Flask2js {
   }
 
   _get(url) {
-    var ready = $.Deferred();
-    $.ajax({
+    var ready = mDeferred();
+    mAjax({
         url: url,
         cache: false,
         type: 'get',
@@ -48,8 +48,8 @@ class Zigbee2Mqtt2Flask2js {
   }
 
   _put(url, val) {
-    var ready = $.Deferred();
-    $.ajax({
+    var ready = mDeferred();
+    mAjax({
         url: url,
         cache: false,
         type: 'put',
@@ -87,7 +87,7 @@ class Zigbee2Mqtt2Flask2js {
   }
 
   get_thing_state(thing_name) {
-    var ready = $.Deferred();
+    var ready = mDeferred();
     this._get(`/get/${thing_name}`).then(new_state => {
       ready.resolve(reactifyMqttStateUpdate(new_state));
     });
@@ -121,7 +121,7 @@ class Zigbee2Mqtt2Flask2js {
   }
 
   request_new_mqtt_networkmap() {
-    var ready = $.Deferred();
+    var ready = mDeferred();
     if (!this.netmap_socket) {
       console.log("Requesting new network map");
       this.netmap_socket = io.connect('http://' + document.domain + ':' + location.port);
@@ -143,6 +143,14 @@ class Zigbee2Mqtt2Flask2js {
   }
 
   _start_mqtt_stream(on_message) {
+    var script = document.createElement('script');
+    script.src = '/www/extjsdeps/socket.io.js';
+    document.head.appendChild(script);
+    const self = this;
+    script.onload = () => { self._sockIoReady(); };
+  }
+
+  _sockIoReady() {
     const forward_msg = (msg) => {
       console.log("Received mqtt_thing_msg ", msg);
       for (const cb_id of Object.keys(this._on_mqtt_message_cb)) {
@@ -151,7 +159,7 @@ class Zigbee2Mqtt2Flask2js {
     };
 
     const sock_url = document.location.protocol + '//' + document.location.host;
-    console.log(`Connecting to websocket at ${sock_url}`)
+    console.log(`SockIO ready, connecting to websocket at ${sock_url}`)
     this.socket = io.connect(sock_url);
     //this.socket.onAny(console.log);
     this.socket.on('mqtt_thing_msg', forward_msg);

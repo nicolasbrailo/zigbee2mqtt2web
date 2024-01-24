@@ -54,7 +54,7 @@ class ThingRegistry {
   }
 
   updateWorldState() {
-    this.remote_thing_registry.get_world().then(world_state => {
+    return this.remote_thing_registry.get_world().then(world_state => {
       const available_callbacks = Object.keys(this._state_update_callbacks);
       for (const thing_state of world_state) {
         for (const thing_name of Object.keys(thing_state)) {
@@ -118,13 +118,13 @@ class ThingRegistry {
       return this.rebuild_network_map();
     }
 
-    var ready = $.Deferred();
+    var ready = mDeferred();
     ready.resolve();
     return ready;
   }
 
   rebuild_network_map() {
-    var ready = $.Deferred();
+    var ready = mDeferred();
     this.get_all_things_meta().then(all_things => {
       this.lights = [];
       this.switches = [];
@@ -181,7 +181,7 @@ class ThingRegistry {
   }
 
   get_all_things_meta() {
-    var ready = $.Deferred();
+    var ready = mDeferred();
 
     let netmap = this.cache.cacheGet_ignoreExpire(this.full_network_map_metas_cache_key);
     if (netmap != null) {
@@ -198,18 +198,20 @@ class ThingRegistry {
   }
 
   uncached_get_all_things_meta() {
-    var ready = $.Deferred();
+    var ready = mDeferred();
     this.remote_thing_registry.ls().then(names => {
       let all_metas = [];
       let meta_rqs = [];
       for (let name of names) {
-        let meta_rq = this.remote_thing_registry.get_thing_meta(name)
-          .then(meta => all_metas.push(meta));
+        let meta_rq = this.remote_thing_registry.get_thing_meta(name);
+        meta_rq.then(meta => {
+          all_metas.push(meta)
+          if (all_metas.length == names.length) {
+            ready.resolve(all_metas);
+          }
+        });
         meta_rqs.push(meta_rq);
       }
-      $.when.apply(null, meta_rqs).done(_ => {
-        ready.resolve(all_metas);
-      });
     });
     return ready;
   }

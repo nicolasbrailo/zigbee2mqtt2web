@@ -3,7 +3,7 @@
 set -euo pipefail
 
 DEPS_DEST_PATH="www/extjsdeps"
-DEPS_READ_FROM="www/index.html"
+DEPS_READ_FROM="www/devel.html"
 
 rm -rf "$DEPS_DEST_PATH"
 mkdir -p "$DEPS_DEST_PATH"

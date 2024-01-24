@@ -1,11 +1,12 @@
 const showGlobalError = (msg) => {
-  $('#global_error_msg').text(msg);
-  $('#global_error_ui').removeClass('no-error');
+  m$('global_error_msg').innerText = msg;
+  m$('global_error_ui').classList.remove('no-error');
 };
-$('#global_error_ui_ack').on('click', () => {
-  $('#global_error_msg').text('');
-  $('#global_error_ui').addClass('no-error');
-});
+m$('global_error_ui_ack').onclick = () => {
+  m$('global_error_msg').innerText = '';
+  m$('global_error_ui').classList.add('no-error');
+};
+
 
 window.remote_thing_registry = new Zigbee2Mqtt2Flask2js(showGlobalError);
 window.local_storage = new LocalStorageManager();
@@ -52,3 +53,5 @@ thing_registry.rebuild_network_map_if_unknown().then(_ => {
 });
 
 thing_registry.updateWorldState();
+m$('global_loading').classList.add('app-finished-loading');
+m$('global_loading').classList.remove('app-loading');
