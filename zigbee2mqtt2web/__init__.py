@@ -21,7 +21,7 @@ TIME_TO_CONSIDER_CB_SLOW_MS = 5
 class Zigbee2Mqtt2Web:
     """ Global wrapper for Z2M2W """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, on_net_discovery_cb):
         self._monkeypatch_rules = []
 
         if "mqtt_skip_connect_for_dev" in cfg and \
@@ -38,6 +38,7 @@ class Zigbee2Mqtt2Web:
         self._announcement_threads = []
         self.registry = ThingRegistry(self._mqtt_registry)
         self.webserver = FlaskBridge(cfg, self.registry)
+        self.registry.on_mqtt_network_discovered(on_net_discovery_cb)
 
     def start_and_block(self):
         """ Starts all relevant services and blocks() on a net-listen loop until stop()ed """
