@@ -57,6 +57,7 @@ class ThingsPane extends React.Component {
     };
 
     this.props.showHiddenThings.toggle = () => {
+      console.log("XXXXXX", this.state)
       this.setState({showHiddenThings: !this.state.showHiddenThings});
     };
 
@@ -90,7 +91,8 @@ class ThingsPane extends React.Component {
 
     const thing_list = this.state.things_order.map((thing_name, idx) => {
       const thing = this.state.things_lookup[thing_name];
-      return <li key={`${thing.props.name}_thing_li`}>
+      const classNames = (!this.state.showHiddenThings && thing.props.start_hidden)? 'is-hidden' : '';
+      return <li className={classNames} key={`${thing.props.name}_thing_li`}>
               {thing}
             </li>
     });

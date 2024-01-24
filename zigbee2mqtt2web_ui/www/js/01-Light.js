@@ -90,11 +90,8 @@ class Light extends React.Component {
   }
 
   render() {
-    let classNames = 'thing_div'
-    if (this.props.start_hidden) classNames += ' is-hidden';
     return (
-      <div className={classNames}
-           key={`${this.props.name}_light_div`}>
+      <div className='thing_div' key={`${this.props.name}_light_div`}>
 
         <div className="row">
           <div className="col-primary-action">
