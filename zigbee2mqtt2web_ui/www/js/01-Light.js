@@ -14,6 +14,8 @@ class Light extends React.Component {
       color_temp_max: 0,
       color_temp_presets: [],
       supports_rgb: false,
+      user_defined: meta.user_defined,
+      start_hidden: meta.user_defined?.ui_hide,
     }
 
     for (const action_name of Object.keys(meta.actions)) {
@@ -88,8 +90,10 @@ class Light extends React.Component {
   }
 
   render() {
+    let classNames = 'thing_div'
+    if (this.props.start_hidden) classNames += ' is-hidden';
     return (
-      <div className="thing_div"
+      <div className={classNames}
            key={`${this.props.name}_light_div`}>
 
         <div className="row">

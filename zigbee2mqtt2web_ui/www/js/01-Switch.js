@@ -6,6 +6,8 @@ class Switch extends React.Component {
       description: meta.description,
       manufacturer: meta.manufacturer,
       model: meta.model,
+      user_defined: meta.user_defined,
+      start_hidden: meta.user_defined?.ui_hide,
     }
   }
 
@@ -26,8 +28,10 @@ class Switch extends React.Component {
   }
 
   render() {
+    let classNames = 'thing_div'
+    if (this.props.start_hidden) classNames += ' is-hidden';
     return (
-      <div className="thing_div"
+      <div className={classNames}
            key={`${this.props.name}_switch_div`}>
 
         <div className="row">
