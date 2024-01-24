@@ -831,6 +831,11 @@ button:disabled:hover {
     border-radius: 100%;
 }
 
+.is-small {
+  padding: 0.4rem;
+  font-size: 0.75em;
+}
+
 .clearfix {
     content: "";
     display: table;

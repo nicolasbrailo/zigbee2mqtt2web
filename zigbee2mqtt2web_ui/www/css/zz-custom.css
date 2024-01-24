@@ -169,18 +169,6 @@
   margin-top: 5px;
   margin-left: 20px;
 }
-#sensors_pane li li {
-  border-radius: 5px;
-  border: 1px solid var(--color-secondary);
-  display: inline-flex;
-  list-style-type: none;
-  padding: 1px 10px 1px 10px;
-  margin-right: 5px;
-}
-#sensors_pane li li label {
-  color: var(--color-secondary);
-  margin-right: 5px;
-}
 
 #ConfigPane_config_options {
   right: 0px;

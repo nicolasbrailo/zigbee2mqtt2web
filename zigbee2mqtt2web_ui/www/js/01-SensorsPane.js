@@ -1,5 +1,6 @@
 class SensorsPane extends React.Component {
-  static SensorMetrics = ['temperature', 'humidity', 'voc_index', 'pm25', 'occupancy', 'contact'];
+  // static SensorMetrics = ['temperature', 'humidity', 'voc_index', 'pm25', 'occupancy', 'contact'];
+  static SensorMetrics = ['temperature', 'humidity', 'voc_index', 'pm25'];
 
   static prettyMetricName(metric) {
     switch (metric) {
@@ -27,6 +28,18 @@ class SensorsPane extends React.Component {
     }
   }
 
+  static extraStyleFor(metric, value) {
+    const base = !value?
+                    'is-hidden' :
+                    'pull-right button outline is-small bd-primary';
+    switch (metric) {
+      case 'pm25':
+      case 'update_time':
+      case 'contact':
+      case 'occupancy': return base + ' hide-xs hide-sm';
+      default: return base;
+    }
+  }
 
   static getSensorMetrics(thing) {
     let metrics = [];
@@ -123,7 +136,8 @@ class SensorsPane extends React.Component {
     let metrics = [];
     for (const metric of this.props.all_known_metrics) {
       if (this.state.sensors[sensor_name][metric] !== null) {
-        metrics.push(<li key={`sensor_${sensor_name}_metric_${metric}`}>
+        metrics.push(<li className={SensorsPane.extraStyleFor(metric, this.state.sensors[sensor_name][metric])}
+                         key={`sensor_${sensor_name}_metric_${metric}`}>
                        <label>{SensorsPane.prettyMetricName(metric)}</label>
                        {this.state.sensors[sensor_name][metric]}
                        <label>{SensorsPane.prettyMetricUnit(metric)}</label>

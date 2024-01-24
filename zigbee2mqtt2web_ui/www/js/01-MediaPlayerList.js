@@ -284,7 +284,7 @@ class MediaPlayer extends React.Component {
         <table>
         <tbody>
         <tr>
-        <td className="col-media-icon">
+        <td className="col-media-icon hide-xs hide-md">
           <img className="media-icon" src={this.state.media_info.icon}/>
         </td>
 
