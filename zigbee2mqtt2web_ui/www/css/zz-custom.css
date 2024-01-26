@@ -21,14 +21,17 @@
   border: 2px solid var(--color-error);
   background-color: var(--color-secondary);
   border-radius: 50px;
-  opacity: .9;
+  /* opacity: .8; */
+  z-index: 99;
 
   padding: 20px;
   font-size: large;
 }
 #global_error_msg {
+  border-radius: 20px;
   border: 1px solid var(--color-primary);
   margin-bottom: 20px;
+  opacity: 1;
 }
 #global_error_ui_ack {
   font-weight: bold;

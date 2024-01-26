@@ -37,6 +37,8 @@ class MultiMqttThing:
     group_has_same_metadata: bool
     group_has_same_actions: bool
     is_zigbee_mqtt: bool = False
+    is_mqtt_spammy: bool = False
+    user_defined: map = None
     # We need a default value for these two, because there are use cases where
     # something may create this object without actually calling __init__(). For
     # example, dataclasses.asdict does this: it will deep-copy an object, then
@@ -63,6 +65,8 @@ class MultiMqttThing:
         self.description = wrapped_things[0].description
         self.thing_type = wrapped_things[0].thing_type
         self.actions = wrapped_things[0].actions
+        self.is_mqtt_spammy = wrapped_things[0].is_mqtt_spammy
+        self.user_defined = wrapped_things[0].user_defined
 
         for thing in wrapped_things[1:]:
             differences = []
@@ -76,6 +80,10 @@ class MultiMqttThing:
                 differences.append('description')
             if thing.thing_type != self.thing_type:
                 differences.append('thing_type')
+            if thing.is_mqtt_spammy != self.is_mqtt_spammy:
+                differences.append('is_mqtt_spammy')
+            if thing.is_mqtt_spammy != self.user_defined:
+                differences.append('user_defined')
 
             self.group_has_same_metadata = len(differences) == 0
             if not self.group_has_same_metadata:
@@ -107,6 +115,8 @@ class MultiMqttThing:
             "group_has_same_metadata": self.group_has_same_metadata,
             "group_has_same_actions": self.group_has_same_actions,
             "is_zigbee_mqtt": self.is_zigbee_mqtt,
+            "is_mqtt_spammy": self.is_mqtt_spammy,
+            "user_defined": self.user_defined,
             "_wrapped_things_names": self._wrapped_things_names}
 
     def get_broadcast_names(self):

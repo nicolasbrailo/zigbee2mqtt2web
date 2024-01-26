@@ -57,8 +57,8 @@ class Zigbee2Mqtt2Flask2js {
         dataType: 'json',
         success: ready.resolve,
         error: (err) => {
-          const msg = `Set error ${err.status} ${err.statusText}: ${err.responseText}`;
-          console.log(msg);
+          const msg = `Error: ${err.statusText}, ${err.responseText}\nError ${err.status} on ${err.responseURL}`;
+          console.log(msg, err);
           this._ui_display_error(msg);
           ready.reject();
         },

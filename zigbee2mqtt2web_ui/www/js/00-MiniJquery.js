@@ -51,7 +51,17 @@ function mAjax(cfg) {
         // console.log(cfg.url, req, resp)
         cfg.success(resp);
       } else {
-        cfg.error(req);
+        if (req.status == 0 && req.statusText.length == 0) {
+          cfg.error({
+            status: 0,
+            statusText: "Can't reach server",
+            responseText: "Server unreachable or connection aborted",
+            responseURL: req.responseUrl,
+            request: req,
+          });
+        } else {
+          cfg.error(req);
+        }
       }
     }
   };

@@ -76,6 +76,7 @@ class ThingsPane extends React.Component {
       things_order: this._getOrderedThings(props),
       reordering: false,
       showHiddenThings: false,
+      visibleGroup: null,
     };
   }
 
@@ -105,9 +106,9 @@ class ThingsPane extends React.Component {
     let current_group = null;
     for (const thing_name of this.state.things_order) {
       const thing = this.state.things_lookup[thing_name];
-      const classNames = (!this.state.showHiddenThings && thing.props.user_defined?.ui_hide)? 'is-hidden' : '';
 
-      let group = thing.props.user_defined?.ui_group;
+      let group = null;
+      if (thing.props.user_defined) group = thing.props.user_defined.ui_group;
       if (group === undefined) group = null;
       if (group != current_group) {
         current_group = group;
@@ -116,6 +117,8 @@ class ThingsPane extends React.Component {
         }
       }
 
+      const ui_hide = thing.props.user_defined && thing.props.user_defined.ui_hide;
+      const classNames = (!this.state.showHiddenThings && ui_hide)? 'is-hidden' : '';
       groupedThingList.get(current_group).push(
         <li className={classNames} key={`${thing.props.name}_thing_li`}>
           {thing}
@@ -123,13 +126,25 @@ class ThingsPane extends React.Component {
     }
 
     const groupList = [];
+    const visibleGroup = (() => {
+      if (this.state.visibleGroup) return this.state.visibleGroup;
+      const groups = Array.from(groupedThingList.entries());
+      if (groups.length == 0) return null;
+      return groups[0][0];
+    })();
+
     for (const e of groupedThingList.entries()) {
       const group = e[0];
       const thinglist = e[1];
+      const visible = (!this.state.showHiddenThings && group != null && group != visibleGroup)? 'is-hidden' : '';
+      const expandGroupCtrl = (
+        <div onClick={_ => this.setState({visibleGroup: group})} className="is-full-width text-dark bd-primary is-small">
+          <b>{group}</b>
+        </div>)
       groupList.push(
         <div className="card" key={`${group}_thing_pane_group`}>
-        <b>{group}</b>
-        <ul key={`${group}_thing_pane_group_ul`}>
+        {group? expandGroupCtrl : ''}
+        <ul className={visible} key={`${group}_thing_pane_group_ul`}>
           {thinglist}
         </ul>
         </div>);
