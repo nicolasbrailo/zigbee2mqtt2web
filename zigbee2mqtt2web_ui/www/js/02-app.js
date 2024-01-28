@@ -7,7 +7,6 @@ m$('global_error_ui_ack').onclick = () => {
   m$('global_error_ui').classList.add('no-error');
 };
 
-
 window.remote_thing_registry = new Zigbee2Mqtt2Flask2js(showGlobalError);
 window.local_storage = new LocalStorageManager();
 window.thing_registry = new ThingRegistry(local_storage, remote_thing_registry);

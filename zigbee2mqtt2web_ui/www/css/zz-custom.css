@@ -25,13 +25,18 @@
   z-index: 99;
 
   padding: 20px;
-  font-size: large;
+  font-size: smaller;
+
+  max-height: 80vh;
 }
 #global_error_msg {
   border-radius: 20px;
   border: 1px solid var(--color-primary);
   margin-bottom: 20px;
   opacity: 1;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-height: 60vh;
 }
 #global_error_ui_ack {
   font-weight: bold;
@@ -127,6 +132,7 @@
   text-align: end;
   font-weight: bold;
   font-size: x-large;
+  padding-right: 10px;
 }
 
 #things_root ul {
@@ -159,7 +165,10 @@
   color: var(--color-secondary);
   background: transparent;
 
-  margin: 5px;
+  margin: 2px;
+  padding: 5px;
+  font-size: medium;
+
   border-radius: 10px;
   border: 2px solid var(--color-primary);
   text-align: center;
