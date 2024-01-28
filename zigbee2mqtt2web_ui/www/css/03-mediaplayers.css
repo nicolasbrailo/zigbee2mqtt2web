@@ -51,26 +51,41 @@
 
 @media screen and (max-width: 599px) {
   #MediaPlayerList .player-volume {
-    width:100px;
-    display: block;
+    width:50%;
+    display: inline;
   }
   #MediaPlayerList .media-info-label {
-    width:100px;
+    overflow: hidden;
+    max-width: 48%;
+    display: inline-block;
+    margin-left: 1px;
   }
 }
 
 #MediaPlayerList .player-tts-button {
   background: transparent;
-  font-size: x-large;
-  width: 100%;
+  font-size: large;
+  width: 60%;
   opacity: 0.6;
   margin: 5px;
   border: 2px solid var(--color-primary);
+  display: inline;
+  border-radius: 5px;
+}
+#MediaPlayerList .player-tts-lang-select {
+  background: transparent;
+  width: 20%;
+  opacity: 0.6;
+  margin: 5px;
+  border: 2px solid var(--color-secondary);
+  display: inline;
+  font-size: small;
+  border-radius: 5px;
 }
 
 #MediaPlayerList .player-announce-methods {
   font-size: medium;
-  width: 100%;
+  width: 90%;
   margin: 5px;
   padding: 5px;
   border: 2px solid var(--color-primary);

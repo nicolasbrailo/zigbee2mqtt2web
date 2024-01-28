@@ -7,7 +7,6 @@ class MediaPlayer extends React.Component {
       can_announce: Object.keys(player.actions).includes("user_audio_announce"),
       // Mobile browsers don't accept calls to getUserMedia if no https
       can_record_mic: 'https:' == document.location.protocol,
-      ttsLang: "es",
     }
   }
 
@@ -81,10 +80,12 @@ class MediaPlayer extends React.Component {
     }
 
     const phrase = prompt(`What should ${this.props.player.name} say?`);
+    const langIdx = document.getElementById(`MediaPlayer_${this.props.player.name}_tts_lang_select`).options.selectedIndex;
+    const lang = document.getElementById(`MediaPlayer_${this.props.player.name}_tts_lang_select`).options[langIdx].value;
     if (!!phrase && phrase.length > 0) {
       this.props.thing_registry.set_thing(
         this.props.player.name,
-        `tts_announce={"lang": "${this.props.ttsLang}", "phrase": "${phrase}"}`
+        `tts_announce={"lang": "${lang}", "phrase": "${phrase}"}`
       );
     }
 
@@ -197,11 +198,13 @@ class MediaPlayer extends React.Component {
 
     if (this.props.can_tts || this.props.can_announce) {
         return (
-          <button key={`MediaPlayer_${this.props.player.name}_tts_ui_start_btn`}
-                className="player-tts-button"
-                onClick={ this.onAnnouncementUiEnable }>
-            {this.props.player.name} Say
-          </button>
+          <div key={`MediaPlayer_${this.props.player.name}_tts_div`}>
+            <button key={`MediaPlayer_${this.props.player.name}_tts_ui_start_btn`}
+                  className="player-tts-button"
+                  onClick={ this.onAnnouncementUiEnable }>
+              {this.props.player.name} Say
+            </button>
+          </div>
         );
     }
 
@@ -228,6 +231,12 @@ class MediaPlayer extends React.Component {
                   onClick={ this.onTTSRequested }>
               TTS
             </button>
+            <select key={`MediaPlayer_${this.props.player.name}_tts_lang_select`}
+                     id={`MediaPlayer_${this.props.player.name}_tts_lang_select`}
+                     className="player-tts-lang-select">
+              <option value='es'>ES</option>
+              <option value='en'>EN</option>
+            </select>
           </li>);
       }
       return (
@@ -269,7 +278,7 @@ class MediaPlayer extends React.Component {
 
   render_no_media() {
     return (
-      <div className="thing_div row container"
+      <div className="thing_div"
            key={`${this.props.player.name}_media_player_div`}>
         { this.render_announce_ui() }
       </div>
@@ -278,7 +287,7 @@ class MediaPlayer extends React.Component {
 
   render_playing_media() {
     return (
-      <div className="thing_div row container"
+      <div className=""
            key={`${this.props.player.name}_media_player_div`}>
         { this.render_announce_ui() }
         <table>
@@ -335,7 +344,9 @@ class MediaPlayerList extends React.Component {
     }
 
     return (
-      <ul id="MediaPlayerList">{renderPlayers}</ul>
+      <div id="MediaPlayersDiv" className="card" key="MediaPlayersDiv">
+        <ul id="MediaPlayerList">{renderPlayers}</ul>
+      </div>
     );
   }
 }

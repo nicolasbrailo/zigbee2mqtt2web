@@ -227,3 +227,27 @@
 .is-a-bit-rounded {
     border-radius: 5px;
 }
+
+
+#MediaPlayersDiv {
+  padding-left: 1rem;
+  padding: 0px;
+  margin: 0px;
+}
+#MediaPlayerList {
+  padding: 0px;
+  margin: 0px;
+}
+#MediaPlayerList ul {
+  list-style-type: none;
+  padding: 0px;
+  padding-bottom: 5px;
+  margin: 0px;
+}
+#MediaPlayerList li {
+  list-style-type: none;
+  padding: 0px;
+  margin: 0px;
+  margin-left: 5px;
+}
+
