@@ -135,17 +135,28 @@ class ThingsPane extends React.Component {
 
     for (const e of groupedThingList.entries()) {
       const group = e[0];
+      if (!group) continue; // We'll add null-group at the bottom
+
       const thinglist = e[1];
       const visible = (!this.state.showHiddenThings && group != null && group != visibleGroup)? 'is-hidden' : '';
       const expandGroupCtrl = (
-        <div onClick={_ => this.setState({visibleGroup: group})} className="is-full-width text-dark bd-primary is-small">
+        <div onClick={_ => this.setState({visibleGroup: group})} className="is-full-width text-dark bd-primary is-small is-a-bit-rounded">
           <b>{group}</b>
         </div>)
       groupList.push(
         <div className="card" key={`${group}_thing_pane_group`}>
-        {group? expandGroupCtrl : ''}
+        {expandGroupCtrl}
         <ul className={visible} key={`${group}_thing_pane_group_ul`}>
           {thinglist}
+        </ul>
+        </div>);
+    }
+
+    if (groupedThingList.get(null).length > 0) {
+      groupList.push(
+        <div className="card" key={`nullgroup_thing_pane_group`}>
+        <ul key={`nullgroup_thing_pane_group_ul`}>
+          {groupedThingList.get(null)}
         </ul>
         </div>);
     }

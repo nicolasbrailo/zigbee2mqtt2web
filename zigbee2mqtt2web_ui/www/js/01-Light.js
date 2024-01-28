@@ -101,7 +101,7 @@ class Light extends React.Component {
                    key={`${this.props.name}_light_is_on`} />
           </div>
 
-          <div className="col-fixed-fill">
+          <div className="col-fixed-fill thing-no-linebreak">
             <div className="row">
               <div className="col-fixed-fill">
               <label className='thing_name' htmlFor={`${this.props.name}_light_is_on`}>
