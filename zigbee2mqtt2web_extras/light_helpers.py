@@ -19,6 +19,16 @@ def any_light_on_in_the_house(registry):
     return any_light_on(registry, registry.get_thing_names_of_type('light'))
 
 
+def which_lights_are_on_in_the_house(registry):
+    """ Gets all of the registered lights, and returns a list of those that
+    are currently on """
+    lst = []
+    for name in registry.get_thing_names_of_type('light'):
+        if registry.get_thing(name).is_light_on():
+            lst.append(name)
+    return lst
+
+
 def light_group_toggle_brightness_pct(registry, light_group):
     """ Will toggle a set of lights as if they were a group (ie all on, or all
     off). If any of the lights in the group are on, it will try to turn them
