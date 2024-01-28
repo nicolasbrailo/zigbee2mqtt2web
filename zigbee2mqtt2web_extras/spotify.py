@@ -274,14 +274,18 @@ class _SpotifyGetPlayerStateAction:
 
     def get(self):
         """ If not authenticated, return a URL to do the auth """
-        if self._sp is None:
-            return {
-                'is_authenticated': False,
-                'reauth_url': self._reauth_url,
-                'volume': 0,
-                'media_info': None,
-            }
-        return _action_media_player_state(self._sp)
+        if self._sp is not None:
+            try:
+                return _action_media_player_state(self._sp)
+            except Exception as ex:
+                logger.error("Failed spotify action", exc_info=True)
+
+        return {
+            'is_authenticated': False,
+            'reauth_url': self._reauth_url,
+            'volume': 0,
+            'media_info': None,
+        }
 
 
 def _build_actions_map(cb_on_token_expired, cfg):
