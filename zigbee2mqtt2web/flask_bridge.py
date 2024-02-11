@@ -231,7 +231,6 @@ class FlaskBridge:
             for key, val in FlaskRequest.form.items():
                 self._registry.get_thing(thing_name).set(key, val)
 
-            # Propagate changes
             self._registry.broadcast_thing(thing_name)
             return True
         self._thing_put('/set/<thing_name>', set_prop_of_thing)

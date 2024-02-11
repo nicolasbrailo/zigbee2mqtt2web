@@ -1,7 +1,9 @@
 """ Groups a set of actions under an easy to access name """
 
-from typing import Callable
+from apscheduler.schedulers.background import BackgroundScheduler
 from dataclasses import dataclass
+from datetime import datetime, time, timedelta
+from typing import Callable
 
 
 @dataclass(frozen=False)
@@ -10,9 +12,10 @@ class Scene:
     description: str
     apply_scene: Callable
 
-
 def _make_scene_all_things_off(registry):
     def all_things_off(all_except=None):
+        shutdown_transition_secs = 3
+
         if all_except is None:
             all_except = []
 
@@ -61,8 +64,27 @@ def _make_scene_all_things_off(registry):
         for changed_thing_name in changes:
             thing = registry.get_thing(changed_thing_name)
             if 'transition' in thing.actions:
-                thing.set('transition', 3)
+                thing.set('transition', shutdown_transition_secs)
             registry.broadcast_thing(thing)
+
+        scheduler = BackgroundScheduler()
+        def ensure_all_off():
+            # Some (Ikea) things get confused with transition time, so loop 
+            # once more at the end with state=off
+            for changed_thing_name in changes:
+                thing = registry.get_thing(changed_thing_name)
+                if 'state' in thing.actions:
+                    val = thing.actions['state'].value.meta['value_off']
+                    thing.set('state', val)
+                    registry.broadcast_thing(thing)
+            scheduler.stop()
+
+        scheduler.start()
+        scheduler.add_job(
+            func=ensure_all_off,
+            trigger="date",
+            run_date=(datetime.now() + timedelta(seconds=shutdown_transition_secs)))
+
 
     return all_things_off
 
