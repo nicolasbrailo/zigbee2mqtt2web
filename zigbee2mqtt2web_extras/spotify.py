@@ -218,7 +218,7 @@ def _new_zmw_action(
                 return base_func(self, *a, **kw)
             except SpotifyException as ex:
                 if ex.http_status != 401:  # If exc == deauth
-                    raise ex
+                    raise RuntimeError(ex)
                 logger.info(
                     'Spotify access token expired, will try to renew and retry')
                 self._cb_on_token_expired()  # pylint: disable=protected-access
