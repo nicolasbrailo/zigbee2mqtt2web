@@ -87,15 +87,38 @@ async def _async_sonos_announce_one(api_cfg, ip_addr, soco_uid, alert_uri, volum
 
 async def _async_sonos_announce_all(api_cfg, alert_uri, volume=None):
     tasks = []
-    for spk in soco.discover():
-        tasks.append(
-            _async_sonos_announce_one(
-                api_cfg,
-                spk.ip_address,
-                spk.uid,
-                alert_uri,
-                volume))
+
+    if 'speaker_ip_list' in api_cfg:
+        log.info("Skip Sonos discovery, using static IP list %s", api_cfg['speaker_ip_list'])
+        for ip in api_cfg['speaker_ip_list']:
+            try:
+                dev = soco.SoCo(ip)
+                tasks.append(
+                    _async_sonos_announce_one(
+                        api_cfg,
+                        dev.ip_address,
+                        dev.uid,
+                        alert_uri,
+                        volume))
+            except (ConnectionError, OSError):
+                log.error("Configured Sonos at %s can't be reached", ip)
+                continue
+    else:
+        spks = soco.discover()
+        if spks is None:
+            log.error("Sonos discovery broken, can't announce")
+            return False
+        for spk in spks:
+            tasks.append(
+                _async_sonos_announce_one(
+                    api_cfg,
+                    spk.ip_address,
+                    spk.uid,
+                    alert_uri,
+                    volume))
+
     await asyncio.gather(*tasks)
+    return True
 
 
 def sonos_announce_ws(api_cfg, alert_uri, volume=None):
@@ -105,7 +128,7 @@ def sonos_announce_ws(api_cfg, alert_uri, volume=None):
     api_cfg['api_key']  # pylint: disable=pointless-statement
     api_cfg['api_key_name']  # pylint: disable=pointless-statement
     api_cfg['key_app_id']  # pylint: disable=pointless-statement
-    asyncio.run(_async_sonos_announce_all(api_cfg, alert_uri, volume))
+    return asyncio.run(_async_sonos_announce_all(api_cfg, alert_uri, volume))
 
 
 def sonos_announce_local(alert_uri, volume, timeout, force_play):
@@ -118,6 +141,10 @@ def sonos_announce_local(alert_uri, volume, timeout, force_play):
 
     # prepare all zones for playing the alert
     zones = soco.discover()
+    if zones is None:
+        log.error("Sonos discovery is broken, can't find zones")
+        return
+
     announce_zones = []
     for zone in zones:
         trans_state = zone.get_current_transport_info()
@@ -212,11 +239,11 @@ def sonos_announce(
     speakers without active media. """
     if ws_api_cfg is not None:
         try:
-            sonos_announce_ws(ws_api_cfg, alert_uri, volume)
-            return
+            if sonos_announce_ws(ws_api_cfg, alert_uri, volume):
+                return
         except Exception:  # pylint: disable=broad-except
             logging.error(
-                'Failed to Sonos announce, fallback to local only announce',
-                exc_info=True)
+                'Failed to Sonos announce', exc_info=True)
 
+    logging.error('Fallback to local only announce')
     sonos_announce_local(alert_uri, volume, timeout_secs, force_play)

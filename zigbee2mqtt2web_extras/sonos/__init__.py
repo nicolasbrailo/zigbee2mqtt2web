@@ -76,6 +76,8 @@ class Sonos(PhonyZMWThing):
                 'api_key_name': cfg['api_key_name'],
                 'key_app_id': cfg['key_app_id'],
             }
+        if 'speaker_ip_list' in cfg:
+            self._api_cfg['speaker_ip_list'] = cfg['speaker_ip_list']
 
         _config_logger(cfg['debug_log'])
         self._cfg = cfg
