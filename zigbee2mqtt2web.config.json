@@ -81,7 +81,10 @@
        "COMMENT4_API": "and you shouldn't use them for your own system",
        "COMMENT_EG_api_key": "123e4567-e89b-12d3-a456-426655440000",
        "COMMENT_EG_key_app_id": "com.jjlawren.sonos_websocket",
-       "COMMENT_EG_api_key_name": "Sonos Websocket"
+       "COMMENT_EG_api_key_name": "Sonos Websocket",
+
+       "COMMENT_speaker_ip_list": "Use an explicit IP list to skip discovery (eg if discovery doesn't work, or if you don't want to wait for discovery",
+       "DISABLE_speaker_ip_list": ["123.123.123.123", "192.168.1.123"]
   },
 
   "COMMENT": "Security cam settings. Read FTPD.py for info",
