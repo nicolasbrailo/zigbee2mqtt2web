@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 from typing import Callable
 
+import logging
+log = logging.getLogger(__name__)
 
 @dataclass(frozen=False)
 class Scene:
@@ -71,13 +73,13 @@ def _make_scene_all_things_off(registry):
         def ensure_all_off():
             # Some (Ikea) things get confused with transition time, so loop 
             # once more at the end with state=off
+            log.info("World off: ensuring state by switching everything off again")
             for changed_thing_name in changes:
                 thing = registry.get_thing(changed_thing_name)
                 if 'state' in thing.actions:
                     val = thing.actions['state'].value.meta['value_off']
                     thing.set('state', val)
                     registry.broadcast_thing(thing)
-            scheduler.stop()
 
         scheduler.start()
         scheduler.add_job(
