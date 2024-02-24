@@ -465,13 +465,15 @@ class ReolinkDoorbell:
             log.error("Requested reencoding of last recording, but one is already in progress")
             return False
 
-        reencode_out_file = f"{self._last_recording}.small.mkv"
+        reencode_out_file = f"{self._last_recording}.small.mp4"
         self._reencoding_stdout_fp = open("/home/batman/BatiCasa/reencoding.stdout.log", 'w')
         self._reencoding_stderr_fp = open("/home/batman/BatiCasa/reencoding.stderr.log", 'w')
         self._reencoding_process = subprocess.Popen([
                                         "ffmpeg",
                                         "-i", self._last_recording,
-                                        "-vf", "scale=-1:720",
+                                        # 720p "-vf", "scale=-1:720",
+                                        # Telegram format
+                                        "-vf", "scale=640:360",
                                         "-c:v", "libx264",
                                         "-crf", "23",
                                         "-preset", "veryfast",
