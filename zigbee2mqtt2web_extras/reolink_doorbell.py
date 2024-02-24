@@ -1,9 +1,10 @@
 """ Doorbell/ONVIF-camera service """
 
+from datetime import datetime, timedelta
 from threading import Lock
 import asyncio
-from datetime import datetime, timedelta
 import logging
+import subprocess
 import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -129,11 +130,24 @@ class ReolinkDoorbell:
         self._debounce_msg = {}
         self._motion_evt_lvl = 0
         self._motion_evt_job = None
-        self._recording_job = None
         self._cfg = cfg
         self._webhook_url = webhook_url
         self._zmw = zmw
         self._cam = cam
+
+        # State for rtsp recording
+        self._recording_job = None
+        self._recording_stdout_fp = None
+        self._recording_stderr_fp = None
+        self._recording_process = None
+
+        self._last_recording = None
+        self._last_recording_duration = 0
+        self._reencoding_stdout_fp = None
+        self._reencoding_stderr_fp = None
+        self._reencoding_process = None
+        self._reencoding_job = None
+
         self._announce_lock = Lock()
         self._scheduler.start()
 
@@ -373,38 +387,139 @@ class ReolinkDoorbell:
         })
 
     def trigger_recording(self, duration=None):
-        duration = duration or self._rec_duration_on_movement
-        # Extra for encoding time
-        duration += 2
+        recording_duration = duration or self._rec_duration_on_movement
 
         if self._recording_job is None:
-            log.info("Doorbell cam %s will start recording for %s seconds", self._cam_host, duration)
+            log.info("Doorbell cam %s will start recording for %s seconds", self._cam_host, recording_duration)
         else:
-            log.info("Doorbell cam %s requested new recording, but one is ongoing. Extending timeout by %s seconds", self._cam_host, duration)
-            self._recording_job.reschedule(trigger="date", run_date=(datetime.now() + timedelta(seconds=duration)))
+            log.info("Doorbell cam %s requested new recording, but one is ongoing. Extending timeout by %s seconds", self._cam_host, recording_duration)
+            self._recording_job.reschedule(trigger="date", run_date=(datetime.now() + timedelta(seconds=recording_duration)))
             return
 
-        # DUR_SECS=10
-        # OUTFILE=$(date '+Doorbell%y%m%d-%H%M%S.mp4')
-        # ffmpeg -i "rtsp://admin:@10.10.30.20:554/h264Preview_01_main" \
-        #        -t "$DUR_SECS" \
-        #        -strftime 1 \
-        #        "$OUTFILE"
-        # OUTFILE="Doorbell240224-030529.mp4"
+        # TODO configure dir
+        # TODO mkdir
+        # TODO config logs
+        # TODO get rtsp from cam
+        outfile = datetime.now().strftime(f"/home/batman/BatiCasa/rec_doorbell/{self._cam_host}%Y%m%d_%H%M%S.mp4")
+        self._recording_stdout_fp = open("/home/batman/BatiCasa/recording.stdout.log", 'w')
+        self._recording_stderr_fp = open("/home/batman/BatiCasa/recording.stderr.log", 'w')
+        self._recording_process = subprocess.Popen([
+                                        "ffmpeg",
+                                        "-i", "rtsp://admin:@10.10.30.20:554/h264Preview_01_main",
+                                        "-t", str(recording_duration),
+                                        outfile,
+                                    ],
+                                    stdout=self._recording_stdout_fp,
+                                    stderr=self._recording_stderr_fp)
 
-        def _on_recording_complete():
-            self._recording_job = None
-            log.info("Doorbell cam %s has new recording", self._cam_host)
+        def _on_recording_complete_impl():
+            # TODO Needs mutex
+
+            # Wait for some extra time (eg for encoding)
+            # TODO make configurable
+            self._recording_process.wait(5)
+
+            if self._recording_process.poll() is None:
+                log.error("Camera %s recording process is still running after timeout, killing...", self._cam_host)
+                self._recording_process.terminate()
+            self._recording_stdout_fp.close()
+            self._recording_stderr_fp.close()
+
+            if self._recording_process.returncode != 0:
+                log.error("Camera %s recording process failed", self._cam_host)
+                with open("/home/batman/BatiCasa/recording.stdout.log", 'r') as fp:
+                    log.error(fp.read())
+                with open("/home/batman/BatiCasa/recording.stderr.log", 'r') as fp:
+                    log.error(fp.read())
+
+            self._last_recording = outfile
+            self._last_recording_duration = recording_duration
+
+            # TODO: Check if file was actually recorded
+            log.info("Doorbell cam %s has new recording @ %s", self._cam_host, outfile)
             self._zmw.announce_system_event({
                 'event': 'on_doorbell_cam_has_new_recording',
                 'doorbell_cam': self._cam_host,
-                'fpath': 'TODO',
+                'fpath': outfile,
             })
+
+        def _on_recording_complete():
+            try:
+                return _on_recording_complete_impl()
+            except:
+                log.error("Recording fail with exception", exc_info=True)
+            # We may leak FPs, but at least the system should be in a consistent state
+            self._recording_job = None
 
         self._recording_job = self._scheduler.add_job(
             func=_on_recording_complete,
             trigger="date",
             run_date=(datetime.now() + timedelta(seconds=duration)))
+
+
+    def reencode_last_recording_for_messaging(self):
+        if self._last_recording is None:
+            log.error("Requested reencoding of last recording, but none is known")
+            return False
+        if self._reencoding_process is not None or self._reencoding_job is not None:
+            log.error("Requested reencoding of last recording, but one is already in progress")
+            return False
+
+        reencode_out_file = f"{self._last_recording}.small.mkv"
+        self._reencoding_stdout_fp = open("/home/batman/BatiCasa/reencoding.stdout.log", 'w')
+        self._reencoding_stderr_fp = open("/home/batman/BatiCasa/reencoding.stderr.log", 'w')
+        self._reencoding_process = subprocess.Popen([
+                                        "ffmpeg",
+                                        "-i", self._last_recording,
+                                        "-vf", "scale=-1:720",
+                                        "-c:v", "libx264",
+                                        "-crf", "23",
+                                        "-preset", "veryfast",
+                                        "-c:a", "copy",
+                                        reencode_out_file,
+                                    ],
+                                    stdout=self._reencoding_stdout_fp,
+                                    stderr=self._reencoding_stderr_fp)
+
+        def _on_reencoding_complete_impl():
+            # TODO Needs mutex
+            if self._reencoding_process.poll() is None:
+                log.error("Camera %s recording reencoding process is still running after timeout, killing...", self._cam_host)
+                self._reencoding_process.terminate()
+            self._reencoding_stdout_fp.close()
+            self._reencoding_stderr_fp.close()
+
+            if self._reencoding_process.returncode != 0:
+                log.error("Camera %s reencoding process failed", self._cam_host)
+                with open("/home/batman/BatiCasa/reencoding.stdout.log", 'r') as fp:
+                    log.error(fp.read())
+                with open("/home/batman/BatiCasa/reencoding.stderr.log", 'r') as fp:
+                    log.error(fp.read())
+
+            # TODO Check if file was saved
+            log.info("Doorbell cam %s has new reencoded recording @ %s", self._cam_host, reencode_out_file)
+            self._zmw.announce_system_event({
+                'event': 'on_doorbell_cam_last_recording_reencoded',
+                'doorbell_cam': self._cam_host,
+                'fpath': reencode_out_file,
+            })
+
+        def _on_reencoding_complete():
+            try:
+                return _on_reencoding_complete_impl()
+            except:
+                log.error("Reencoding fail with exception", exc_info=True)
+            # We may leak FPs, but at least the system should be in a consistent state
+            self._reencoding_job = None
+            self._reencoding_process = None
+
+        # Check job after duration of recording (should be more than enough to reencode)
+        self._reencoding_job = self._scheduler.add_job(
+            func=_on_reencoding_complete,
+            trigger="date",
+            run_date=(datetime.now() + timedelta(seconds=self._last_recording_duration)))
+        return True
+
 
     def on_motion_cleared(self, msg):
         """ Camera reports no motion is detected now """
