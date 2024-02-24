@@ -2,6 +2,7 @@
 
 from threading import Lock
 import asyncio
+from datetime import datetime, timedelta
 import logging
 import time
 
@@ -118,10 +119,17 @@ class ReolinkDoorbell:
         self._snap_path_on_movement = None
         if 'snap_path_on_movement' in cfg:
             self._snap_path_on_movement = cfg['snap_path_on_movement']
+        self._rec_path_on_movement = None
+        self._rec_duration_on_movement = 0
+        if 'rec_path_on_movement' in cfg:
+            self._rec_path_on_movement = cfg['rec_path_on_movement']
+            # If one is set, so should be the other
+            self._rec_duration_on_movement = int(cfg['rec_duration_on_movement'])
 
         self._debounce_msg = {}
         self._motion_evt_lvl = 0
         self._motion_evt_job = None
+        self._recording_job = None
         self._cfg = cfg
         self._webhook_url = webhook_url
         self._zmw = zmw
@@ -349,6 +357,13 @@ class ReolinkDoorbell:
                 log.error("Failed to save doorbell snapshot", exc_info=True)
                 return
 
+        if self._rec_path_on_movement is not None:
+            try:
+                self.trigger_recording(self._rec_path_on_movement)
+            except:
+                log.error("Failed to start doorbell recording", exc_info=True)
+                return
+
         self._zmw.announce_system_event({
             'event': 'on_doorbell_cam_motion_detected',
             'doorbell_cam': self._cam_host,
@@ -356,6 +371,40 @@ class ReolinkDoorbell:
             'motion_level': motion_level,
             'msg': cam_msg,
         })
+
+    def trigger_recording(self, duration=None):
+        duration = duration or self._rec_duration_on_movement
+        # Extra for encoding time
+        duration += 2
+
+        if self._recording_job is None:
+            log.info("Doorbell cam %s will start recording for %s seconds", self._cam_host, duration)
+        else:
+            log.info("Doorbell cam %s requested new recording, but one is ongoing. Extending timeout by %s seconds", self._cam_host, duration)
+            self._recording_job.reschedule(trigger="date", run_date=(datetime.now() + timedelta(seconds=duration)))
+            return
+
+        # DUR_SECS=10
+        # OUTFILE=$(date '+Doorbell%y%m%d-%H%M%S.mp4')
+        # ffmpeg -i "rtsp://admin:@10.10.30.20:554/h264Preview_01_main" \
+        #        -t "$DUR_SECS" \
+        #        -strftime 1 \
+        #        "$OUTFILE"
+        # OUTFILE="Doorbell240224-030529.mp4"
+
+        def _on_recording_complete():
+            self._recording_job = None
+            log.info("Doorbell cam %s has new recording", self._cam_host)
+            self._zmw.announce_system_event({
+                'event': 'on_doorbell_cam_has_new_recording',
+                'doorbell_cam': self._cam_host,
+                'fpath': 'TODO',
+            })
+
+        self._recording_job = self._scheduler.add_job(
+            func=_on_recording_complete,
+            trigger="date",
+            run_date=(datetime.now() + timedelta(seconds=duration)))
 
     def on_motion_cleared(self, msg):
         """ Camera reports no motion is detected now """
