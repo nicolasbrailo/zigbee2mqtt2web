@@ -129,12 +129,6 @@ class ReolinkDoorbell:
         self._snap_path_on_movement = None
         if 'snap_path_on_movement' in cfg:
             self._snap_path_on_movement = cfg['snap_path_on_movement']
-        self._rec_path_on_movement = None
-        self._rec_duration_on_movement = 0
-        if 'rec_path_on_movement' in cfg:
-            self._rec_path_on_movement = cfg['rec_path_on_movement']
-            # If one is set, so should be the other
-            self._rec_duration_on_movement = int(cfg['rec_duration_on_movement'])
 
         self._debounce_msg = {}
         self._motion_evt_lvl = 0
@@ -144,7 +138,14 @@ class ReolinkDoorbell:
         self._zmw = zmw
         self._cam = cam
 
-        self.rtsp = Rtsp(self._cam_host, self._zmw.announce_system_event)
+        self._rec_on_movement = False
+        self.rtsp = None
+        if 'rec_path' in cfg:
+            self._rec_on_movement = cfg['rec_on_movement'] if 'rec_on_movement' in cfg else False
+            self.rtsp = Rtsp(self._cam_host,
+                             self._zmw.announce_system_event,
+                             cfg['rec_path'],
+                             int(cfg['rec_default_duration_secs']))
 
         self._announce_lock = Lock()
         self._scheduler.start()
@@ -369,12 +370,12 @@ class ReolinkDoorbell:
                 log.error("Failed to save doorbell snapshot", exc_info=True)
                 return
 
-        # TODO if self._rec_path_on_movement is not None:
-        # TODO     try:
-        # TODO         self.rtsp.trigger_recording()
-        # TODO     except:
-        # TODO         log.error("Failed to start doorbell recording", exc_info=True)
-        # TODO         return
+        if self._rec_on_movement:
+            try:
+                self.rtsp.trigger_recording()
+            except:
+                log.error("Failed to start doorbell recording", exc_info=True)
+                return
 
         self._zmw.announce_system_event({
             'event': 'on_doorbell_cam_motion_detected',

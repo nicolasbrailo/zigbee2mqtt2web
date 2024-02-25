@@ -28,11 +28,18 @@ def _stop_cmd(log_prefix, timeout, force_log_out, proc, stdout, stderr):
     if proc.returncode != 0:
         log.error("%s failed, ret=%s", log_prefix, proc.returncode)
 
-    if proc.returncode != 0 or force_log_out:
+    # if proc.returncode != 0 or 
+    # ffmpeg may return non zero even if it succeeded
+    if force_log_out:
         stdout.seek(0)
+        log.error("%: ******* stdout start ******", log_prefix)
+        for ln in stdout.read().split('\n'):
+            log.error(ln)
+
         stderr.seek(0)
-        log.error("%: stdout:", log_prefix, stdout.read())
-        log.error("%: stderr:", log_prefix, stderr.read())
+        log.error("%: ******* stderr start ******", log_prefix)
+        for ln in stderr.read().split('\n'):
+            log.error(ln)
 
     stdout.close()
     stderr.close()
@@ -40,17 +47,22 @@ def _stop_cmd(log_prefix, timeout, force_log_out, proc, stdout, stderr):
 
 class Rtsp:
     """ Manage RTSP recordings """
-    def __init__(self, cam_host, system_event_cb):
+    def __init__(self, cam_host, system_event_cb, rec_path_prefix, default_duration_secs=10):
         self._scheduler = BackgroundScheduler()
         self._scheduler.start()
 
-        self._default_recording_duration = 10
+        self._default_recording_duration = default_duration_secs
         self._process_stop_timeout_secs = 5
         self._reencode_timeout_secs = 20
 
         # TODO get rtsp from cam
         self._rtsp_url = "rtsp://admin:@10.10.30.20:554/h264Preview_01_main"
-        self._outfile_prefix = f"/home/batman/BatiCasa/rec_doorbell/{cam_host}"
+
+        self._outdir = os.path.join(rec_path_prefix, cam_host)
+        if not os.path.exists(self._outdir):
+            os.makedirs(self._outdir)
+        log.info("Cam %s: RTSP recordings will be saved at %s", cam_host, self._outdir)
+
         self._cam_host = cam_host
         self._announce_event = system_event_cb
 
@@ -122,7 +134,7 @@ class Rtsp:
 
     def _launch_new_recording_job(self, recording_duration):
         log.info("Cam %s: will record for %s seconds", self._cam_host, recording_duration)
-        self._recording_outfile = datetime.now().strftime(f"{self._outfile_prefix}%Y%m%d_%H%M%S.mp4")
+        self._recording_outfile = os.path.join(self._outdir, datetime.now().strftime("%Y%m%d_%H%M%S.mp4"))
         self._recording_cmd, \
                 self.recording_cmd_stdout, \
                 self.recording_cmd_stderr = _run_cmd(["ffmpeg", "-i", self._rtsp_url, self._recording_outfile])
@@ -140,18 +152,19 @@ class Rtsp:
 
         # If file wasn't created, force log output even if ret is success. This relies on
         # ffmpeg creating a file that's visibile before process stop, which may not always
-        # be true in all filesystems
+        # be true in all filesystems and may cause false positive failure reporting
         force_log_out = False
         outfile = self._recording_outfile
         if not os.path.exists(outfile):
-            log.error("Cam %s: RTSP recording failed, can't find output at %s", outfile)
+            log.error("Cam %s: RTSP recording failed, can't find output at %s", outfile, outfile)
             force_log_out = True
 
         # Work out of lock, we don't know how long it'll take to spin down
         _stop_cmd(f"Cam {self._cam_host}: RTSP", self._process_stop_timeout_secs, force_log_out,
                     self._recording_cmd, self.recording_cmd_stdout, self.recording_cmd_stderr)
 
-        self._recording_outfile = self._recording_cmd = \
+        # Clean up state
+        self._recording_job = self._recording_outfile = self._recording_cmd = \
                 self.recording_cmd_stdout = self.recording_cmd_stderr = None
 
         # Lastly, signal it's safe to start a new process
