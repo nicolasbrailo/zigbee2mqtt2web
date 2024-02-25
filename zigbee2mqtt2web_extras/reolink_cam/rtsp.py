@@ -47,20 +47,20 @@ def _stop_cmd(log_prefix, timeout, force_log_out, proc, stdout, stderr):
 
 def _delete_old_files(directory, days_threshold):
     try:
-        threshold_date = datetime.datetime.now() - datetime.timedelta(days=days_threshold)
+        threshold_date = datetime.now() - datetime.timedelta(days=days_threshold)
         files = os.listdir(directory)
         for file in files:
             file_path = os.path.join(directory, file)
 
             if os.path.isfile(file_path):
-                last_modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
+                last_modified_time = datetime.fromtimestamp(os.path.getmtime(file_path))
 
                 if last_modified_time < threshold_date:
                     os.remove(file_path)
-                    logger.debug('Cleanup old NVR asset %s', file_path)
+                    log.debug('Cleanup old NVR asset %s', file_path)
 
     except Exception as e:
-       logger.error('Failed to cleanup old NVR assets', exc_info=True)
+       log.error('Failed to cleanup old NVR assets', exc_info=True)
 
 
 class Rtsp:
