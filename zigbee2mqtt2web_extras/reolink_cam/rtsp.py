@@ -47,7 +47,7 @@ def _stop_cmd(log_prefix, timeout, force_log_out, proc, stdout, stderr):
 
 def _delete_old_files(directory, days_threshold):
     try:
-        threshold_date = datetime.now() - datetime.timedelta(days=days_threshold)
+        threshold_date = datetime.now() - timedelta(days=days_threshold)
         files = os.listdir(directory)
         for file in files:
             file_path = os.path.join(directory, file)
@@ -69,7 +69,7 @@ class Rtsp:
         self._scheduler = BackgroundScheduler()
         self._scheduler.start()
 
-        self._default_recording_duration = default_duration_secs
+        self._default_recording_duration_secs = default_duration_secs
         self._process_stop_timeout_secs = 5
         self._reencode_timeout_secs = 20
         self._cam_host = cam_host
@@ -94,6 +94,7 @@ class Rtsp:
         self._recording_cmd = None
         self.recording_cmd_stdout = None
         self.recording_cmd_stderr = None
+        self._recording_duration = None
         self._recording_outfile = None
         self._last_recording_fpath = None
 
@@ -165,6 +166,7 @@ class Rtsp:
     def _launch_new_recording_job(self, recording_duration):
         log.info("Cam %s: will record for %s seconds", self._cam_host, recording_duration)
         self._recording_outfile = os.path.join(self._outdir, datetime.now().strftime("%Y%m%d_%H%M%S.mp4"))
+        self._recording_duration = recording_duration
         self._recording_cmd, \
                 self.recording_cmd_stdout, \
                 self.recording_cmd_stderr = _run_cmd(["ffmpeg", "-i", self._rtsp_url, self._recording_outfile])
@@ -194,8 +196,8 @@ class Rtsp:
                     self._recording_cmd, self.recording_cmd_stdout, self.recording_cmd_stderr)
 
         # Clean up state
-        self._recording_job = self._recording_outfile = self._recording_cmd = \
-                self.recording_cmd_stdout = self.recording_cmd_stderr = None
+        self._recording_duration = self._recording_job = self._recording_outfile = \
+                self._recording_cmd = self.recording_cmd_stdout = self.recording_cmd_stderr = None
 
         # Lastly, signal it's safe to start a new process
         self._recording_job_updating = False
@@ -206,6 +208,20 @@ class Rtsp:
         else:
             self._cb_on_recording_failed(outfile)
         _delete_old_files(self._outdir, self._nvr_retention_days)
+
+
+    def pet_timer(self):
+        if self._outdir is None:
+            # Recording disabled
+            return
+
+        if not self._recording_job:
+            log.error("Cam %s: motion reported. Tried to renew timeout, but recording is not active", self._cam_host)
+            return
+
+        with self._update_lock:
+            log.info("Cam %s has ongoing recording. Extending timeout by %s seconds", self._cam_host, self._recording_duration)
+            self._recording_job.reschedule(trigger="date", run_date=(datetime.now() + timedelta(seconds=self._recording_duration)))
 
 
     def reencode_for_telegram(self, fpath):
