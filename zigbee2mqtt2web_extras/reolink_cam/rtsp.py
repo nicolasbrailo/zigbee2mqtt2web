@@ -45,26 +45,48 @@ def _stop_cmd(log_prefix, timeout, force_log_out, proc, stdout, stderr):
     stderr.close()
 
 
+def _delete_old_files(directory, days_threshold):
+    try:
+        threshold_date = datetime.datetime.now() - datetime.timedelta(days=days_threshold)
+        files = os.listdir(directory)
+        for file in files:
+            file_path = os.path.join(directory, file)
+
+            if os.path.isfile(file_path):
+                last_modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
+
+                if last_modified_time < threshold_date:
+                    os.remove(file_path)
+                    logger.debug('Cleanup old NVR asset %s', file_path)
+
+    except Exception as e:
+       logger.error('Failed to cleanup old NVR assets', exc_info=True)
+
+
 class Rtsp:
     """ Manage RTSP recordings """
-    def __init__(self, cam_host, system_event_cb, rec_path_prefix, default_duration_secs=10):
+    def __init__(self, cam_host, system_event_cb, rec_path_prefix, retention_days=15, default_duration_secs=10):
         self._scheduler = BackgroundScheduler()
         self._scheduler.start()
 
         self._default_recording_duration = default_duration_secs
         self._process_stop_timeout_secs = 5
         self._reencode_timeout_secs = 20
+        self._cam_host = cam_host
+        self._announce_event = system_event_cb
 
         # TODO get rtsp from cam
         self._rtsp_url = "rtsp://admin:@10.10.30.20:554/h264Preview_01_main"
 
-        self._outdir = os.path.join(rec_path_prefix, cam_host)
-        if not os.path.exists(self._outdir):
-            os.makedirs(self._outdir)
-        log.info("Cam %s: RTSP recordings will be saved at %s", cam_host, self._outdir)
-
-        self._cam_host = cam_host
-        self._announce_event = system_event_cb
+        if not os.path.exists(rec_path_prefix):
+            log.error("Cam %s: recording path not available at %s (missing external drive?)", cam_host, rec_path_prefix)
+            self._outdir = None
+        else:
+            self._nvr_retention_days = retention_days
+            self._outdir = os.path.join(rec_path_prefix, cam_host)
+            if not os.path.exists(self._outdir):
+                os.makedirs(self._outdir)
+            log.info("Cam %s: RTSP recordings will be saved at %s", cam_host, self._outdir)
 
         self._update_lock = Lock()
         self._recording_job_updating = False
@@ -82,6 +104,7 @@ class Rtsp:
             'event': 'on_cam_recording_available',
             'doorbell_cam': self._cam_host,
             'fpath': outfile,
+            'fname': os.path.basename(outfile),
         })
 
     def _cb_on_recording_failed(self, outfile):
@@ -90,6 +113,7 @@ class Rtsp:
             'event': 'on_cam_recording_failed',
             'doorbell_cam': self._cam_host,
             'fpath': outfile,
+            'fname': os.path.basename(outfile),
         })
 
     def _cb_on_reencoding_ok(self, src, reencoded):
@@ -99,6 +123,7 @@ class Rtsp:
             'doorbell_cam': self._cam_host,
             'fpath': reencoded,
             'original_fpath': src,
+            'original_fname': os.path.basename(src),
         })
 
     def _cb_on_reencoding_failed(self, src):
@@ -108,11 +133,16 @@ class Rtsp:
             'doorbell_cam': self._cam_host,
             'fpath': None,
             'original_fpath': src,
+            'original_fname': os.path.basename(src),
         })
 
 
     def trigger_recording(self, duration_secs=None):
         """ Start a new RTSP recording. If one is ongoing, change the timeout to the new duration """
+        if self._outdir is None:
+            log.error("Cam %s: recording path not available at %s (missing external drive?)", cam_host, rec_path_prefix)
+            return
+
         recording_duration = duration_secs or self._default_recording_duration_secs
         with self._update_lock:
             # Bail out if we're still launching or tearing down an old RTSP job
@@ -175,6 +205,7 @@ class Rtsp:
             self._cb_on_new_recording(outfile)
         else:
             self._cb_on_recording_failed(outfile)
+        _delete_old_files(self._outdir, self._nvr_retention_days)
 
 
     def reencode_for_telegram(self, fpath):

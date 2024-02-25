@@ -117,9 +117,12 @@
     "webhook_base_path": "/camwebhook",
     "COMMENT_snap_path_on_movement": "If set, will save a single snapshot of the camera whenever movement is detected",
     "snap_path_on_movement": "/home/user/somewhere/doorbell_snap.jpg",
-    "COMMENT_rec_path_on_movement": "If set, will save a recording of the camera whenever movement is detected. Delete both path and duration to disable.",
-    "rec_path_on_movement": "/home/user/somewhere/doorbell_snap.jpg",
-    "rec_duration_on_movement": 10
+    "COMMENT": "If true (and a rec_path is specified), motion will trigger a video recording",
+    "rec_on_movement": true,
+    "COMMENT": "Recording config: path, duration and retention",
+    "rec_path": "/home/extstorage/nvr",
+    "rec_default_duration_secs": 10,
+    "rec_retention_days": 15
   },
 
   "COMMENT": "JSON is silly"
