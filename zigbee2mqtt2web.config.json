@@ -87,20 +87,6 @@
        "DISABLE_speaker_ip_list": ["123.123.123.123", "192.168.1.123"]
   },
 
-  "COMMENT": "Security cam settings. Read FTPD.py for info",
-  "security_cam": {
-    "cam_ips": ["LIST_OF_YOUR_CAM_IPS"],
-    "motion_timeout_secs": 300,
-    "ftp": {
-      "ip": "LISTEN_ADDR_FOR_FTPD",
-      "port": 2121,
-      "user": "user",
-      "pwd": "123",
-      "upload_local_path": "WHERE_TO_STORE_UPLOADED_FILES",
-      "ftp_tainted_marker_path": "MARKER_TO_CRASHLOOP_READ_DOCS"
-    }
-  },
-
   "COMMENT": "WhatsApp integration. Read whatsapp.py for setup info.",
   "whatsapp": {
     "tok": "THIS_IS_A_PASSWORD_BE_CAREFUL",

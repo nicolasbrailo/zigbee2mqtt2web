@@ -102,7 +102,9 @@ async def _connect_to_cam(cfg, webhook_url):
             "Something is wrong, %s reports it isn't a doorbell!",
             cfg['host'])
 
-    return cam
+    rtsp = await cam.get_rtsp_stream_source(0, "main")
+
+    return cam, rtsp
 
 
 class ReolinkDoorbell:
@@ -115,8 +117,9 @@ class ReolinkDoorbell:
 
         webhook_url = _register_webhook_url(cfg, zmw, self._on_cam_webhook)
         self._runner = asyncio.get_event_loop()
-        cam = self._runner.run_until_complete(
+        cam, rtspurl = self._runner.run_until_complete(
             _connect_to_cam(cfg, webhook_url))
+
         self._cam_host = cfg['host']
 
         self._scheduler = BackgroundScheduler()
@@ -144,6 +147,7 @@ class ReolinkDoorbell:
             self._rec_on_movement = cfg['rec_on_movement'] if 'rec_on_movement' in cfg else False
             self.rtsp = Rtsp(self._cam_host,
                              self._zmw.announce_system_event,
+                             rtspurl,
                              cfg['rec_path'],
                              int(cfg['rec_retention_days']),
                              int(cfg['rec_default_duration_secs']))

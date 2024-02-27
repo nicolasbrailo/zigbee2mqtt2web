@@ -65,7 +65,7 @@ def _delete_old_files(directory, days_threshold):
 
 class Rtsp:
     """ Manage RTSP recordings """
-    def __init__(self, cam_host, system_event_cb, rec_path_prefix, retention_days=15, default_duration_secs=10):
+    def __init__(self, cam_host, system_event_cb, rtspurl, rec_path_prefix, retention_days=15, default_duration_secs=10):
         self._scheduler = BackgroundScheduler()
         self._scheduler.start()
 
@@ -74,9 +74,7 @@ class Rtsp:
         self._reencode_timeout_secs = 20
         self._cam_host = cam_host
         self._announce_event = system_event_cb
-
-        # TODO get rtsp from cam
-        self._rtsp_url = "rtsp://admin:@10.10.30.20:554/h264Preview_01_main"
+        self._rtsp_url = rtspurl
 
         if not os.path.exists(rec_path_prefix):
             log.error("Cam %s: recording path not available at %s (missing external drive?)", cam_host, rec_path_prefix)
