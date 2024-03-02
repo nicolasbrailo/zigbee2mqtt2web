@@ -88,12 +88,6 @@ class MiscStuff extends React.Component {
              {this.renderLowBatteryList()}
              {this.renderMqttFeed()}
            </div>;
-    /*
-     * Fold here?
-    ReactDOM.createRoot(document.querySelector('#sensors_history')).render([
-      React.createElement(SensorsHistoryPane, SensorsHistoryPane.buildProps(thing_registry, INTERESTING_PLOT_METRICS)),
-    ]);
-  */
   }
 
   renderLowBatteryList() {

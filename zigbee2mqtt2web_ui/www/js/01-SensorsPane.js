@@ -31,7 +31,7 @@ class SensorsPane extends React.Component {
   static extraStyleFor(metric, value) {
     const base = !value?
                     'is-hidden' :
-                    'pull-right button outline is-small bd-primary';
+                    'pull-right is-small';
     switch (metric) {
       case 'pm25':
       case 'update_time':
@@ -132,15 +132,21 @@ class SensorsPane extends React.Component {
     return sensor_list;
   }
 
+  _openSensorHistory(sensor_name, metric) {
+    return () => {
+      window.open(`sensors.html?sensor_name={sensor_name}&metric={metric}`);
+    };
+  }
+
   render_metrics_for_sensor(sensor_name) {
     let metrics = [];
     for (const metric of this.props.all_known_metrics) {
       if (this.state.sensors[sensor_name][metric] !== null) {
         metrics.push(<li className={SensorsPane.extraStyleFor(metric, this.state.sensors[sensor_name][metric])}
                          key={`sensor_${sensor_name}_metric_${metric}`}>
-                       <label>{SensorsPane.prettyMetricName(metric)}</label>
-                       {this.state.sensors[sensor_name][metric]}
-                       <label>{SensorsPane.prettyMetricUnit(metric)}</label>
+                       <button className="modal-button" onClick={this._openSensorHistory(sensor_name, metric)}>
+                         {SensorsPane.prettyMetricName(metric)} {this.state.sensors[sensor_name][metric]} {SensorsPane.prettyMetricUnit(metric)}
+                       </button>
                      </li>)
       }
     }
