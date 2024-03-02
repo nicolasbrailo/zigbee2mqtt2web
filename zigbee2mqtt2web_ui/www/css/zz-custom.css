@@ -79,6 +79,14 @@
   color: var(--color-secondary);
 }
 
+#MiscStuffPane ul {
+  margin: 0;
+  padding: 0;
+}
+#MiscStuffPane li {
+  list-style-type: none;
+  display: inline;
+}
 
 .thing_div {
   border-bottom: 1px solid grey;
