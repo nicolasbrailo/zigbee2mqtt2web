@@ -100,6 +100,10 @@ class SensorsHistory:
         """ Will hook this object to a flask-like webserver, so that the sensor
         database is exposed over certain http endpoints """
         server.add_url_rule('/sensors/ls', self.get_known_sensors)
+        server.add_url_rule('/sensors/measuring/<metric>', self.get_known_sensors_measuring)
+        server.add_url_rule(
+            '/sensors/get_metrics_in_sensor_csv/<sensor_name>/<metric>',
+            self.get_metric_in_sensor_csv)
         server.add_url_rule(
             '/sensors/get_all_metrics_in_sensor_csv/<sensor_name>',
             self.get_all_metrics_in_sensor_csv)
@@ -148,6 +152,32 @@ class SensorsHistory:
     def get_known_sensors(self):
         """ Returns a list of all sensor names kept in this database """
         return _get_known_sensors(sqlite3.connect(self._dbpath))
+
+    def get_known_sensors_measuring(self, metric):
+        """ Returns a list of all sensor that can measure $metric"""
+        conn = sqlite3.connect(self._dbpath)
+        sensors = _get_known_sensors(conn)
+        can_measure = []
+        for sensor in sensors:
+            if metric in _get_sensor_metrics(conn, sensor):
+                can_measure.append(sensor)
+        return can_measure
+
+
+    def get_metric_in_sensor_csv(self, sensor_name, metric):
+        """ Retrieves all measurements of $metric for $sensor """
+        conn = sqlite3.connect(self._dbpath)
+        if sensor_name not in _get_known_sensors(conn):
+            log.error('Received request for unknown sensor %s', sensor_name)
+            return ''
+
+        if metric not in _get_sensor_metrics(conn, sensor_name):
+            log.error('Received request for unknown metric %s in sensor %s', metric, sensor_name)
+            return ''
+
+        query = f"SELECT sample_time, {metric} FROM {sensor_name} ORDER BY sample_time"
+        res = conn.execute(query).fetchall()
+        return _csv(['sample_time', metric], res)
 
     def get_all_metrics_in_sensor_csv(self, sensor_name):
         """ Equivalent to select * for a single sensor: retrieves all historical

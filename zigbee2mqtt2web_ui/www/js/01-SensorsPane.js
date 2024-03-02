@@ -134,7 +134,7 @@ class SensorsPane extends React.Component {
 
   _openSensorHistory(sensor_name, metric) {
     return () => {
-      window.open(`sensors.html?sensor_name={sensor_name}&metric={metric}`);
+      window.open(`sensors.html?sensor_name=${sensor_name}&metric=${metric}`);
     };
   }
 

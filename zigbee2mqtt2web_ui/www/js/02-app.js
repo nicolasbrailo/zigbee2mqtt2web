@@ -1,11 +1,3 @@
-/*
- * Fold here?
-ReactDOM.createRoot(document.querySelector('#sensors_history')).render([
-  React.createElement(SensorsHistoryPane, SensorsHistoryPane.buildProps(thing_registry, INTERESTING_PLOT_METRICS)),
-]);
-*/
-
-
 const showGlobalError = (msg) => {
   m$('global_error_msg').innerText = msg;
   m$('global_error_ui').classList.remove('no-error');
@@ -18,7 +10,6 @@ m$('global_error_ui_ack').onclick = () => {
 window.remote_thing_registry = new Zigbee2Mqtt2Flask2js(showGlobalError);
 window.local_storage = new LocalStorageManager();
 window.thing_registry = new ThingRegistry(local_storage, remote_thing_registry);
-const INTERESTING_PLOT_METRICS = ['temperature', 'humidity', 'pm25', 'voc_index'];
 
 const app_visibility = new VisibilityCallback();
 app_visibility.app_became_visible = () => {
@@ -26,7 +17,7 @@ app_visibility.app_became_visible = () => {
   thing_registry.updateWorldState();
 }
 
-thing_registry.rebuild_network_map_if_unknown().then(_ => {
+function loadMainApp() {
   let things = [];
 
   for (const meta of thing_registry.lights) {
@@ -50,6 +41,22 @@ thing_registry.rebuild_network_map_if_unknown().then(_ => {
     React.createElement(MediaPlayerList, MediaPlayerList.buildProps(thing_registry)),
     React.createElement(MiscStuff, MiscStuff.buildProps(thing_registry, remote_thing_registry, thingsPaneProps)),
   ]);
+}
+
+
+function loadSensors() {
+  ReactDOM.createRoot(document.querySelector('#sensors_root')).render([
+    React.createElement(SensorsHistoryPane, SensorsHistoryPane.buildProps(thing_registry)),
+  ]);
+}
+
+
+thing_registry.rebuild_network_map_if_unknown().then(_ => {
+  if (document.location.href.includes('www/sensors.html')) {
+    loadSensors();
+  } else {
+    loadMainApp();
+  }
 });
 
 thing_registry.updateWorldState();

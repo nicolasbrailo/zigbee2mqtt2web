@@ -62,7 +62,7 @@ class MiscStuff extends React.Component {
 
   render() {
     const btns = [];
-    btns.push(<li key="show_sensors_history"><button className="modal-button" onClick={this.TODO}>Sensors history</button></li>);
+    btns.push(<li key="show_sensors_history"><button className="modal-button" onClick={() => window.open('sensors.html')}>Sensors history</button></li>);
 
     if (this.state.showingExpandedOptions) {
       btns.push(<li key="reorder"><button className="modal-button" onClick={this.props.thingsPane.onReorderThings.toggle}>Reorder things</button></li>);
