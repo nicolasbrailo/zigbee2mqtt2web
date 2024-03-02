@@ -40,7 +40,7 @@ thing_registry.rebuild_network_map_if_unknown().then(_ => {
     React.createElement(ScenesPane, {key: 'scenes_list', thing_registry: thing_registry, scenes: thing_registry.scenes[0]}),
     React.createElement(SensorsPane, SensorsPane.buildProps(thing_registry)),
     React.createElement(MediaPlayerList, MediaPlayerList.buildProps(thing_registry)),
-    React.createElement(MiscStuff, MiscStuff.buildProps(thing_registry, thingsPaneProps)),
+    React.createElement(MiscStuff, MiscStuff.buildProps(thing_registry, remote_thing_registry, thingsPaneProps)),
   ]);
 });
 
