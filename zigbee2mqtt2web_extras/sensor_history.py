@@ -102,7 +102,7 @@ class SensorsHistory:
         server.add_url_rule('/sensors/ls', self.get_known_sensors)
         server.add_url_rule('/sensors/measuring/<metric>', self.get_known_sensors_measuring)
         server.add_url_rule(
-            '/sensors/get_metrics_in_sensor_csv/<sensor_name>/<metric>',
+            '/sensors/get_metric_in_sensor_csv/<sensor_name>/<metric>',
             self.get_metric_in_sensor_csv)
         server.add_url_rule(
             '/sensors/get_all_metrics_in_sensor_csv/<sensor_name>',

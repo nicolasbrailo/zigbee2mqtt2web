@@ -35,19 +35,6 @@ function simple_dygraph_plot(html_elm_id, url) {
   });
 }
 
-function loadPlotsForSensorMeasuring(metric) {
-  function _plotSensors(t_csv) {
-    console.log(t_csv);
-  }
-  mAjax({
-      url: `/sensors/measuring/${metric}`,
-      cache: false,
-      type: 'get',
-      dataType: 'text',
-      success: _plotSensors
-  });
-}
-
 class SensorsHistoryPane extends React.Component {
   static buildProps(thing_registry) {
     const urlParams = new URLSearchParams(window.location.search);
@@ -64,12 +51,20 @@ class SensorsHistoryPane extends React.Component {
 
   constructor(props) {
     super(props);
+    this.loadPlotsForSensorMeasuring = this.loadPlotsForSensorMeasuring.bind(this);
+
+    this.state = {
+      sensors: null,
+    };
   }
 
   render() {
     // Probably a race condition, but seems fast enough to not be a problem for now
-    if (this.props.plotSingleMetric) {
-      return loadPlotsForSensorMeasuring(this.props.metrics_to_plot[0]);
+    if (this.props.plotSingleMetric && !this.state.sensors) {
+      this.loadPlotsForSensorMeasuring(this.props.metrics_to_plot[0]);
+      return "Loading sensors...";
+    } else if (this.props.plotSingleMetric) {
+      return this.renderSingleMetric(this.props.metrics_to_plot[0], this.state.sensors);
     } else {
       return this.renderMetricInAllSensors();
     }
@@ -84,6 +79,32 @@ class SensorsHistoryPane extends React.Component {
           <h3>{metric}</h3>
           <div id={`local_plot_${metric}`} />
           <div id={`local_plot_${metric}_label`} />
+        </div>);
+    }
+
+    return (<div id="SensorsHistoryPane">{local_plots}</div>)
+  }
+
+  loadPlotsForSensorMeasuring(metric) {
+    mAjax({
+        url: `/sensors/measuring/${metric}`,
+        cache: false,
+        type: 'get',
+        dataType: 'text',
+        success:(sensorLst) => { this.setState({sensors: JSON.parse(sensorLst)}); },
+        error: (err) => {console.log(err); showGlobalError(err); },
+    });
+  }
+
+  renderSingleMetric(metric, sensors) {
+    let local_plots = [];
+    for (const sensor of sensors) {
+      simple_dygraph_plot(`local_plot_${sensor}`, `/sensors/get_metric_in_sensor_csv/${sensor}/${metric}`);
+      local_plots.push(
+        <div className="card" key={`local_plot_${sensor}_div`}>
+          <h3>{metric} for {sensor}</h3>
+          <div id={`local_plot_${sensor}`} />
+          <div id={`local_plot_${sensor}_label`} />
         </div>);
     }
 

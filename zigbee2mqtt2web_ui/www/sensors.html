@@ -8,15 +8,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
-<link rel="stylesheet" href="/www/css/00-vars.css">
-<link rel="stylesheet" href="/www/css/01-chota.css">
-<link rel="stylesheet" href="/www/css/02-dygraph.css">
-<link rel="stylesheet" href="/www/css/03-range.css">
-<link rel="stylesheet" href="/www/css/03-checkbox.css">
-<link rel="stylesheet" href="/www/css/03-mediaplayers.css">
-<link rel="stylesheet" href="/www/css/zz-custom.css">
-
+<link rel="stylesheet" href="/www/rel.css">
 </head>
 
 <body class="dark">
@@ -32,15 +24,20 @@
   </div>
 </body>
 
-<!-- These are parsed by localize_js_deps, so keep them here even if they are loaded dynamically -->
-<script
-  src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"
-  integrity="sha384-lix6gfYhwhgbLPheLwgmmEYQL73kK4LcFRUyt6uLa36TY0YZNWCdpidU+HX+gVXN"
-  crossorigin="anonymous">
-</script>
 <script
   src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js"
   integrity="sha384-Siw62Hkn0S0jBTE5nHbjlPvg2soIqKgOnp4qUW49Pz5sOjEOue5d6NzCydyTsd2n"
+  crossorigin="anonymous">
+</script>
+
+<script src='/www/extjsdeps/react.production.min.js'></script>
+<script src='/www/extjsdeps/react-dom.production.min.js'></script>
+<script src="/www/app.rel.js" ></script>
+
+<!-- Used for dev work
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"
+  integrity="sha384-lix6gfYhwhgbLPheLwgmmEYQL73kK4LcFRUyt6uLa36TY0YZNWCdpidU+HX+gVXN"
   crossorigin="anonymous">
 </script>
 
@@ -75,6 +72,8 @@
 <script type="text/babel" data-type="module" src="/www/js/01-VisibilityCallback.js" ></script>
 <script type="text/babel" data-type="module" src="/www/js/01-Zigbee2Mqtt2Flask2js.js" ></script>
 <script type="text/babel" data-type="module" src="/www/js/02-app.js" ></script>
+-->
+
 </html>
 
 
