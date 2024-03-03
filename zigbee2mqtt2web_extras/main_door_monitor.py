@@ -92,6 +92,11 @@ class MainDoorMonitor:
             datetime.timedelta(
                 seconds=self.cfg['skip_chime_timeout_secs']))
 
+    def stop_leaving_routine_if_active(self):
+        logger.info('Leaving routine stopped by user')
+        if self._leaving_routine_bg is not None:
+            self._leaving_routine_bg.remove()
+
     def trigger_leaving_routine(self):
         """ Force the leaving routine to start (ie turn on lights for some time) """
         logger.info('Starting leaving routine')
