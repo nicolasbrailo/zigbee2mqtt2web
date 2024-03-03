@@ -96,6 +96,8 @@ class MainDoorMonitor:
         logger.info('Leaving routine stopped by user')
         if self._leaving_routine_bg is not None:
             self._leaving_routine_bg.remove()
+            self._leaving_routine_bg = None
+            self.active_managed_lamps = []
 
     def trigger_leaving_routine(self):
         """ Force the leaving routine to start (ie turn on lights for some time) """
