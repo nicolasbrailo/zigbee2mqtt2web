@@ -105,6 +105,9 @@ class SensorsHistory:
             '/sensors/get_metric_in_sensor_csv/<sensor_name>/<metric>',
             self.get_metric_in_sensor_csv)
         server.add_url_rule(
+            '/sensors/get_metric_in_sensor_csv/<sensor_name>/<metric>/history/<unit>/<time>',
+            self.get_metric_in_sensor_csv_time_limit)
+        server.add_url_rule(
             '/sensors/get_all_metrics_in_sensor_csv/<sensor_name>',
             self.get_all_metrics_in_sensor_csv)
         server.add_url_rule(
@@ -166,6 +169,10 @@ class SensorsHistory:
 
     def get_metric_in_sensor_csv(self, sensor_name, metric):
         """ Retrieves all measurements of $metric for $sensor """
+        return self.get_metric_in_sensor_csv_time_limit(sensor_name, metric, 'days', self._retention_days)
+
+    def get_metric_in_sensor_csv_time_limit(self, sensor_name, metric, unit, time):
+        """ Retrieves measurements of $metric for $sensor, for samples taken after N units of time (eg 2 days history) """
         conn = sqlite3.connect(self._dbpath)
         if sensor_name not in _get_known_sensors(conn):
             log.error('Received request for unknown sensor %s', sensor_name)
@@ -175,7 +182,10 @@ class SensorsHistory:
             log.error('Received request for unknown metric %s in sensor %s', metric, sensor_name)
             return ''
 
-        query = f"SELECT sample_time, {metric} FROM {sensor_name} ORDER BY sample_time"
+        query = f"SELECT sample_time, {metric} " +\
+                f"FROM {sensor_name} " +\
+                f"WHERE sample_time > datetime('now', '-{time} {unit}')" +\
+                f"ORDER BY sample_time"
         res = conn.execute(query).fetchall()
         return _csv(['sample_time', metric], res)
 
