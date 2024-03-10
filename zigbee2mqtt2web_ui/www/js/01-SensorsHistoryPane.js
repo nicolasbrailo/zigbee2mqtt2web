@@ -52,10 +52,18 @@ class SensorsHistoryPane extends React.Component {
   constructor(props) {
     super(props);
     this.loadPlotsForSensorMeasuring = this.loadPlotsForSensorMeasuring.bind(this);
+    this.updateConfigPeriod = this.updateConfigPeriod.bind(this);
+    this.renderSingleMetric = this.renderSingleMetric.bind(this);
 
     this.state = {
       sensors: null,
+      period: 'day_1',
     };
+  }
+
+  updateConfigPeriod() {
+    const period = document.getElementById('SensorsHistoryConfig_period').value;
+    this.setState({period});
   }
 
   render() {
@@ -97,9 +105,22 @@ class SensorsHistoryPane extends React.Component {
   }
 
   renderSingleMetric(metric, sensors) {
+    function buildUrlForPeriod(period) {
+      if (!period || period == 'all') { return ''; }
+      let unit = 'days';
+      let time = 1;
+      if (period == "hour_1") { unit = "hour"; time = 1; }
+      if (period == "hour_6") { unit = "hour"; time = 6; }
+      if (period == "hour_12") { unit = "hour"; time = 12; }
+      if (period == "day_1") { unit = "day"; time = 1; }
+      if (period == "day_2") { unit = "day"; time = 2; }
+      return `/history/${unit}/${time}`;
+    }
+
     let local_plots = [];
     for (const sensor of sensors) {
-      simple_dygraph_plot(`local_plot_${sensor}`, `/sensors/get_metric_in_sensor_csv/${sensor}/${metric}`);
+      const url = `/sensors/get_metric_in_sensor_csv/${sensor}/${metric}${buildUrlForPeriod(this.state.period)}`
+      simple_dygraph_plot(`local_plot_${sensor}`, url);
       local_plots.push(
         <div className="card" key={`local_plot_${sensor}_div`}>
           <h3>{metric} for {sensor}</h3>
@@ -108,7 +129,23 @@ class SensorsHistoryPane extends React.Component {
         </div>);
     }
 
-    return (<div id="SensorsHistoryPane">{local_plots}</div>)
+    return (
+      <div id="SensorsHistoryPane">
+        <div id="SensorsHistoryConfig">
+          <label for="SensorsHistoryConfig_period">Period:</label>
+          <select name="SensorsHistoryConfig_period" id="SensorsHistoryConfig_period" onChange={this.updateConfigPeriod}>
+            <option value="hour_1">Last hour</option>
+            <option value="hour_6">Last 6 hours</option>
+            <option value="hour_12">Last 12 hours</option>
+            <option value="day_1">Last day</option>
+            <option value="day_2">Last 2 days</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+
+        {local_plots}
+      </div>
+    )
   }
 }
 
