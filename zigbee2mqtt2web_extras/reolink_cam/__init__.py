@@ -22,6 +22,7 @@ from reolink_aio.exceptions import SubscriptionError
 from reolink_aio.helpers import parse_reolink_onvif_event
 
 from .rtsp import Rtsp
+from .nvrish import Nvr
 
 logging.getLogger("asyncio").setLevel(logging.ERROR)
 logging.getLogger("apscheduler.executors.default").setLevel(logging.ERROR)
@@ -143,8 +144,10 @@ class ReolinkDoorbell:
 
         self._rec_on_movement = False
         self.rtsp = None
+        self.nvr = None
         if 'rec_path' in cfg:
             self._rec_on_movement = cfg['rec_on_movement'] if 'rec_on_movement' in cfg else False
+            self.nvr = Nvr(cfg['rec_path'])
             self.rtsp = Rtsp(self._cam_host,
                              self._zmw.announce_system_event,
                              rtspurl,
