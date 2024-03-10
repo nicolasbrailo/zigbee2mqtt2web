@@ -167,7 +167,11 @@ class Rtsp:
         self._recording_duration = recording_duration
         self._recording_cmd, \
                 self.recording_cmd_stdout, \
-                self.recording_cmd_stderr = _run_cmd(["ffmpeg", "-i", self._rtsp_url, self._recording_outfile])
+                self.recording_cmd_stderr = _run_cmd([
+                                "ffmpeg",
+                                # Copy incoming streams, otherwise ffmpeg will try to reencode (and spend tons of cpu)
+                                "-c:v", "copy", "-c:a", "copy",
+                                "-i", self._rtsp_url, self._recording_outfile])
 
         self._recording_job = self._scheduler.add_job(
             func=self._on_recording_complete,
