@@ -171,6 +171,17 @@ class Zigbee2MqttBridge:
             raise KeyError(f'Mqtt thing {thing.name} is already registered')
         self.register_or_replace(thing)
 
+    def update_thing_state(self, thing_or_name):
+        """
+        Force-request an update on the state of a thing
+        """
+        if isinstance(thing_or_name, str):
+            thing = self.get_thing(thing_or_name)
+        else:
+            thing = thing_or_name
+        topic = f'{self._mqtt_topic_prefix}/{thing.real_name}/get'
+        self._mqtt.broadcast(topic, {'state': ''})
+
     def broadcast_thing(self, thing_or_name):
         """
         Notify the bridge that a thing has been updated, and it's time to have

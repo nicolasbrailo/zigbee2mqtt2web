@@ -93,6 +93,10 @@ class ThingRegistry:
         for name in thing_names:
             self.broadcast_thing(name)
 
+    def update_thing_state(self, thing_or_name):
+        """ Force trigger a status update from the mqtt server """
+        return self._mqtt.update_thing_state(thing_or_name)
+
     def broadcast_thing(self, thing_or_name):
         """
         Notify the MQTT registry to update a thing, if it's an MQTT thing (or a
