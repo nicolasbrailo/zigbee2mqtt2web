@@ -1,16 +1,26 @@
 import os
 from datetime import datetime, timedelta
 from flask import send_from_directory
-import subprocess
-import tempfile
+
+from .ffmpeg_helper import gen_thumbnail_from_video
+
+
+def _get_cams(base_path):
+    cams = []
+    for entry in os.listdir(base_path):
+        full_path = os.path.join(base_path, entry)
+        if os.path.isdir(full_path):
+            cams.append(entry)
+    return cams
+
 
 def _format_file_size(sz):
     if sz < 1024:
         return f"{sz} bytes"
     elif sz < 1024 * 1024:
-        return f"{sz / 1024:.2f} KB"
+        return f"{sz / 1024:.0f} KB"
     else:
-        return f"{sz / (1024 * 1024):.2f} MB"
+        return f"{sz / (1024 * 1024):.0f} MB"
 
 def _get_month_name(month_number):
     month_names = [
@@ -60,30 +70,8 @@ def _parse_and_format_filename(filename):
         return filename
 
 
-def _run_cmd(cmd):
-    stdout = tempfile.TemporaryFile(mode='w+')
-    stderr = tempfile.TemporaryFile(mode='w+')
-    proc = subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
-    return proc, stdout, stderr
-
-def _gen_thumbnail(fpath):
-    if not fpath.endswith('.mp4'):
-        log.error("Requested thumbnail for non-move %s", fpath)
-        return None
-
-    fout = f'{fpath}.thumb.png'
-    if os.path.exists(fout):
-        return fout
-
-    _run_cmd(['ffmpeg',
-              '-i', fpath,
-              '-vf', 'select=eq(n\,42)',
-              '-vf', 'scale=192:168',
-              '-vframes', '1',
-              fout])
-    return fout
-
-GALLERY_STYLE = """
+_GALLERY_STYLE = """
+<link rel="stylesheet" href="/www/rel.css">
 <style>
 img {
   display: block;
@@ -96,6 +84,14 @@ li {
 </style>
 """
 
+def _nvr_template(base_path, txt):
+    cams_html = '<ul>'
+    for cam in _get_cams(base_path):
+        cams_html = f'<li><a href="/nvr/{cam}/files">{cam}</a></li>'
+    cams_html += '</ul>'
+
+    return _GALLERY_STYLE + cams_html + txt
+
 class Nvr:
     def __init__(self, nvr_path):
         self._nvr_path = nvr_path
@@ -105,11 +101,8 @@ class Nvr:
 
     def _list_cams(self):
         txt = ""
-        for entry in os.listdir(self._nvr_path):
-            full_path = os.path.join(self._nvr_path, entry)
-            if os.path.isdir(full_path):
-                cam = entry
-                txt += f'<li><a href="/nvr/{cam}/files">{cam}</a></li>'
+        for cam in _get_cams(self._nvr_path):
+            txt += f'<li><a href="/nvr/{cam}/files">{cam}</a></li>'
         return txt
 
     def _list_cam_recs(self, cam):
@@ -134,14 +127,14 @@ class Nvr:
         if path is None:
             return  f"Unknown cam {cam}", 404
 
-        txt = GALLERY_STYLE
+        txt = _GALLERY_STYLE
         for (fname, fpath, fsize, ftime) in recs:
-            img_path = _gen_thumbnail(fpath)
+            img_path = gen_thumbnail_from_video(fpath)
             img_fname = os.path.basename(img_path)
             img_url = f"/nvr/{cam}/get_recording/{img_fname}"
             img = f'<img src="{img_url}"/>'
             txt += f'<li><a href="/nvr/{cam}/get_recording/{fname}">{img}{_parse_and_format_filename(fname)} - {fsize}</a></li>'
-        return txt
+        return _nvr_template(self._nvr_path, txt)
 
     def _get_recording(self, cam, file):
         path = os.path.join(self._nvr_path, cam)

@@ -4,17 +4,9 @@ from threading import Lock
 import logging
 import os
 import signal
-import subprocess
-import tempfile
+from .ffmpeg_helper import rtsp_to_local_file, reencode_to_telegram_vid
 
 log = logging.getLogger(__name__)
-
-
-def _run_cmd(cmd):
-    stdout = tempfile.TemporaryFile(mode='w+')
-    stderr = tempfile.TemporaryFile(mode='w+')
-    proc = subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
-    return proc, stdout, stderr
 
 
 def _stop_cmd(log_prefix, timeout, force_log_out, proc, stdout, stderr):
@@ -167,11 +159,7 @@ class Rtsp:
         self._recording_duration = recording_duration
         self._recording_cmd, \
                 self.recording_cmd_stdout, \
-                self.recording_cmd_stderr = _run_cmd([
-                                "ffmpeg",
-                                # Copy incoming streams, otherwise ffmpeg will try to reencode (and spend tons of cpu)
-                                "-c:v", "copy", "-c:a", "copy",
-                                "-i", self._rtsp_url, self._recording_outfile])
+                self.recording_cmd_stderr = rtsp_to_local_file(self._rtsp_url, self._recording_outfile)
 
         self._recording_job = self._scheduler.add_job(
             func=self._on_recording_complete,
@@ -246,18 +234,7 @@ class Rtsp:
             self._cb_on_reencoding_ok(fpath, reencode_out_file)
             return
 
-        cmd, stdout, stderr = _run_cmd(["ffmpeg",
-                                        "-i", fpath,
-                                        # Eg to reencode @ 720p
-                                        # "-vf", "scale=-1:720",
-                                        # Telegram format
-                                        "-vf", "scale=640:360",
-                                        "-c:v", "libx264",
-                                        "-crf", "23",
-                                        "-preset", "veryfast",
-                                        "-c:a", "copy",
-                                        reencode_out_file,
-                                        ])
+        cmd, stdout, stderr = reencode_to_telegram_vid(fpath, reencode_out_file)
 
         def _on_reencoding_timeout():
             _stop_cmd(f"RTSP {fpath} reencode:", self._process_stop_timeout_secs, False, cmd, stdout, stderr)
