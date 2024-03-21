@@ -50,10 +50,17 @@ function loadSensors() {
   ]);
 }
 
+function loadHeating() {
+  ReactDOM.createRoot(document.querySelector('#app_root')).render([
+    React.createElement(Heating, Heating.buildProps(thing_registry)),
+  ]);
+}
 
 thing_registry.rebuild_network_map_if_unknown().then(_ => {
   if (document.location.href.includes('www/sensors.html')) {
     loadSensors();
+  } else if (document.location.href.includes('www/devel.html')) {
+    loadHeating();
   } else {
     loadMainApp();
   }

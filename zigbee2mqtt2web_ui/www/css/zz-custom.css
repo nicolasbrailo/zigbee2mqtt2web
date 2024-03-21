@@ -259,3 +259,12 @@
   margin-left: 5px;
 }
 
+.heating_sched td {
+  border: 1px solid var(--color-secondary);
+}
+.heating_sched_slot_on {
+  background-color: var(--color-primary);
+}
+.heating_sched_slot_off{
+  /*background-color: var(--color-secondary);*/
+}
