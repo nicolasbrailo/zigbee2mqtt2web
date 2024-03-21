@@ -45,7 +45,7 @@ function loadMainApp() {
 
 
 function loadSensors() {
-  ReactDOM.createRoot(document.querySelector('#sensors_root')).render([
+  ReactDOM.createRoot(document.querySelector('#app_root')).render([
     React.createElement(SensorsHistoryPane, SensorsHistoryPane.buildProps(thing_registry)),
   ]);
 }
