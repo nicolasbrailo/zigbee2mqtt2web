@@ -18,16 +18,17 @@ class Heating extends React.Component {
       }
     }
 
-    window.sched = sched;
-    const hour_schedule = {}
-    for (let hr=0; hr<24; ++hr) {
-      hour_schedule[hr] = Object.entries(sched).slice(hr*4,(hr+1)*4);
-    }
+    props.thing_registry.get_thing_state('Heating').then(state => {
+      const hour_schedule = {}
+      for (let hr=0; hr<24; ++hr) {
+        hour_schedule[hr] = Object.entries(state.schedule).slice(hr*4,(hr+1)*4);
+      }
+      this.setState({hour_schedule, schedule: state.schedule});
+    });
 
     this.state = {
-      sensors: null,
-      schedule: sched,
-      hour_schedule,
+      schedule: null,
+      hour_schedule: null,
     };
   }
 
@@ -40,6 +41,13 @@ class Heating extends React.Component {
     };
   }
 
+  _mkBoost(hours) {
+    return () => {
+      console.log(hours);
+      this.props.thing_registry.set_thing('Heating', `boost=${hours}`);
+    };
+  }
+
   render() {
     return <div>
       {this.render_controls()}
@@ -49,13 +57,17 @@ class Heating extends React.Component {
 
   render_controls() {
     return <div className="card">
-        <button className="modal-button" onClick={this._boost1}>Boost 1 hour</button>
-        <button className="modal-button" onClick={this._boost2}>Boost 2 hours</button>
+        <button className="modal-button" onClick={this._mkBoost(1)}>Boost 1 hour</button>
+        <button className="modal-button" onClick={this._mkBoost(2)}>Boost 2 hours</button>
         <button className="modal-button" onClick={this._offNow}>Off now</button>
       </div>
   }
 
   render_schedule_table() {
+    if (!this.state.hour_schedule) {
+      return "Loading schedule...";
+    }
+
     return (
       <table className="heating_sched">
       <tbody>
