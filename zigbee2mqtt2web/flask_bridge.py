@@ -265,10 +265,14 @@ class FlaskBridge:
     def _thing_url(self, url, cb_view, methods):
         def wrapped_cb(*k, **kv):
             try:
-                res = cb_view(*k, **kv)
-
                 def jsonify_non_serializable(data):
+                    try:
+                        if dataclasses.is_dataclass(data):
+                            return dataclasses.asdict(data)
+                    except:
+                        logger.error("Failed to serialize %d", data, exc_info=True)
                     return f'[non-serializable {type(data).__qualname__}]'
+                res = cb_view(*k, **kv)
                 return json.dumps(res, default=jsonify_non_serializable)
             except KeyError as ex:
                 logger.info(
