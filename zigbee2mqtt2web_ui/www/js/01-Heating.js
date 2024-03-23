@@ -8,7 +8,7 @@ class Heating extends React.Component {
 
   constructor(props) {
     super(props);
-    this.render = this.render.bind(this);
+    this._offNow = this._offNow.bind(this);
 
     const sched = {};
     for (let hr=0; hr < 24; ++hr) {
@@ -18,34 +18,39 @@ class Heating extends React.Component {
       }
     }
 
-    props.thing_registry.get_thing_state('Heating').then(state => {
+    this.state = {
+      schedule: null,
+      hour_schedule: null,
+    };
+
+    this.refresh();
+  }
+
+  refresh() {
+    this.props.thing_registry.get_thing_state('Heating').then(state => {
       const hour_schedule = {}
       for (let hr=0; hr<24; ++hr) {
         hour_schedule[hr] = Object.entries(state.schedule).slice(hr*4,(hr+1)*4);
       }
       this.setState({hour_schedule, schedule: state.schedule});
     });
-
-    this.state = {
-      schedule: null,
-      hour_schedule: null,
-    };
   }
 
-  _mkCallbackSlotClick(hour, quarter) {
+  _mkCallbackSlotClick(hour, minute) {
     return () => {
-      console.log(hour, quarter);
-      this.state.hour_schedule[hour][quarter][1].should_be_on = !this.state.hour_schedule[hour][quarter][1].should_be_on;
-      this.state.hour_schedule[hour][quarter][1].reason = "User change";
-      this.setState({hour_schedule: this.state.hour_schedule});
+      const slotSet = `slot_toggle=${hour}:${minute}`;
+      this.props.thing_registry.set_thing('Heating', slotSet).then(()=>{this.refresh()});
     };
   }
 
   _mkBoost(hours) {
     return () => {
-      console.log(hours);
-      this.props.thing_registry.set_thing('Heating', `boost=${hours}`);
+      this.props.thing_registry.set_thing('Heating', `boost=${hours}`).then(()=>{this.refresh()});
     };
+  }
+
+  _offNow() {
+    this.props.thing_registry.set_thing('Heating', 'off_now').then(()=>{this.refresh()});
   }
 
   render() {
@@ -78,7 +83,7 @@ class Heating extends React.Component {
             const slot = this.state.hour_schedule[hour][quarter][1];
             const sched_slot_class = slot.should_be_on? 'heating_sched_slot_on' : 'heating_sched_slot_off';
             return <td key={`table_schedule_${hour}_${quarter}`} className={sched_slot_class}>
-              <button className="modal-button" onClick={this._mkCallbackSlotClick(hour, quarter)}>
+              <button className="modal-button" onClick={this._mkCallbackSlotClick(slot.hour, slot.minute)}>
               {slot_t} {slot.reason}
               </button>
             </td>;
