@@ -9,30 +9,28 @@ class Heating extends React.Component {
   constructor(props) {
     super(props);
     this._offNow = this._offNow.bind(this);
+    this.refresh = this.refresh.bind(this);
 
-    const sched = {};
-    for (let hr=0; hr < 24; ++hr) {
-      for (let qr=0; qr < 4; ++qr) {
-        const k = ("0" + hr).slice(-2) + ":" + ("0" + qr*15).slice(-2);
-        sched[k] = {hour: hr, minute: qr*15, should_be_on: false, reason: "Default"};
-      }
-    }
+    const app_visibility = new VisibilityCallback();
+    app_visibility.app_became_visible = this.refresh
 
     this.state = {
-      schedule: null,
+      thing: null,
       hour_schedule: null,
+      app_visibility,
     };
 
     this.refresh();
   }
 
   refresh() {
+    console.log("Will refresh boiler state...");
     this.props.thing_registry.get_thing_state('Heating').then(state => {
       const hour_schedule = {}
       for (let hr=0; hr<24; ++hr) {
         hour_schedule[hr] = Object.entries(state.schedule).slice(hr*4,(hr+1)*4);
       }
-      this.setState({hour_schedule, schedule: state.schedule});
+      this.setState({hour_schedule, thing: state});
     });
   }
 
@@ -54,6 +52,10 @@ class Heating extends React.Component {
   }
 
   render() {
+    if (!this.state.hour_schedule) {
+      return "Loading...";
+    }
+
     return <div>
       {this.render_controls()}
       {this.render_schedule_table()}
@@ -62,6 +64,9 @@ class Heating extends React.Component {
 
   render_controls() {
     return <div className="card">
+        <div>
+          Current status: should be {this.state.thing.should_be_on? "on" : "off"}, boiler reports {this.state.thing.mqtt_thing_reports_on}
+        </div>
         <button className="modal-button" onClick={this._mkBoost(1)}>Boost 1 hour</button>
         <button className="modal-button" onClick={this._mkBoost(2)}>Boost 2 hours</button>
         <button className="modal-button" onClick={this._offNow}>Off now</button>
@@ -69,10 +74,6 @@ class Heating extends React.Component {
   }
 
   render_schedule_table() {
-    if (!this.state.hour_schedule) {
-      return "Loading schedule...";
-    }
-
     return (
       <table className="heating_sched">
       <tbody>
@@ -84,7 +85,7 @@ class Heating extends React.Component {
             const sched_slot_class = slot.should_be_on? 'heating_sched_slot_on' : 'heating_sched_slot_off';
             return <td key={`table_schedule_${hour}_${quarter}`} className={sched_slot_class}>
               <button className="modal-button" onClick={this._mkCallbackSlotClick(slot.hour, slot.minute)}>
-              {slot_t} {slot.reason}
+              {slot_t}<wbr/> {slot.reason}
               </button>
             </td>;
           })}

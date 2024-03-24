@@ -14,13 +14,9 @@ from ._hijack_thing_as_boiler import _hijack_thing_as_boiler
 
 log = logging.getLogger(__name__)
 
-class Heating(PhonyZMWThing):
-    def _print_stat_change(self, new, old):
-        # TODO: Delay until boiler is found
-        if self.boiler is not None:
-            self.boiler.set('boiler_state', new.should_be_on)
-            self.zmw.registry.broadcast_thing(self.boiler)
+_WWW_LOG_ENDPOINT = '/heating/log'
 
+class Heating(PhonyZMWThing):
     def __init__(self, zmw):
         super().__init__(
             name="Heating",
@@ -30,17 +26,18 @@ class Heating(PhonyZMWThing):
 
         self.zmw = zmw
         self.log_file = '/home/batman/BatiCasa/heating.log'
-        #self.boiler_name = 'Boiler'
-        self.boiler_name = 'Batioficina'
+        self.boiler_name = 'Boiler'
+        #self.boiler_name = 'Batioficina'
         self.boiler = None
+        self.pending_state = None
+        self.schedule = Schedule(self._on_boiler_state_should_change)
+        self._schedule_tick_interval_secs = 60 * 3
 
         log_file = logging.FileHandler(self.log_file, mode='w')
         log_file.setLevel(logging.DEBUG)
         log_file.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
         log.addHandler(log_file)
         log.info("BatiCasa heating manager starting...")
-
-        self.schedule = Schedule(self._print_stat_change)
 
         self._add_action('schedule', 'Get the schedule for the next 24 hours',
                          getter=self.schedule.as_table)
@@ -50,15 +47,22 @@ class Heating(PhonyZMWThing):
                          setter=lambda _: self.schedule.off_now())
         self._add_action('slot_toggle', 'Toggle a specific slot on or off',
                          setter=self.schedule.toggle_slot_by_name)
+        self._add_action('log_url', 'Retrieve heating logs',
+                         getter=lambda: _WWW_LOG_ENDPOINT)
 
-        self.zmw.webserver.add_url_rule('/heating/log', self._www_log)
+        self.zmw.webserver.add_url_rule(_WWW_LOG_ENDPOINT, self._www_log)
         self.zmw.registry.on_mqtt_network_discovered(self._on_mqtt_net_discovery_cb)
 
         self._scheduler = BackgroundScheduler()
         self._scheduler.start()
 
     def get_json_state(self):
-        return {"schedule": self.schedule.as_table()}
+        tsched = self.schedule.as_table()
+        return {
+            "schedule": tsched,
+            "should_be_on": list(tsched.items())[0][1].should_be_on,
+            "mqtt_thing_reports_on": self.boiler.get('boiler_state'),
+        }
 
     def _on_mqtt_net_discovery_cb(self):
         if self.boiler is not None:
@@ -80,18 +84,54 @@ class Heating(PhonyZMWThing):
 
         # Delay processing until after network settles and we get boiler state/info
         self.zmw.registry._mqtt.update_thing_state(self.boiler_name)
+        self._scheduler.add_job(func=self._on_boiler_discovered, trigger="date",
+                                run_date=datetime.now() + timedelta(seconds=3))
 
-        def _on_boiler_discovered():
-            _hijack_thing_as_boiler(self.zmw, boiler)
+    def _on_boiler_discovered(self):
+        try:
+            self.boiler = self.zmw.registry.get_thing(self.boiler_name)
+            _hijack_thing_as_boiler(self.zmw, self.boiler)
             log.info("BatiCasa heating manager started. Heating state %s link %s PowerOn %s",
-                      boiler.get('boiler_state'),
-                      boiler.get('linkquality'),
-                      boiler.get('power_on_behavior'))
-            # Assign boiler only after all hacks applied - doing it before may break, as the thing won't have
-            # the expected API
-            self.boiler = boiler
+                      self.boiler.get('boiler_state'),
+                      self.boiler.get('linkquality'),
+                      self.boiler.get('power_on_behavior'))
+            # Register self only after a boiler is discovered
             self.zmw.registry.register(self)
-        self._scheduler.add_job(func=_on_boiler_discovered, trigger="date", run_date=datetime.now() + timedelta(seconds=3))
+            if self.pending_state is not None:
+                log.info("Boiler discovered, applying pending state...")
+                self._on_boiler_state_should_change(new=self.pending_state, old=None)
+
+            self._scheduler.add_job(func=self._tick, trigger="date", run_date=self.schedule.get_slot_change_time())
+            # Tick every few minutes, just in case there's a bug in scheduling somewhere and to verify
+            # the state of the mqtt thing
+            self._scheduler.add_job(func=self._tick, trigger="interval",
+                                    seconds=5, next_run_time=datetime.now())
+                                    #seconds=self._schedule_tick_interval_secs, next_run_time=datetime.now())
+        except Exception:
+            self.boiler = None
+            log.fatal("Boiler discovered, but boiler manager startup failed. Heating control not available", exc_info=True)
+
+    def _tick(self):
+        # TODO: Check MQTT thing
+        advanced_slot = self.schedule.tick()
+        if advanced_slot:
+            self._scheduler.add_job(func=self._tick, trigger="date", run_date=self.schedule.get_slot_change_time())
+
+    def _on_boiler_state_should_change(self, new, old):
+        if self.boiler is None:
+            log.error("Boiler state changed to %s (reason: %s), but no boiler is known yet", new.should_be_on, new.reason)
+            self.pending_state = new
+            return
+
+        log.info("Boiler state changed to %s, reason: %s", new.should_be_on, new.reason)
+        self.boiler.set('boiler_state', new.should_be_on)
+        self.zmw.registry.broadcast_thing(self.boiler)
+
+        self.zmw.announce_system_event({
+            'event': 'on_boiler_state_change',
+            'should_be_on': new.should_be_on,
+            'reason': new.reason,
+        })
 
     def _www_log(self):
         try:
@@ -99,4 +139,3 @@ class Heating(PhonyZMWThing):
                 return '<pre>' + fp.read()
         except Exception as ex:
             return f"Can't get heating logs: {ex}", 500
-

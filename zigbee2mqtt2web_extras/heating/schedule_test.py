@@ -4,17 +4,19 @@ from datetime import datetime
 from schedule import Schedule, hr_mn_to_slot_t
 
 class FakeClock:
-    def __init__(self, hour, minute):
+    def __init__(self, hour, minute, day=None):
         self._now = None
-        self.set_t(hour, minute)
-    def set_t(self, hour, minute):
+        self.set_t(hour, minute, day)
+    def set_t(self, hour, minute, day=None):
         self._now = datetime.now()
         self._now = self._now.replace(hour=hour)
         self._now = self._now.replace(minute=minute)
+        if day is not None:
+            self._now = self._now.replace(day=day)
     def now(self):
         return self._now
 
-def ignore_state_changes(_new, _old):
+def ignore_state_changes(new, old):
     pass
 
 class TestStringMethods(unittest.TestCase):
@@ -172,8 +174,15 @@ class TestStringMethods(unittest.TestCase):
         self.assertEqual(sut.get_slot(10, 15).should_be_on, True)
 
         clock.set_t(10, 30)
-        sut.tick()
+        self.assertEqual(sut.tick(), True)
         self.assertEqual(sut.get_slot(10, 15).should_be_on, False)
+
+    def test_slot_ticks_are_idempotent(self):
+        clock = FakeClock(10, 20)
+        sut = Schedule(ignore_state_changes, clock)
+        clock.set_t(10, 30)
+        self.assertEqual(sut.tick(), True)
+        self.assertEqual(sut.tick(), False)
 
     def test_slot_set_moves_forward_wraparound(self):
         clock = FakeClock(23, 50)
@@ -321,6 +330,19 @@ class TestStringMethods(unittest.TestCase):
         self.assertEqual(sut.get_slot(0, 0).reason, "User requested off")
         self.assertEqual(sut.get_slot(0, 15).should_be_on, False)
         self.assertEqual(sut.get_slot(0, 15).reason, "User requested off")
+
+    def test_slot_change_time(self):
+        clock = FakeClock(16, 20)
+        sut = Schedule(ignore_state_changes, clock)
+        self.assertEqual(sut.get_slot_change_time().hour, 16)
+        self.assertEqual(sut.get_slot_change_time().minute, 30)
+
+    def test_slot_change_time_wraparound(self):
+        clock = FakeClock(23, 55, day=20)
+        sut = Schedule(ignore_state_changes, clock)
+        self.assertEqual(sut.get_slot_change_time().hour, 0)
+        self.assertEqual(sut.get_slot_change_time().minute, 0)
+        self.assertEqual(sut.get_slot_change_time().day, 21)
 
     def test_schedule_as_table(self):
         clock = FakeClock(15, 0)

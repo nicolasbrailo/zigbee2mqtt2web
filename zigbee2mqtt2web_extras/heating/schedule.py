@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict
-from datetime import datetime
+from datetime import datetime, timedelta
 import copy
 import logging
 
@@ -75,30 +75,53 @@ class Schedule:
 
         self._on_state_may_change()
 
+    def get_slot_change_time(self):
+        next_slot = (self._active_slot_idx + 1) % len(self._sched)
+        next_slot_hour = _slot_to_hour(next_slot)
+        next_slot_minute = _slot_to_minute(next_slot)
+
+        exp_t = self._clock.now()
+        exp_t = exp_t.replace(hour=next_slot_hour)
+        exp_t = exp_t.replace(minute=next_slot_minute)
+        if next_slot == 0:
+            exp_t = exp_t + timedelta(days=1)
+        return exp_t
+
     def tick(self):
         now_slot = _t_obj_to_slot_idx(self._clock.now())
-        if now_slot > self._active_slot_idx:
-            advanced_slots = now_slot - self._active_slot_idx
-        else:
-            advanced_slots = now_slot + len(self._sched) - self._active_slot_idx
-        if advanced_slots > 1:
-            log.error("tick() wasn't called for %s slots. This shouldn't happen.", advanced_slots-1)
-            self.tick_skipped_errors += advanced_slots-1
-            for i in range(advanced_slots):
-                j = (self._active_slot_idx + i) % len(self._sched)
-                self._sched[j].reset()
+        if now_slot == self._active_slot_idx:
+            return False
 
-        # Reset last active slot. This will work when wrapping around too
-        if self._active_slot_idx != now_slot:
+        if now_slot == self._active_slot_idx + 1:
             self._sched[self._active_slot_idx].reset()
             self._active_slot_idx = now_slot
             self._on_state_may_change()
+            return True
+
+        if now_slot == 0 and self._active_slot_idx == len(self._sched) - 1:
+            self._sched[self._active_slot_idx].reset()
+            self._active_slot_idx = now_slot
+            self._on_state_may_change()
+            return True
+
+        idx = self._active_slot_idx
+        advanced_slots = 0
+        while idx != now_slot:
+            self._sched[idx].reset()
+            idx = (idx + 1) % len(self._sched)
+            advanced_slots = advanced_slots + 1
+
+        log.error("tick() wasn't called for %s slots. This shouldn't happen.", advanced_slots-1)
+        self.tick_skipped_errors += advanced_slots-1
+        self._active_slot_idx = now_slot
+        self._on_state_may_change()
+        return True
 
     def _on_state_may_change(self):
         active = self._sched[self._active_slot_idx]
         applied = self._applied_slot
         if active.different_from(applied):
-            self._on_state_change_cb(active, applied)
+            self._on_state_change_cb(new=active, old=applied)
             self._applied_slot = copy.copy(active)
 
     def set_slot(self, hour, minute, should_be_on=True, reason="User set"):
@@ -117,10 +140,7 @@ class Schedule:
         self.set_slot(hour, minute, should_be_on=on, reason=reason)
 
     def toggle_slot_by_name(self, slot_nm, reason="User set"):
-        hour, minute = slot_t_to_hr_mn(slot_nm)
-        slot = self.get_slot(hour, minute)
-        on = not slot.should_be_on
-        self.set_slot(hour, minute, should_be_on=on, reason=reason)
+        self.toggle_slot(*slot_t_to_hr_mn(slot_nm), reason)
 
     def boost(self, hours):
         hours = int(hours)

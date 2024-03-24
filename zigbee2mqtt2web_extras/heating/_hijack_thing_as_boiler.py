@@ -68,6 +68,7 @@ def _hijack_thing_as_boiler(zmw, thing):
     it from the scene manager (eg when 'turning world off')
     Note this will not stop anyone from changing the thing's state via mqtt directly """
 
+    log.info("Hijacking %s as boiler: add boiler_state action, removing other actions.", thing.name)
     thing.thing_type = 'boiler'
     thing.actions['boiler_state'] = _BoilerStateAction(thing)
 
