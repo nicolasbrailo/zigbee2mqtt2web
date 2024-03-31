@@ -1,3 +1,20 @@
+function millisecToNextSlotChg() {
+  const now = new Date();
+  const qr = Math.floor(now.getMinutes() / 15);
+  const nxt_slot_chg_min = (15 * (qr + 1)) % 60;
+  const slot_chg = new Date();
+  slot_chg.setMinutes(nxt_slot_chg_min);
+  slot_chg.setSeconds(0);
+  const ms_to_chg = (slot_chg - now);
+
+  if (nxt_slot_chg_min == 0) {
+    // If we're rolling over to start of the hour, add one hour
+    return ms_to_chg + 60 * 60 * 1000;
+  }
+
+  return ms_to_chg;
+}
+
 class Heating extends React.Component {
   static buildProps(thing_registry) {
     return {
@@ -12,11 +29,12 @@ class Heating extends React.Component {
     this.refresh = this.refresh.bind(this);
 
     const app_visibility = new VisibilityCallback();
-    app_visibility.app_became_visible = this.refresh
+    app_visibility.app_became_visible = this.refresh;
 
     this.state = {
       thing: null,
       hour_schedule: null,
+      refreshId: null,
       app_visibility,
     };
 
@@ -24,13 +42,20 @@ class Heating extends React.Component {
   }
 
   refresh() {
-    console.log("Will refresh boiler state...");
+    console.log("Refresshing boiler state...");
+    if (this.state.refreshId) {
+      clearTimeout(this.state.refreshId);
+    }
+
     this.props.thing_registry.get_thing_state('Heating').then(state => {
       const hour_schedule = {}
       for (let hr=0; hr<24; ++hr) {
         hour_schedule[hr] = Object.entries(state.schedule).slice(hr*4,(hr+1)*4);
       }
-      this.setState({hour_schedule, thing: state});
+      console.log("Updated. Will refresh state again in ", millisecToNextSlotChg()/1000, "seconds");
+      this.setState({hour_schedule,
+                     thing: state,
+                     refreshId: setInterval(this.refresh, millisecToNextSlotChg())});
     });
   }
 

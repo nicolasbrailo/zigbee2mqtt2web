@@ -1,7 +1,11 @@
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
+from enum import Enum
 import copy
 import logging
+
+# TODO
+ShouldBeOn = Enum('ShouldBeOn', ['Always', 'Never', '??'])
 
 log = logging.getLogger(__name__)
 
@@ -88,21 +92,22 @@ class Schedule:
         return exp_t
 
     def tick(self):
+        """ Returns the number of advanced slots """
         now_slot = _t_obj_to_slot_idx(self._clock.now())
         if now_slot == self._active_slot_idx:
-            return False
+            return 0
 
         if now_slot == self._active_slot_idx + 1:
             self._sched[self._active_slot_idx].reset()
             self._active_slot_idx = now_slot
             self._on_state_may_change()
-            return True
+            return 1
 
         if now_slot == 0 and self._active_slot_idx == len(self._sched) - 1:
             self._sched[self._active_slot_idx].reset()
             self._active_slot_idx = now_slot
             self._on_state_may_change()
-            return True
+            return 1
 
         idx = self._active_slot_idx
         advanced_slots = 0
@@ -115,7 +120,7 @@ class Schedule:
         self.tick_skipped_errors += advanced_slots-1
         self._active_slot_idx = now_slot
         self._on_state_may_change()
-        return True
+        return advanced_slots
 
     def _on_state_may_change(self):
         active = self._sched[self._active_slot_idx]
@@ -133,6 +138,13 @@ class Schedule:
     def get_slot(self, hour, minute):
         i = _hr_mn_to_slot_idx(hour, minute)
         return self._sched[i]
+
+    def get_last_slot_hr_mn(self):
+        if self._active_slot_idx == 0:
+            idx = len(self._sched) - 1
+        else:
+            idx = self._active_slot_idx - 1
+        return _slot_to_hour(idx), _slot_to_minute(idx)
 
     def toggle_slot(self, hour, minute, reason="User set"):
         slot = self.get_slot(hour, minute)

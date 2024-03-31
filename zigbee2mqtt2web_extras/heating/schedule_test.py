@@ -19,7 +19,7 @@ class FakeClock:
 def ignore_state_changes(new, old):
     pass
 
-class TestStringMethods(unittest.TestCase):
+class ScheduleTest(unittest.TestCase):
     def test_fake_clock(self):
         clock = FakeClock(hour=12, minute=0)
         self.assertEqual(clock.now().hour, 12)
@@ -174,15 +174,40 @@ class TestStringMethods(unittest.TestCase):
         self.assertEqual(sut.get_slot(10, 15).should_be_on, True)
 
         clock.set_t(10, 30)
-        self.assertEqual(sut.tick(), True)
+        self.assertEqual(sut.tick(), 1)
         self.assertEqual(sut.get_slot(10, 15).should_be_on, False)
 
     def test_slot_ticks_are_idempotent(self):
         clock = FakeClock(10, 20)
         sut = Schedule(ignore_state_changes, clock)
         clock.set_t(10, 30)
-        self.assertEqual(sut.tick(), True)
-        self.assertEqual(sut.tick(), False)
+        self.assertEqual(sut.tick(), 1)
+        self.assertEqual(sut.tick(), 0)
+
+    def test_get_last_slot(self):
+        clock = FakeClock(10, 20)
+        sut = Schedule(ignore_state_changes, clock)
+        self.assertEqual(sut.get_last_slot_hr_mn(), (10, 0))
+        clock.set_t(10, 30)
+        sut.tick()
+        self.assertEqual(sut.get_last_slot_hr_mn(), (10, 15))
+        clock.set_t(0, 0)
+        sut.tick()
+        self.assertEqual(sut.get_last_slot_hr_mn(), (23, 45))
+        clock.set_t(0, 10)
+        sut.tick()
+        self.assertEqual(sut.get_last_slot_hr_mn(), (23, 45))
+        clock.set_t(0, 20)
+        sut.tick()
+        self.assertEqual(sut.get_last_slot_hr_mn(), (0, 0))
+
+    def test_tick_counts_advanced_slots(self):
+        clock = FakeClock(10, 0)
+        sut = Schedule(ignore_state_changes, clock)
+        clock.set_t(11, 0)
+        self.assertEqual(sut.tick(), 4)
+        clock.set_t(23, 0)
+        self.assertEqual(sut.tick(), 4*12)
 
     def test_slot_set_moves_forward_wraparound(self):
         clock = FakeClock(23, 50)
