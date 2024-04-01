@@ -7,9 +7,6 @@ from .schedule import Schedule
 
 log = logging.getLogger(__name__)
 
-log.info("HGOAL")
-log.info(__name__)
-
 def _ignore_template_change_cb(new, old):
     # This may be invoked when a template schedule is built, or when there is a slot change
     # that coincides with whatever slot the template thinks is active

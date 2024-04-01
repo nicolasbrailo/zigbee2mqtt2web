@@ -41,7 +41,7 @@ class Heating(PhonyZMWThing):
         self._schedule_tick_interval_secs = 60 * 3
 
         self._add_action('active_schedule', 'Get the schedule for the next 24 hours',
-                         getter=self.schedule.active().as_table)
+                         getter=self.schedule.active().as_jsonifyable_dict)
         self._add_action('boost', 'Boost heating for a number of hours',
                          setter=self.schedule.active().boost)
         self._add_action('off_now', 'Heating off until the end of the current block',
@@ -64,10 +64,10 @@ class Heating(PhonyZMWThing):
         self._scheduler.start()
 
     def get_json_state(self):
-        tsched = self.schedule.active().as_table()
+        tsched = self.schedule.active().as_jsonifyable_dict()
         return {
-            "schedule": tsched,
-            "should_be_on": list(tsched.items())[0][1].should_be_on,
+            "active_schedule": tsched,
+            "should_be_on": tsched[0]['should_be_on'],
             "mqtt_thing_reports_on": self.boiler.get('boiler_state'),
         }
 

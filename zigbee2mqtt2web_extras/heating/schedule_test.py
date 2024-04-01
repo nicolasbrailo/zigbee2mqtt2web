@@ -369,16 +369,22 @@ class ScheduleTest(unittest.TestCase):
         self.assertEqual(sut.get_slot_change_time().minute, 0)
         self.assertEqual(sut.get_slot_change_time().day, 21)
 
-    def test_schedule_as_table(self):
+    def test_schedule_as_jsonifyable_dict(self):
         clock = FakeClock(15, 0)
         sut = Schedule(ignore_state_changes, clock)
         sut.set_slot(16, 10, should_be_on=True, reason="Test")
         sut.set_slot(17, 30, should_be_on=True, reason="Test")
-        t = sut.as_table()
-        self.assertEqual(list(t.items())[0][0], '15:00')
-        self.assertEqual(t['15:00'].should_be_on, False)
-        self.assertEqual(t['16:00'].should_be_on, True)
-        self.assertEqual(t['17:30'].should_be_on, True)
+        t = sut.as_jsonifyable_dict()
+        self.assertEqual(t[0]['hour'], 15)
+        self.assertEqual(t[0]['minute'], 0)
+        self.assertEqual(t[0]['should_be_on'], False)
+        # Verify offset: delta from time start, + qr
+        self.assertEqual(t[(16-15) * 4]['hour'], 16)
+        self.assertEqual(t[(16-15) * 4]['minute'], 0)
+        self.assertEqual(t[(16-15) * 4]['should_be_on'], True)
+        self.assertEqual(t[((17-15) * 4) + 2]['hour'], 17)
+        self.assertEqual(t[((17-15) * 4) + 2]['minute'], 30)
+        self.assertEqual(t[((17-15) * 4) + 2]['should_be_on'], True)
 
     def test_notifies_state_changes(self):
         saved_new = None

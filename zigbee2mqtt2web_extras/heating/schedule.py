@@ -57,11 +57,11 @@ def slot_t_to_hr_mn(slot_t):
 
     hour, minute = slot_t.split(':')
     if not hour.isdigit() or not minute.isdigit():
-        raise ValueError(f"Can't parse slot format {slot_t}, expected 'HH:MM'")
+        raise ValueError(f"Can't parse slot format {slot_t}, expected 'HH:MM' - HH or MM aren't digits")
 
     hour, minute = int(hour), int(minute)
     if hour > 23 or hour < 0 or minute > 59 or minute < 0:
-        raise ValueError(f"Can't parse slot format {slot_t}, expected 'HH:MM'")
+        raise ValueError(f"Can't parse slot format {slot_t}, expected 'HH:MM' - H or M not in range")
 
     return hour, minute
 
@@ -175,13 +175,12 @@ class Schedule:
             slot = (slot + 1) % len(self._sched)
         self._on_state_may_change()
 
-    def as_table(self):
-        """ Return schedule as table, starting with the current hour:minute slot """
+    def as_jsonifyable_dict(self):
+        """ Return schedule as a list, starting with the current hour:minute slot, in a format
+        that's usable to call json.dumps """
         start_slot = self._active_slot_idx
-        sched_map = {}
+        sched = []
         for i in range(len(self._sched)):
             j = (i + start_slot) % len(self._sched)
-            hr, mn = _slot_to_hour(j), _slot_to_minute(j)
-            sched_map[hr_mn_to_slot_t(hr, mn)] = self._sched[j]
-        return sched_map
-
+            sched.append(self._sched[j])
+        return list(map(lambda o: o.dictify(), sched))
