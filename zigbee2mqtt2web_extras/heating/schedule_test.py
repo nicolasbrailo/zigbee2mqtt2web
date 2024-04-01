@@ -1,7 +1,12 @@
 import unittest
 from datetime import datetime
 
-from schedule import Schedule, hr_mn_to_slot_t
+import os
+import pathlib
+import sys
+sys.path.append(pathlib.Path(__file__).resolve())
+
+from .schedule import Schedule, hr_mn_to_slot_t
 
 class FakeClock:
     def __init__(self, hour, minute, day=None):

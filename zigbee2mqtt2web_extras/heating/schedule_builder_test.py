@@ -6,9 +6,10 @@ import sys
 import tempfile
 import unittest
 
-sys.path.append(pathlib.Path(__file__).parent.resolve())
-from schedule import Schedule
-from schedule_builder import ScheduleBuilder
+sys.path.append(pathlib.Path(__file__).resolve())
+
+from .schedule import Schedule
+from .schedule_builder import ScheduleBuilder
 
 class FakeClock:
     def __init__(self, hour, minute, day=None):
