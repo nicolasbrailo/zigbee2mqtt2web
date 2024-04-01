@@ -15,6 +15,60 @@ function millisecToNextSlotChg() {
   return ms_to_chg;
 }
 
+
+function renderTemplateScheduleTable(sched, slotClickCbFactory) {
+  const qr_groupped_sched = {};
+  for (let hr=0; hr<24; ++hr) {
+    qr_groupped_sched[hr] = sched.slice(hr*4,(hr+1)*4);
+  }
+  return (
+    <table className="heating_sched">
+    <tbody>
+    {Object.keys(qr_groupped_sched).map((hour) => {
+      return (<tr key={`table_schedule_${hour}`}>
+        {qr_groupped_sched[hour].map((slot) => {
+          const slot_t = `${('0' + slot.hour).slice(-2)}:${('0' + slot.minute).slice(-2)}`;
+          const sched_slot_class = slot.should_be_on? 'heating_sched_slot_on' : 'heating_sched_slot_off';
+          return <td key={`table_schedule_${slot.hour}_${slot.minute}`} className={sched_slot_class}>
+            {slot_t}<wbr/> Current: {slot.reason}
+            <select key="`table_schedule_${slot.hour}_${slot.minute}_opt`"
+                    defaultValue={slot.should_be_on? "on" : "off"}
+                    onChange={slotClickCbFactory(slot.hour, slot.minute)}>
+              <option value="on">Always on</option>
+              <option value="off">Always off</option>
+            </select>
+          </td>;
+        })}
+      </tr>);
+    })}
+    </tbody>
+    </table>
+  );
+}
+
+function renderScheduleTable(sched, slotClickCbFactory) {
+  return (
+    <table className="heating_sched">
+    <tbody>
+    {Object.keys(sched).map((hour, _) => {
+      return (<tr key={`table_schedule_${hour}`}>
+        {Object.keys(sched[hour]).map((quarter,v) => {
+          const slot_t = sched[hour][quarter][0];
+          const slot = sched[hour][quarter][1];
+          const sched_slot_class = slot.should_be_on? 'heating_sched_slot_on' : 'heating_sched_slot_off';
+          return <td key={`table_schedule_${hour}_${quarter}`} className={sched_slot_class}>
+            <button className="modal-button" onClick={slotClickCbFactory(slot.hour, slot.minute)}>
+            {slot_t}<wbr/> {slot.reason}
+            </button>
+          </td>;
+        })}
+      </tr>);
+    })}
+    </tbody>
+    </table>
+  );
+}
+
 class Heating extends React.Component {
   static buildProps(thing_registry) {
     return {
@@ -27,13 +81,20 @@ class Heating extends React.Component {
     super(props);
     this._offNow = this._offNow.bind(this);
     this.refresh = this.refresh.bind(this);
+    this._mkCallbackSlotClick = this._mkCallbackSlotClick.bind(this);
+    this._mkCallbackTemplateSlotClick = this._mkCallbackTemplateSlotClick.bind(this);
+    this._toggleConfig = this._toggleConfig.bind(this);
+    this._showLogs = this._showLogs.bind(this);
+    this._applyTemplate = this._applyTemplate.bind(this);
 
     const app_visibility = new VisibilityCallback();
     app_visibility.app_became_visible = this.refresh;
 
     this.state = {
+      configuring: false,
       thing: null,
       hour_schedule: null,
+      schedule_template: null,
       refreshId: null,
       app_visibility,
     };
@@ -42,7 +103,12 @@ class Heating extends React.Component {
   }
 
   refresh() {
-    console.log("Refresshing boiler state...");
+    if (this.state.configuring) {
+      console.log("Skip state refresh: configuring");
+      return;
+    }
+
+    console.log("Refreshing boiler state...");
     if (this.state.refreshId) {
       clearTimeout(this.state.refreshId);
     }
@@ -57,6 +123,19 @@ class Heating extends React.Component {
                      thing: state,
                      refreshId: setInterval(this.refresh, millisecToNextSlotChg())});
     });
+  }
+
+  refreshTemplate() {
+    thing_registry.get_thing_action_state('Heating', 'template_schedule').then(tmpl_state => {
+      this.setState({schedule_template: JSON.parse(tmpl_state).template});
+    });
+  }
+
+  refreshActiveOrTemplate() {
+    if (this.state.configuring) {
+      return this.refreshTemplate();
+    }
+    return this.refresh();
   }
 
   _mkCallbackSlotClick(hour, minute) {
@@ -76,19 +155,41 @@ class Heating extends React.Component {
     this.props.thing_registry.set_thing('Heating', 'off_now').then(()=>{this.refresh()});
   }
 
+  _applyTemplate() {
+    this.props.thing_registry.set_thing('Heating', 'template_apply').then(()=>{this.refreshActiveOrTemplate()});
+  }
+
+  _toggleConfig() {
+    if (!this.state.configuring) {
+      this.refreshTemplate();
+    }
+    this.setState({configuring: !this.state.configuring});
+  }
+
+  _showLogs() {
+    thing_registry.get_thing_action_state('Heating', 'log_url').then((url) => {
+      window.open(url, '_blank')
+    });
+  }
+
   render() {
+    if (this.state.configuring) {
+      return this.renderConfig();
+    }
+
     if (!this.state.hour_schedule) {
       return "Loading...";
     }
 
     return <div>
-      {this.render_controls()}
-      {this.render_schedule_table()}
+      {this.renderHeatingOverrides()}
+      {renderScheduleTable(this.state.hour_schedule, this._mkCallbackSlotClick)}
+      {this.renderConfigControls()}
     </div>
   }
 
-  render_controls() {
-    return <div className="card">
+  renderHeatingOverrides() {
+    return <div className="card heating_cfg_ctrls">
         <div>
           Current status: should be {this.state.thing.should_be_on? "on" : "off"}, boiler reports {this.state.thing.mqtt_thing_reports_on}
         </div>
@@ -98,26 +199,32 @@ class Heating extends React.Component {
       </div>
   }
 
-  render_schedule_table() {
-    return (
-      <table className="heating_sched">
-      <tbody>
-      {Object.keys(this.state.hour_schedule).map((hour, _) => {
-        return (<tr key={`table_schedule_${hour}`}>
-          {Object.keys(this.state.hour_schedule[hour]).map((quarter,v) => {
-            const slot_t = this.state.hour_schedule[hour][quarter][0];
-            const slot = this.state.hour_schedule[hour][quarter][1];
-            const sched_slot_class = slot.should_be_on? 'heating_sched_slot_on' : 'heating_sched_slot_off';
-            return <td key={`table_schedule_${hour}_${quarter}`} className={sched_slot_class}>
-              <button className="modal-button" onClick={this._mkCallbackSlotClick(slot.hour, slot.minute)}>
-              {slot_t}<wbr/> {slot.reason}
-              </button>
-            </td>;
-          })}
-        </tr>);
-      })}
-      </tbody>
-      </table>
-    );
+  renderConfigControls() {
+    return <div className="card heating_cfg_ctrls">
+        <button className="modal-button" onClick={this._toggleConfig}>Config</button>
+        <button className="modal-button" onClick={this._applyTemplate}>Apply template / reset today schedule</button>
+        <button className="modal-button" onClick={this._showLogs}>Logs</button>
+      </div>
+  }
+
+
+  _mkCallbackTemplateSlotClick(hour, minute) {
+    return (evt) => {
+      const selected = evt.nativeEvent.target.value;
+      console.log("Uset setting template", `${hour}:${minute}`, selected);
+      const slotSet = `template_slot_set=${hour},${minute},${selected}`;
+      this.props.thing_registry.set_thing('Heating', slotSet).then(()=>{this.refreshTemplate()});
+    };
+  }
+
+  renderConfig() {
+    if (!this.state.schedule_template) {
+      return "Loading configuration...";
+    }
+
+    return <div>
+        {this.renderConfigControls()}
+        {renderTemplateScheduleTable(this.state.schedule_template, this._mkCallbackTemplateSlotClick)}
+      </div>;
   }
 }

@@ -9,7 +9,7 @@ sys.path.append(os.path.join(pathlib.Path(__file__).parent.resolve(), "zigbee2mq
 
 from zigbee2mqtt2web_extras.phony import PhonyZMWThing
 
-from .schedule import Schedule
+from .schedule_builder import ScheduleBuilder
 from ._hijack_thing_as_boiler import _hijack_thing_as_boiler
 
 log = logging.getLogger(__name__)
@@ -18,6 +18,13 @@ _WWW_LOG_ENDPOINT = '/heating/log'
 
 class Heating(PhonyZMWThing):
     def __init__(self, zmw):
+        self.log_file = '/home/batman/BatiCasa/heating.log'
+        log_file = logging.FileHandler(self.log_file, mode='w')
+        log_file.setLevel(logging.DEBUG)
+        log_file.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+        log.addHandler(log_file)
+        log.info("BatiCasa heating manager starting...")
+
         super().__init__(
             name="Heating",
             description="Heating controller",
@@ -25,28 +32,28 @@ class Heating(PhonyZMWThing):
         )
 
         self.zmw = zmw
-        self.log_file = '/home/batman/BatiCasa/heating.log'
-        self.boiler_name = 'Boiler'
-        #self.boiler_name = 'Batioficina'
+        self.schedule_file = '/home/batman/BatiCasa/heating.schedule.json'
+        #self.boiler_name = 'Boiler'
+        self.boiler_name = 'Batioficina'
         self.boiler = None
         self.pending_state = None
-        self.schedule = Schedule(self._on_boiler_state_should_change)
+        self.schedule = ScheduleBuilder(self._on_boiler_state_should_change, self.schedule_file)
         self._schedule_tick_interval_secs = 60 * 3
 
-        log_file = logging.FileHandler(self.log_file, mode='w')
-        log_file.setLevel(logging.DEBUG)
-        log_file.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
-        log.addHandler(log_file)
-        log.info("BatiCasa heating manager starting...")
-
-        self._add_action('schedule', 'Get the schedule for the next 24 hours',
-                         getter=self.schedule.as_table)
+        self._add_action('active_schedule', 'Get the schedule for the next 24 hours',
+                         getter=self.schedule.active().as_table)
         self._add_action('boost', 'Boost heating for a number of hours',
-                         setter=self.schedule.boost)
+                         setter=self.schedule.active().boost)
         self._add_action('off_now', 'Heating off until the end of the current block',
-                         setter=lambda _: self.schedule.off_now())
+                         setter=lambda _: self.schedule.active().off_now())
         self._add_action('slot_toggle', 'Toggle a specific slot on or off',
-                         setter=self.schedule.toggle_slot_by_name)
+                         setter=self.schedule.active().toggle_slot_by_name)
+        self._add_action('template_schedule', 'Get the schedule template (and active schedule) as json',
+                         getter=self.schedule.as_json)
+        self._add_action('template_slot_set', 'Set a slot for the schedule template',
+                         setter=lambda vs: self.schedule.set_slot(*vs.split(',')))
+        self._add_action('template_apply', 'Apply template to today\'s schedule, overwrite user settings',
+                         setter=lambda _: self.schedule.apply_template_to_today())
         self._add_action('log_url', 'Retrieve heating logs',
                          getter=lambda: _WWW_LOG_ENDPOINT)
 
@@ -57,7 +64,7 @@ class Heating(PhonyZMWThing):
         self._scheduler.start()
 
     def get_json_state(self):
-        tsched = self.schedule.as_table()
+        tsched = self.schedule.active().as_table()
         return {
             "schedule": tsched,
             "should_be_on": list(tsched.items())[0][1].should_be_on,
@@ -101,7 +108,7 @@ class Heating(PhonyZMWThing):
                 log.info("Boiler discovered, applying pending state...")
                 self._on_boiler_state_should_change(new=self.pending_state, old=None)
 
-            self._scheduler.add_job(func=self._tick, trigger="date", run_date=self.schedule.get_slot_change_time())
+            self._scheduler.add_job(func=self._tick, trigger="date", run_date=self.schedule.active().get_slot_change_time())
             # Tick every few minutes, just in case there's a bug in scheduling somewhere and to verify
             # the state of the mqtt thing
             self._scheduler.add_job(func=self._tick, trigger="interval",
@@ -115,7 +122,7 @@ class Heating(PhonyZMWThing):
         # TODO: Check MQTT thing
         advanced_slot = self.schedule.tick()
         if advanced_slot:
-            self._scheduler.add_job(func=self._tick, trigger="date", run_date=self.schedule.get_slot_change_time())
+            self._scheduler.add_job(func=self._tick, trigger="date", run_date=self.schedule.active().get_slot_change_time())
 
     def _on_boiler_state_should_change(self, new, old):
         if self.boiler is None:

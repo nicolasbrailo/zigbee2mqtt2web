@@ -1,9 +1,14 @@
 from datetime import datetime
-from schedule import Schedule
 import json
 import logging
+import os
+
+from .schedule import Schedule
 
 log = logging.getLogger(__name__)
+
+log.info("HGOAL")
+log.info(__name__)
 
 def _ignore_template_change_cb(new, old):
     # This may be invoked when a template schedule is built, or when there is a slot change
@@ -11,8 +16,9 @@ def _ignore_template_change_cb(new, old):
     pass
 
 class ScheduleBuilder:
-    def __init__(self, state_change_cb, clock=None):
+    def __init__(self, state_change_cb, persist_file, clock=None):
         self._active = Schedule(state_change_cb, clock)
+        self._persist_file = persist_file
 
         class _NoClock:
             def __init__(self):
@@ -21,7 +27,22 @@ class ScheduleBuilder:
                 self._now = self._now.replace(minute=0)
             def now(self):
                 return self._now
+
         self._template = Schedule(_ignore_template_change_cb, _NoClock())
+
+        if self._persist_file is None:
+            log.warning("No persist file specified, changes to schedule are ephemeral")
+        elif not os.path.exists(self._persist_file):
+            log.info("No schedule persisted, creating new one at %s", self._persist_file)
+            self.save_state()
+        elif not os.path.isfile(self._persist_file):
+            log.error("Specified persist path %s exists, but isn't a file. Changes to schedule won't be saved.", self._persist_file)
+            self._persist_file = None
+        else:
+            # persist_file exists, and is a file
+            log.info("Reading active schedule and template from %s", self._persist_file)
+            with open(self._persist_file, "r") as fp:
+                self.from_json(fp.read())
 
     def active(self):
         return self._active
@@ -29,8 +50,14 @@ class ScheduleBuilder:
     def get_slot(self, *a, **kv):
         return self._template.get_slot(*a, **kv)
 
-    def set_slot(self, *a, **kv):
-        return self._template.set_slot(*a, **kv)
+    def set_slot(self, hour, minute, should_be_on, reason="Scheduled"):
+        if type(should_be_on) == type('') and should_be_on.lower() == 'on':
+            should_be_on = True
+        if type(should_be_on) == type('') and should_be_on.lower() == 'off':
+            should_be_on = False
+        ret = self._template.set_slot(hour, minute, should_be_on, reason)
+        self.save_state()
+        return ret
 
     def tick(self, *a, **kv):
         slots_changed = self._active.tick(*a, **kv)
@@ -40,6 +67,7 @@ class ScheduleBuilder:
             hr, mn = self._active.get_last_slot_hr_mn()
             slot = self._template.get_slot(hr, mn)
             self._active.set_slot(hr, mn, slot.should_be_on, slot.reason)
+        self.save_state()
         return slots_changed
 
     def apply_template_to_today(self):
@@ -47,6 +75,13 @@ class ScheduleBuilder:
             for mn in range(0, 60, 15):
                 tmpl = self.get_slot(hr, mn)
                 self._active.set_slot(hr, mn, tmpl.should_be_on, tmpl.reason)
+        self.save_state()
+
+    def save_state(self):
+        if self._persist_file is None:
+            return
+        with open(self._persist_file, "w") as fp:
+            fp.write(self.as_json())
 
     def as_json(self):
         return json.dumps({
@@ -80,3 +115,8 @@ class ScheduleBuilder:
         else:
             log.error("Serialized schedule has no active template to deserialize")
 
+        # We should save the state, but if something fails this may start a crashloop. If loading
+        # succeeds, though, tick() will be called in a few minutes, and the state will be saved
+        # then. If something makes the app crash before 5 minutes, losing the active schedule is
+        # probably a comparatively minor problem.
+        # self.save_state()

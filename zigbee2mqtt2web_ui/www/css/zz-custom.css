@@ -268,3 +268,6 @@
 .heating_sched_slot_off{
   /*background-color: var(--color-secondary);*/
 }
+#heating_cfg_ctrls button {
+  width: 9rem;
+}
