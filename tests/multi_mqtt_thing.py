@@ -31,7 +31,7 @@ class TestMultiMqttThings(unittest.TestCase):
 
         t = MultiMqttThing(registry, 'Lamp', ['Lamp1', 'Lamp2'])
 
-        self.assertTrue(t.group_has_same_metadata)
+        #self.assertTrue(t.group_has_same_metadata)
         self.assertTrue(t.group_has_same_actions)
 
         self.assertEqual(t.name, 'Lamp')

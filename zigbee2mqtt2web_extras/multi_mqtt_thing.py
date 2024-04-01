@@ -82,7 +82,7 @@ class MultiMqttThing:
                 differences.append('thing_type')
             if thing.is_mqtt_spammy != self.is_mqtt_spammy:
                 differences.append('is_mqtt_spammy')
-            if thing.is_mqtt_spammy != self.user_defined:
+            if thing.user_defined != self.user_defined:
                 differences.append('user_defined')
 
             self.group_has_same_metadata = len(differences) == 0
