@@ -31,7 +31,7 @@ class ScheduleBuilder:
             log.warning("No persist file specified, changes to schedule are ephemeral")
         elif not os.path.exists(self._persist_file):
             log.info("No schedule persisted, creating new one at %s", self._persist_file)
-            self.save_state()
+            self._reset_template_to_default()
         elif not os.path.isfile(self._persist_file):
             log.error("Specified persist path %s exists, but isn't a file. Changes to schedule won't be saved.", self._persist_file)
             self._persist_file = None
@@ -66,6 +66,12 @@ class ScheduleBuilder:
             self._active.set_slot(hr, mn, slot.should_be_on, slot.reason)
         self.save_state()
         return slots_changed
+
+    def _reset_template_to_default(self):
+        for hr in range(0, 23):
+            for mn in range(0, 60, 15):
+                self.set_slot(hr, mn, False, "Scheduled")
+        self.save_state()
 
     def apply_template_to_today(self):
         for hr in range(0, 23):

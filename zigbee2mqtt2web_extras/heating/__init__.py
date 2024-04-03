@@ -33,8 +33,8 @@ class Heating(PhonyZMWThing):
 
         self.zmw = zmw
         self.schedule_file = '/home/batman/BatiCasa/heating.schedule.json'
-        #self.boiler_name = 'Boiler'
-        self.boiler_name = 'Batioficina'
+        self.boiler_name = 'Boiler'
+        #self.boiler_name = 'Batioficina'
         self.boiler = None
         self.pending_state = None
         self.schedule = ScheduleBuilder(self._on_boiler_state_should_change, self.schedule_file)

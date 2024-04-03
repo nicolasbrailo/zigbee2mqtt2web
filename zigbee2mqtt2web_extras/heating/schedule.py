@@ -5,7 +5,7 @@ import copy
 import logging
 
 # TODO
-ShouldBeOn = Enum('ShouldBeOn', ['Always', 'Never', '??'])
+ShouldBeOn = Enum('ShouldBeOn', ['Always', 'Never', 'Rule'])
 
 log = logging.getLogger(__name__)
 
