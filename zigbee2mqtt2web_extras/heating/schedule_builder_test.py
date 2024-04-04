@@ -8,7 +8,7 @@ import unittest
 
 sys.path.append(pathlib.Path(__file__).resolve())
 
-from .schedule import Schedule
+from .schedule import Schedule, ShouldBeOn
 from .schedule_builder import ScheduleBuilder
 
 class FakeClock:
@@ -33,7 +33,7 @@ def get_all_on_schedule():
     sut = ScheduleBuilder(ignore_state_changes, None, clock)
     for hr in range(0, 24):
         for qr in range(0, 4):
-            sut.set_slot(hr, qr*15, should_be_on=True)
+            sut.set_slot(hr, qr*15, should_be_on=ShouldBeOn.Always)
     return sut.as_json()
 
 
@@ -43,11 +43,11 @@ class ScheduleBuilderTest(unittest.TestCase):
         for hr in range(0, 24):
             for qr in range(0,4):
                 slot = sut.active().get_slot(hr, qr*15)
-                self.assertEqual(slot.should_be_on, False)
+                self.assertEqual(slot.should_be_on, ShouldBeOn.Never)
 
     def test_jsonifies(self):
         sut = ScheduleBuilder(ignore_state_changes, None)
-        sut.active().set_slot(21, 45, should_be_on=True, reason="Serialization test")
+        sut.active().set_slot(21, 45, should_be_on=ShouldBeOn.Always, reason="Serialization test")
         self.assertTrue('"Serialization test"' in sut.as_json())
         json.loads(sut.as_json()) # Throw on invalid json
 
@@ -57,36 +57,36 @@ class ScheduleBuilderTest(unittest.TestCase):
 
     def test_serdeser(self):
         sut = ScheduleBuilder(ignore_state_changes, None)
-        sut.active().set_slot(21, 45, should_be_on=True, reason="Sertest")
+        sut.active().set_slot(21, 45, should_be_on=ShouldBeOn.Always, reason="Sertest")
         sut2 = ScheduleBuilder(ignore_state_changes, None)
         sut2.from_json(sut.as_json())
         slot = sut.active().get_slot(21, 45)
-        self.assertEqual(slot.should_be_on, True)
+        self.assertEqual(slot.should_be_on, ShouldBeOn.Always)
         self.assertEqual(slot.reason, "Sertest")
 
     def test_deser_sched_only(self):
         sut = ScheduleBuilder(ignore_state_changes, None)
-        sut.from_json('{"active": [{"hour": 23, "minute": 30, "should_be_on": true, "reason": "Sertest"}]}')
+        sut.from_json('{"active": [{"hour": 23, "minute": 30, "should_be_on": "Always", "reason": "Sertest"}]}')
         for hr in range(0, 24):
             for qr in range(0,4):
                 slot = sut.active().get_slot(hr, qr*15)
                 if hr == 23 and qr == 2:
-                    self.assertEqual(slot.should_be_on, True)
+                    self.assertEqual(slot.should_be_on, ShouldBeOn.Always)
                     self.assertEqual(slot.reason, "Sertest")
                 else:
-                    self.assertEqual(slot.should_be_on, False)
+                    self.assertEqual(slot.should_be_on, ShouldBeOn.Never)
 
     def test_deser_tmpl_only(self):
         sut = ScheduleBuilder(ignore_state_changes, None)
-        sut.from_json('{"template": [{"hour": 23, "minute": 30, "should_be_on": true, "reason": "Sertest"}]}')
+        sut.from_json('{"template": [{"hour": 23, "minute": 30, "should_be_on": "Always", "reason": "Sertest"}]}')
         for hr in range(0, 24):
             for qr in range(0,4):
                 slot = sut.get_slot(hr, qr*15)
                 if hr == 23 and qr == 2:
-                    self.assertEqual(slot.should_be_on, True)
+                    self.assertEqual(slot.should_be_on, ShouldBeOn.Always)
                     self.assertEqual(slot.reason, "Sertest")
                 else:
-                    self.assertEqual(slot.should_be_on, False)
+                    self.assertEqual(slot.should_be_on, ShouldBeOn.Never)
 
     def test_deser_tmpl_only_doesnt_affect_active(self):
         clock = FakeClock(15, 10)
@@ -94,8 +94,8 @@ class ScheduleBuilderTest(unittest.TestCase):
         sut.from_json(get_all_on_schedule())
         for hr in range(0, 24):
             for mn in range(0, 60):
-                self.assertEqual(sut.active().get_slot(hr, mn).should_be_on, False, f"Failed slot {hr}:{mn}")
-                self.assertEqual(sut.get_slot(hr, mn).should_be_on, True, f"Failed template slot {hr}:{mn}")
+                self.assertEqual(sut.active().get_slot(hr, mn).should_be_on, ShouldBeOn.Never, f"Failed slot {hr}:{mn}")
+                self.assertEqual(sut.get_slot(hr, mn).should_be_on, ShouldBeOn.Always, f"Failed template slot {hr}:{mn}")
 
     def test_creates_state_file(self):
         fname = None
@@ -112,7 +112,16 @@ class ScheduleBuilderTest(unittest.TestCase):
             sut = ScheduleBuilder(ignore_state_changes, temp_file.name)
             for hr in range(0, 24):
                 for mn in range(0, 60):
-                    self.assertEqual(sut.get_slot(hr, mn).should_be_on, True, f"Failed template slot {hr}:{mn}")
+                    self.assertEqual(sut.get_slot(hr, mn).should_be_on, ShouldBeOn.Always, f"Failed template slot {hr}:{mn}")
+
+    def test_default_tmpl_all_of(self):
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_file:
+            os.remove(temp_file.name)
+            sut = ScheduleBuilder(ignore_state_changes, temp_file.name)
+            for hr in range(0, 24):
+                for mn in range(0, 60):
+                    self.assertEqual(sut.get_slot(hr, mn).should_be_on, ShouldBeOn.Never, f"Failed template slot {hr}:{mn}")
+                    self.assertEqual(sut.active().get_slot(hr, mn).should_be_on, ShouldBeOn.Never, f"Failed template slot {hr}:{mn}")
 
     def test_survives_wrong_ser_file(self):
         with tempfile.NamedTemporaryFile(mode='w', delete=True) as temp_file:
@@ -134,8 +143,8 @@ class ScheduleBuilderTest(unittest.TestCase):
     def test_serializes_state(self):
         with tempfile.NamedTemporaryFile(mode='w', delete=True) as temp_file:
             sut = ScheduleBuilder(ignore_state_changes, temp_file.name)
-            sut.set_slot(15, 30, should_be_on=True, reason="Hola")
-            sut.active().set_slot(18, 45, should_be_on=True, reason="Hola")
+            sut.set_slot(15, 30, should_be_on=ShouldBeOn.Always, reason="Hola")
+            sut.active().set_slot(18, 45, should_be_on=ShouldBeOn.Always, reason="Hola")
             sut.save_state()
             with open(temp_file.name, "r") as fp:
                 saved_state = json.loads(fp.read())
@@ -143,7 +152,7 @@ class ScheduleBuilderTest(unittest.TestCase):
                 for slot in saved_state['template']:
                     if slot['hour'] == 15 and slot['minute'] == 30:
                         found = True
-                        self.assertEqual(slot['should_be_on'], True)
+                        self.assertEqual(slot['should_be_on'], ShouldBeOn.Always)
                         self.assertEqual(slot['reason'], "Hola")
                         break
                 found = False
@@ -151,7 +160,7 @@ class ScheduleBuilderTest(unittest.TestCase):
                     print(slot)
                     if slot['hour'] == 18 and slot['minute'] == 45:
                         found = True
-                        self.assertEqual(slot['should_be_on'], True)
+                        self.assertEqual(slot['should_be_on'], ShouldBeOn.Always)
                         self.assertEqual(slot['reason'], "Hola")
                         break
                 self.assertTrue(found)
@@ -159,11 +168,11 @@ class ScheduleBuilderTest(unittest.TestCase):
     def test_tick_applies_template(self):
         clock = FakeClock(15, 10)
         sut = ScheduleBuilder(ignore_state_changes, None, clock)
-        self.assertEqual(sut.active().get_slot(15, 0).should_be_on, False)
-        sut.set_slot(15, 0, should_be_on=True)
+        self.assertEqual(sut.active().get_slot(15, 0).should_be_on, ShouldBeOn.Never)
+        sut.set_slot(15, 0, should_be_on=ShouldBeOn.Always)
         clock.set_t(15, 20)
         sut.tick()
-        self.assertEqual(sut.active().get_slot(15, 0).should_be_on, True)
+        self.assertEqual(sut.active().get_slot(15, 0).should_be_on, ShouldBeOn.Always)
 
     def test_tick_applies_template_to_next_day(self):
         clock = FakeClock(0, 0)
@@ -174,24 +183,36 @@ class ScheduleBuilderTest(unittest.TestCase):
             for mn in range(0, 60):
                 clock.set_t(hr, mn)
                 sut.tick()
-                self.assertEqual(sut.active().get_slot(hr, mn).should_be_on, False, f"Failed slot {hr}:{mn}")
-                self.assertEqual(sut.get_slot(hr, mn).should_be_on, True, f"Failed template slot {hr}:{mn}")
+                self.assertEqual(sut.active().get_slot(hr, mn).should_be_on, ShouldBeOn.Never, f"Failed slot {hr}:{mn}")
+                self.assertEqual(sut.get_slot(hr, mn).should_be_on, ShouldBeOn.Always, f"Failed template slot {hr}:{mn}")
         # Second loop: the template should have been applied to all next day (and subsequent days)
         for hr in range(0, 48):
             for mn in range(0, 60):
                 hr = hr % 24
                 clock.set_t(hr, mn)
                 sut.tick()
-                self.assertEqual(sut.active().get_slot(hr, mn).should_be_on, True, f"Failed template slot {hr}:{mn}")
+                self.assertEqual(sut.active().get_slot(hr, mn).should_be_on, ShouldBeOn.Always, f"Failed template slot {hr}:{mn}")
 
     def test_apply_template_on_user_ask(self):
         clock = FakeClock(0, 0)
         sut = ScheduleBuilder(ignore_state_changes, None, clock)
         sut.from_json(get_all_on_schedule())
         sut.apply_template_to_today()
-        for hr in range(0, 23):
+        for hr in range(0, 24):
             for mn in range(0, 60):
-                self.assertEqual(sut.active().get_slot(hr, mn).should_be_on, True, f"Failed template slot {hr}:{mn}")
+                self.assertEqual(sut.active().get_slot(hr, mn).should_be_on, ShouldBeOn.Always, f"Failed template slot {hr}:{mn}")
+
+    def test_reset_tmpl(self):
+        clock = FakeClock(15, 10)
+        sut = ScheduleBuilder(ignore_state_changes, None, clock)
+        sut.from_json(get_all_on_schedule())
+        sut.apply_template_to_today()
+        sut.reset_template_to_default()
+        for hr in range(0, 24):
+            for mn in range(0, 60, 15):
+                self.assertEqual(sut.active().get_slot(hr, mn).should_be_on, ShouldBeOn.Always, f"Failed slot {hr}:{mn}")
+                self.assertEqual(sut.get_slot(hr, mn).should_be_on, ShouldBeOn.Never, f"Failed template slot {hr}:{mn}")
+
 
 
 if __name__ == '__main__':

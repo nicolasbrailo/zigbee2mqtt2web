@@ -9,7 +9,7 @@ sys.path.append(os.path.join(pathlib.Path(__file__).parent.resolve(), "zigbee2mq
 
 from zigbee2mqtt2web_extras.phony import PhonyZMWThing
 
-from .schedule_builder import ScheduleBuilder
+from .schedule_builder import ScheduleBuilder, ShouldBeOn
 from ._hijack_thing_as_boiler import _hijack_thing_as_boiler
 
 log = logging.getLogger(__name__)
@@ -54,6 +54,8 @@ class Heating(PhonyZMWThing):
                          setter=lambda vs: self.schedule.set_slot(*vs.split(',')))
         self._add_action('template_apply', 'Apply template to today\'s schedule, overwrite user settings',
                          setter=lambda _: self.schedule.apply_template_to_today())
+        self._add_action('template_reset', "Reset the template to default (doesn't change active schedule)",
+                         setter=lambda _: self.schedule.reset_template_to_default())
         self._add_action('log_url', 'Retrieve heating logs',
                          getter=lambda: _WWW_LOG_ENDPOINT)
 
@@ -130,13 +132,28 @@ class Heating(PhonyZMWThing):
             self.pending_state = new
             return
 
-        log.info("Boiler state changed to %s, reason: %s", new.should_be_on, new.reason)
-        self.boiler.set('boiler_state', new.should_be_on)
+        if new.should_be_on == ShouldBeOn.Always:
+            boiler_on = True
+            trigger = "requested always on"
+        elif new.should_be_on == ShouldBeOn.Never:
+            boiler_on = False
+            trigger = "requested always off"
+        elif new.should_be_on == ShouldBeOn.Rule:
+            boiler_on = True # TODO
+            trigger = "rule based"
+        else:
+            log.error("Unknown boiler state %s requested, will turn off", new.should_be_on)
+            boiler_on = False
+            trigger = "error"
+
+        log.info("Boiler state changed to %s (%s), reason: %s", boiler_on, trigger, new.reason)
+        self.boiler.set('boiler_state', boiler_on)
         self.zmw.registry.broadcast_thing(self.boiler)
 
         self.zmw.announce_system_event({
             'event': 'on_boiler_state_change',
-            'should_be_on': new.should_be_on,
+            'boiler_on': boiler_on,
+            'boiler_on_trigger': trigger,
             'reason': new.reason,
         })
 

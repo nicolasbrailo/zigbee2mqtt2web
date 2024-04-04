@@ -4,8 +4,10 @@ from enum import Enum
 import copy
 import logging
 
-# TODO
-ShouldBeOn = Enum('ShouldBeOn', ['Always', 'Never', 'Rule'])
+class ShouldBeOn(str, Enum):
+    Always = 'Always'
+    Never = 'Never'
+    Rule = 'Rule'
 
 log = logging.getLogger(__name__)
 
@@ -13,7 +15,7 @@ log = logging.getLogger(__name__)
 class ScheduleSlot:
     hour: int
     minute: int
-    should_be_on: bool = False
+    should_be_on: ShouldBeOn = ShouldBeOn.Never
     reason: str = "Default"
 
     def dictify(self):
@@ -25,7 +27,7 @@ class ScheduleSlot:
                 self.reason != o.reason
 
     def reset(self):
-        self.should_be_on = False
+        self.should_be_on = ShouldBeOn.Never
         self.reason = "Default"
 
 def _hr_mn_to_slot_idx(hour, minute):
@@ -129,7 +131,19 @@ class Schedule:
             self._on_state_change_cb(new=active, old=applied)
             self._applied_slot = copy.copy(active)
 
-    def set_slot(self, hour, minute, should_be_on=True, reason="User set"):
+    def set_slot(self, hour, minute, should_be_on=ShouldBeOn.Never, reason="User set"):
+        if type(should_be_on) == type(''):
+            if should_be_on.lower() in ['on', 'always']:
+                should_be_on = ShouldBeOn.Always
+            elif should_be_on.lower() in ['off', 'never']:
+                should_be_on = ShouldBeOn.Never
+            elif should_be_on.lower() in ['rule']:
+                should_be_on = ShouldBeOn.Rule
+        elif type(should_be_on) == type(True):
+            if should_be_on:
+                should_be_on = ShouldBeOn.Always
+            else:
+                should_be_on = ShouldBeOn.Never
         i = _hr_mn_to_slot_idx(hour, minute)
         self._sched[i].should_be_on = should_be_on
         self._sched[i].reason = reason
@@ -148,8 +162,10 @@ class Schedule:
 
     def toggle_slot(self, hour, minute, reason="User set"):
         slot = self.get_slot(hour, minute)
-        on = not slot.should_be_on
-        self.set_slot(hour, minute, should_be_on=on, reason=reason)
+        if slot.should_be_on == ShouldBeOn.Always:
+            self.set_slot(hour, minute, should_be_on=ShouldBeOn.Never, reason=reason)
+        else:
+            self.set_slot(hour, minute, should_be_on=ShouldBeOn.Always, reason=reason)
 
     def toggle_slot_by_name(self, slot_nm, reason="User set"):
         self.toggle_slot(*slot_t_to_hr_mn(slot_nm), reason)
@@ -162,15 +178,15 @@ class Schedule:
         start_slot = self._active_slot_idx
         for i in range(hours * 4):
             j = (start_slot + i) % len(self._sched)
-            if not self._sched[j].should_be_on:
-                self._sched[j].should_be_on=True
+            if self._sched[j].should_be_on != ShouldBeOn.Always:
+                self._sched[j].should_be_on = ShouldBeOn.Always
                 self._sched[j].reason="User boost"
         self._on_state_may_change()
 
     def off_now(self):
         slot = self._active_slot_idx
-        while self._sched[slot].should_be_on:
-            self._sched[slot].should_be_on = False
+        while self._sched[slot].should_be_on != ShouldBeOn.Never:
+            self._sched[slot].should_be_on = ShouldBeOn.Never
             self._sched[slot].reason = "User requested off"
             slot = (slot + 1) % len(self._sched)
         self._on_state_may_change()

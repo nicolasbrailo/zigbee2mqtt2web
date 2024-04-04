@@ -27,7 +27,7 @@ function renderScheduleTable(sched, slotGenerator) {
       return (<tr key={`table_schedule_${hour}`}>
         {qr_groupped_sched[hour].map((slot) => {
           const slot_t = `${('0' + slot.hour).slice(-2)}:${('0' + slot.minute).slice(-2)}`;
-          const sched_slot_class = slot.should_be_on? 'heating_sched_slot_on' : 'heating_sched_slot_off';
+          const sched_slot_class = `heating_sched_slot${slot.should_be_on}`;
           return <td key={`table_schedule_${slot.hour}_${slot.minute}`} className={sched_slot_class}>
                   {slotGenerator(slot)}
                  </td>;
@@ -54,6 +54,7 @@ class Heating extends React.Component {
     this._toggleConfig = this._toggleConfig.bind(this);
     this._showLogs = this._showLogs.bind(this);
     this._applyTemplate = this._applyTemplate.bind(this);
+    this._resetTemplate = this._resetTemplate.bind(this);
     this._renderSlot = this._renderSlot.bind(this);
     this._renderTemplateSlot = this._renderTemplateSlot.bind(this);
 
@@ -108,6 +109,10 @@ class Heating extends React.Component {
     this.props.thing_registry.set_thing('Heating', 'template_apply').then(()=>{this.refresh()});
   }
 
+  _resetTemplate() {
+    this.props.thing_registry.set_thing('Heating', 'template_reset').then(()=>{this.refresh()});
+  }
+
   _toggleConfig() {
     this.setState({configuring: !this.state.configuring});
   }
@@ -149,7 +154,7 @@ class Heating extends React.Component {
   renderHeatingOverrides() {
     return <div className="card heating_cfg_ctrls">
         <div>
-          Current status: should be {this.state.should_be_on? "on" : "off"}, boiler reports {this.state.mqtt_thing_reports_on}
+          Current status: should be on? {this.state.should_be_on}, boiler reports {this.state.mqtt_thing_reports_on}
         </div>
         <button className="modal-button" onClick={this._mkBoost(1)}>Boost 1 hour</button>
         <button className="modal-button" onClick={this._mkBoost(2)}>Boost 2 hours</button>
@@ -161,6 +166,7 @@ class Heating extends React.Component {
     return <div className="card heating_cfg_ctrls">
         <button className="modal-button" onClick={this._toggleConfig}>Config</button>
         <button className="modal-button" onClick={this._applyTemplate}>Apply template / reset today schedule</button>
+        <button className="modal-button" onClick={this._resetTemplate}>Reset template</button>
         <button className="modal-button" onClick={this._showLogs}>Logs</button>
       </div>
   }
@@ -189,10 +195,11 @@ class Heating extends React.Component {
     return <div>
             {slot_name}<wbr/> Current: {slot.reason}
             <select key="`table_schedule_${slot.hour}_${slot.minute}_opt`"
-                    defaultValue={slot.should_be_on? "on" : "off"}
+                    defaultValue={slot.should_be_on}
                     onChange={cb}>
-              <option value="on">Always on</option>
-              <option value="off">Always off</option>
+              <option value="Always">Always on</option>
+              <option value="Never">Always off</option>
+              <option value="Rule">Follow rule</option>
             </select>
       </div>
   }

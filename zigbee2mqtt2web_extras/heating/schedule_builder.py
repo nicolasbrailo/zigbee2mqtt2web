@@ -3,7 +3,7 @@ import json
 import logging
 import os
 
-from .schedule import Schedule
+from .schedule import Schedule, ShouldBeOn
 
 log = logging.getLogger(__name__)
 
@@ -29,9 +29,10 @@ class ScheduleBuilder:
 
         if self._persist_file is None:
             log.warning("No persist file specified, changes to schedule are ephemeral")
+            self.reset_template_to_default()
         elif not os.path.exists(self._persist_file):
             log.info("No schedule persisted, creating new one at %s", self._persist_file)
-            self._reset_template_to_default()
+            self.reset_template_to_default()
         elif not os.path.isfile(self._persist_file):
             log.error("Specified persist path %s exists, but isn't a file. Changes to schedule won't be saved.", self._persist_file)
             self._persist_file = None
@@ -48,10 +49,6 @@ class ScheduleBuilder:
         return self._template.get_slot(*a, **kv)
 
     def set_slot(self, hour, minute, should_be_on, reason="Scheduled"):
-        if type(should_be_on) == type('') and should_be_on.lower() == 'on':
-            should_be_on = True
-        if type(should_be_on) == type('') and should_be_on.lower() == 'off':
-            should_be_on = False
         ret = self._template.set_slot(hour, minute, should_be_on, reason)
         self.save_state()
         return ret
@@ -67,14 +64,14 @@ class ScheduleBuilder:
         self.save_state()
         return slots_changed
 
-    def _reset_template_to_default(self):
-        for hr in range(0, 23):
+    def reset_template_to_default(self):
+        for hr in range(0, 24):
             for mn in range(0, 60, 15):
-                self.set_slot(hr, mn, False, "Scheduled")
+                self.set_slot(hr, mn, ShouldBeOn.Never, "Scheduled")
         self.save_state()
 
     def apply_template_to_today(self):
-        for hr in range(0, 23):
+        for hr in range(0, 24):
             for mn in range(0, 60, 15):
                 tmpl = self.get_slot(hr, mn)
                 self._active.set_slot(hr, mn, tmpl.should_be_on, tmpl.reason)
