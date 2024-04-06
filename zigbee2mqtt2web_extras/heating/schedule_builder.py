@@ -29,10 +29,10 @@ class ScheduleBuilder:
 
         if self._persist_file is None:
             log.warning("No persist file specified, changes to schedule are ephemeral")
-            self.reset_template_to_default()
+            self.reset_template(ShouldBeOn.Never)
         elif not os.path.exists(self._persist_file):
             log.info("No schedule persisted, creating new one at %s", self._persist_file)
-            self.reset_template_to_default()
+            self.reset_template(ShouldBeOn.Never)
         elif not os.path.isfile(self._persist_file):
             log.error("Specified persist path %s exists, but isn't a file. Changes to schedule won't be saved.", self._persist_file)
             self._persist_file = None
@@ -64,10 +64,10 @@ class ScheduleBuilder:
         self.save_state()
         return slots_changed
 
-    def reset_template_to_default(self):
+    def reset_template(self, reset_state):
         for hr in range(0, 24):
             for mn in range(0, 60, 15):
-                self.set_slot(hr, mn, ShouldBeOn.Never, "Scheduled")
+                self.set_slot(hr, mn, reset_state, "Scheduled")
         self.save_state()
 
     def apply_template_to_today(self):
@@ -100,8 +100,9 @@ class ScheduleBuilder:
         def _apply(serialized, restore):
             for serslot in serialized:
                 try:
-                    hr, mn, should_be_on, reason = serslot['hour'], serslot['minute'], serslot['should_be_on'], serslot['reason']
-                    restore.set_slot(hr, mn, should_be_on, reason)
+                    restore.set_slot(serslot['hour'], serslot['minute'],
+                                     ShouldBeOn.guess_value(serslot['should_be_on']),
+                                     serslot['reason'])
                 except KeyError:
                     log.warning("Ignoring invalid template slot: %s", serslot)
 

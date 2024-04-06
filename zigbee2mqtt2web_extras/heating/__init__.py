@@ -33,8 +33,8 @@ class Heating(PhonyZMWThing):
 
         self.zmw = zmw
         self.schedule_file = '/home/batman/BatiCasa/heating.schedule.json'
-        self.boiler_name = 'Boiler'
-        #self.boiler_name = 'Batioficina'
+        #self.boiler_name = 'Boiler'
+        self.boiler_name = 'Batioficina'
         self.boiler = None
         self.pending_state = None
         self.schedule = ScheduleBuilder(self._on_boiler_state_should_change, self.schedule_file)
@@ -55,7 +55,7 @@ class Heating(PhonyZMWThing):
         self._add_action('template_apply', 'Apply template to today\'s schedule, overwrite user settings',
                          setter=lambda _: self.schedule.apply_template_to_today())
         self._add_action('template_reset', "Reset the template to default (doesn't change active schedule)",
-                         setter=lambda _: self.schedule.reset_template_to_default())
+                         setter=self.schedule.reset_template)
         self._add_action('log_url', 'Retrieve heating logs',
                          getter=lambda: _WWW_LOG_ENDPOINT)
 

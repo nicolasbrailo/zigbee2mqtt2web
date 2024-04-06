@@ -207,12 +207,17 @@ class ScheduleBuilderTest(unittest.TestCase):
         sut = ScheduleBuilder(ignore_state_changes, None, clock)
         sut.from_json(get_all_on_schedule())
         sut.apply_template_to_today()
-        sut.reset_template_to_default()
+        sut.reset_template(ShouldBeOn.Never)
         for hr in range(0, 24):
             for mn in range(0, 60, 15):
                 self.assertEqual(sut.active().get_slot(hr, mn).should_be_on, ShouldBeOn.Always, f"Failed slot {hr}:{mn}")
                 self.assertEqual(sut.get_slot(hr, mn).should_be_on, ShouldBeOn.Never, f"Failed template slot {hr}:{mn}")
-
+        sut.apply_template_to_today()
+        sut.reset_template(ShouldBeOn.Rule)
+        for hr in range(0, 24):
+            for mn in range(0, 60, 15):
+                self.assertEqual(sut.active().get_slot(hr, mn).should_be_on, ShouldBeOn.Never, f"Failed slot {hr}:{mn}")
+                self.assertEqual(sut.get_slot(hr, mn).should_be_on, ShouldBeOn.Rule, f"Failed template slot {hr}:{mn}")
 
 
 if __name__ == '__main__':

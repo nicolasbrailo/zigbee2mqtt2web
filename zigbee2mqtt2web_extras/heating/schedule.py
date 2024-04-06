@@ -9,6 +9,26 @@ class ShouldBeOn(str, Enum):
     Never = 'Never'
     Rule = 'Rule'
 
+    @staticmethod
+    def guess_value(should_be_on):
+        if type(should_be_on) == ShouldBeOn:
+            return should_be_on
+        elif type(should_be_on) == type(''):
+            if should_be_on.lower() in ['on', 'always']:
+                return ShouldBeOn.Always
+            elif should_be_on.lower() in ['off', 'never']:
+                return ShouldBeOn.Never
+            elif should_be_on.lower() in ['rule']:
+                return ShouldBeOn.Rule
+        elif type(should_be_on) == type(True):
+            if should_be_on:
+                return ShouldBeOn.Always
+            else:
+                return ShouldBeOn.Never
+
+        raise 42
+        return ShouldBeOn.Never
+
 log = logging.getLogger(__name__)
 
 @dataclass(frozen=False)
@@ -132,20 +152,8 @@ class Schedule:
             self._applied_slot = copy.copy(active)
 
     def set_slot(self, hour, minute, should_be_on=ShouldBeOn.Never, reason="User set"):
-        if type(should_be_on) == type(''):
-            if should_be_on.lower() in ['on', 'always']:
-                should_be_on = ShouldBeOn.Always
-            elif should_be_on.lower() in ['off', 'never']:
-                should_be_on = ShouldBeOn.Never
-            elif should_be_on.lower() in ['rule']:
-                should_be_on = ShouldBeOn.Rule
-        elif type(should_be_on) == type(True):
-            if should_be_on:
-                should_be_on = ShouldBeOn.Always
-            else:
-                should_be_on = ShouldBeOn.Never
         i = _hr_mn_to_slot_idx(hour, minute)
-        self._sched[i].should_be_on = should_be_on
+        self._sched[i].should_be_on = ShouldBeOn.guess_value(should_be_on)
         self._sched[i].reason = reason
         self._on_state_may_change()
 

@@ -54,7 +54,8 @@ class Heating extends React.Component {
     this._toggleConfig = this._toggleConfig.bind(this);
     this._showLogs = this._showLogs.bind(this);
     this._applyTemplate = this._applyTemplate.bind(this);
-    this._resetTemplate = this._resetTemplate.bind(this);
+    this._resetTemplateAlwaysOff = this._resetTemplateAlwaysOff.bind(this);
+    this._resetTemplateAlwaysRule = this._resetTemplateAlwaysRule.bind(this);
     this._renderSlot = this._renderSlot.bind(this);
     this._renderTemplateSlot = this._renderTemplateSlot.bind(this);
 
@@ -109,8 +110,12 @@ class Heating extends React.Component {
     this.props.thing_registry.set_thing('Heating', 'template_apply').then(()=>{this.refresh()});
   }
 
-  _resetTemplate() {
-    this.props.thing_registry.set_thing('Heating', 'template_reset').then(()=>{this.refresh()});
+  _resetTemplateAlwaysOff() {
+    this.props.thing_registry.set_thing('Heating', 'template_reset=Never').then(()=>{this.refresh()});
+  }
+
+  _resetTemplateAlwaysRule() {
+    this.props.thing_registry.set_thing('Heating', 'template_reset=Rule').then(()=>{this.refresh()});
   }
 
   _toggleConfig() {
@@ -133,7 +138,7 @@ class Heating extends React.Component {
       return "Loading configuration...";
     }
     return <div>
-        {this.renderConfigControls()}
+        {this.renderTemplateControls()}
         {renderScheduleTable(this.state.schedule_template, this._renderTemplateSlot)}
       </div>;
   }
@@ -165,8 +170,17 @@ class Heating extends React.Component {
   renderConfigControls() {
     return <div className="card heating_cfg_ctrls">
         <button className="modal-button" onClick={this._toggleConfig}>Config</button>
+        <button className="modal-button" onClick={this._applyTemplate}>Reset today schedule</button>
+        <button className="modal-button" onClick={this._showLogs}>Logs</button>
+      </div>
+  }
+
+  renderTemplateControls() {
+    return <div className="card heating_cfg_ctrls">
+        <button className="modal-button" onClick={this._toggleConfig}>Finish Config</button>
         <button className="modal-button" onClick={this._applyTemplate}>Apply template / reset today schedule</button>
-        <button className="modal-button" onClick={this._resetTemplate}>Reset template</button>
+        <button className="modal-button" onClick={this._resetTemplateAlwaysOff}>Reset template: Always off</button>
+        <button className="modal-button" onClick={this._resetTemplateAlwaysRule}>Reset template: Always rule-based</button>
         <button className="modal-button" onClick={this._showLogs}>Logs</button>
       </div>
   }
