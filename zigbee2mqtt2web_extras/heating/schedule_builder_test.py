@@ -206,10 +206,11 @@ class ScheduleBuilderTest(unittest.TestCase):
                 self.assertEqual(sut.get_slot(hr, mn).allow_on, AllowOn.Rule, f"Failed template slot {hr}:{mn}")
 
     def test_apply_rules(self):
-        def foo(sched):
-            sched.set_now_from_rule(False, "Rule")
+        class S:
+            def apply(self, sched):
+                sched.set_now_from_rule(False, "Rule")
         clock = FakeClock(15, 30)
-        sut = ScheduleBuilder(ignore_state_changes, None, [foo], clock)
+        sut = ScheduleBuilder(ignore_state_changes, None, [S()], clock)
         sut.from_json(get_schedule_all_slots(AllowOn.Always))
         sut.active().set_slot(15, 30, allow_on=AllowOn.Rule)
 
@@ -221,12 +222,14 @@ class ScheduleBuilderTest(unittest.TestCase):
         self.assertEqual(sut.active().get_slot(15, 30).request_on, False)
 
     def test_apply_rules_in_order(self):
-        def r1(sched):
-            sched.set_now_from_rule(True, "Rule1")
-        def r2(sched):
-            sched.set_now_from_rule(False, "Rule2")
+        class R1:
+            def apply(self, sched):
+                sched.set_now_from_rule(True, "Rule1")
+        class R2:
+            def apply(self, sched):
+                sched.set_now_from_rule(False, "Rule2")
         clock = FakeClock(15, 30)
-        sut = ScheduleBuilder(ignore_state_changes, None, [r1, r2], clock)
+        sut = ScheduleBuilder(ignore_state_changes, None, [R1(), R2()], clock)
         sut.from_json(get_schedule_all_slots(AllowOn.Always))
         sut.active().set_slot(15, 30, allow_on=AllowOn.Rule)
         sut.tick()
@@ -234,15 +237,18 @@ class ScheduleBuilderTest(unittest.TestCase):
         self.assertEqual(sut.active().get_slot(15, 30).request_on, False)
 
     def test_apply_multiple_rules_notify_last(self):
-        def r1(sched):
-            sched.set_now_from_rule(True, "Rule1")
-        def r2(sched):
-            sched.set_now_from_rule(False, "Rule2")
-        def r3(sched):
-            sched.set_now_from_rule(True, "Rule3")
+        class R1:
+            def apply(self, sched):
+                sched.set_now_from_rule(True, "Rule1")
+        class R2:
+            def apply(self, sched):
+                sched.set_now_from_rule(False, "Rule2")
+        class R3:
+            def apply(self, sched):
+                sched.set_now_from_rule(True, "Rule3")
         clock = FakeClock(15, 30)
         state_change_saver = StateChangeSaver()
-        sut = ScheduleBuilder(state_change_saver.save_state_changes, None, [r1, r2, r3], clock)
+        sut = ScheduleBuilder(state_change_saver.save_state_changes, None, [R1(), R2(), R3()], clock)
 
         sut.from_json(get_schedule_all_slots(AllowOn.Always))
         sut.active().set_slot(15, 30, allow_on=AllowOn.Rule)

@@ -56,6 +56,7 @@ class ScheduleBuilder:
         return ret
 
     def tick(self, *a, **kv):
+        self.active().applying_rules(True)
         slots_changed = self._active.tick(*a, **kv)
         if slots_changed > 1:
             log.error("Tick() advanced more than one slot. Template may not be applied correctly now.")
@@ -64,9 +65,11 @@ class ScheduleBuilder:
             slot = self._template.get_slot(hr, mn)
             self._active.set_slot(hr, mn, slot.allow_on, slot.reason)
 
-        self.active().applying_rules(True)
         for rule in self._rules:
-            rule(self._active)
+            try:
+                rule.apply(self._active)
+            except:
+                log.error("Error applying rule %s", rule.__name__, exc_info=True)
         self.active().applying_rules(False)
 
         self.save_state()

@@ -10,6 +10,7 @@ sys.path.append(os.path.join(pathlib.Path(__file__).parent.resolve(), "zigbee2mq
 from zigbee2mqtt2web_extras.phony import PhonyZMWThing
 
 from .schedule import ScheduleSlot
+from .rules import create_rules_from_config
 from .schedule_builder import ScheduleBuilder, AllowOn
 from ._hijack_thing_as_boiler import _hijack_thing_as_boiler
 
@@ -18,8 +19,14 @@ log = logging.getLogger(__name__)
 _WWW_LOG_ENDPOINT = '/heating/log'
 
 class Heating(PhonyZMWThing):
-    def __init__(self, zmw):
-        self.log_file = '/home/batman/BatiCasa/heating.log'
+    def __init__(self, cfg, zmw):
+        self.log_file = cfg['log_path']
+        self.schedule_file = cfg['schedule_persist_file']
+        self.boiler_name = cfg['boiler_mqtt_thing_name']
+        self.zmw = zmw
+        self.boiler = None
+        self.pending_state = None
+
         log_file = logging.FileHandler(self.log_file, mode='w')
         log_file.setLevel(logging.DEBUG)
         log_file.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
@@ -32,13 +39,7 @@ class Heating(PhonyZMWThing):
             thing_type="heating",
         )
 
-        self.zmw = zmw
-        self.schedule_file = '/home/batman/BatiCasa/heating.schedule.json'
-        #self.boiler_name = 'Boiler'
-        self.boiler_name = 'Batioficina'
-        self.boiler = None
-        self.pending_state = None
-        self.schedule = ScheduleBuilder(self._on_boiler_state_should_change, self.schedule_file, [])
+        self.schedule = ScheduleBuilder(self._on_boiler_state_should_change, self.schedule_file, create_rules_from_config(zmw, cfg['rules']))
         self._schedule_tick_interval_secs = 60 * 3
 
         self._add_action('active_schedule', 'Get the schedule for the next 24 hours',
@@ -115,8 +116,7 @@ class Heating(PhonyZMWThing):
             # Tick every few minutes, just in case there's a bug in scheduling somewhere and to verify
             # the state of the mqtt thing
             self._scheduler.add_job(func=self._tick, trigger="interval",
-                                    seconds=5, next_run_time=datetime.now())
-                                    #seconds=self._schedule_tick_interval_secs, next_run_time=datetime.now())
+                                    seconds=self._schedule_tick_interval_secs, next_run_time=datetime.now())
         except Exception:
             self.boiler = None
             log.fatal("Boiler discovered, but boiler manager startup failed. Heating control not available", exc_info=True)
@@ -133,7 +133,7 @@ class Heating(PhonyZMWThing):
             self.pending_state = new
             return
 
-        log.info("Boiler state changed to %s (Policy: %s, reason: %s)", new.request_on, new.allow_on, new.reason)
+        log.info("Boiler state changed to %s, notifying MQTT thing (Policy: %s, reason: %s)", new.request_on, new.allow_on, new.reason)
         self.boiler.set('boiler_state', new.request_on)
         self.zmw.registry.broadcast_thing(self.boiler)
 
