@@ -27,7 +27,7 @@ function renderScheduleTable(sched, slotGenerator) {
       return (<tr key={`table_schedule_${hour}`}>
         {qr_groupped_sched[hour].map((slot) => {
           const slot_t = `${('0' + slot.hour).slice(-2)}:${('0' + slot.minute).slice(-2)}`;
-          const sched_slot_class = `heating_sched_slot${slot.should_be_on}`;
+          const sched_slot_class = slot.request_on? 'heating_sched_slotBoilerOn' : 'heating_sched_slotBoilerOff';
           return <td key={`table_schedule_${slot.hour}_${slot.minute}`} className={sched_slot_class}>
                   {slotGenerator(slot)}
                  </td>;
@@ -66,7 +66,7 @@ class Heating extends React.Component {
       configuring: false,
       active_schedule: null,
       schedule_template: null,
-      should_be_on: null,
+      allow_on: null,
       mqtt_thing_reports_on: null,
       refreshId: null,
       app_visibility,
@@ -90,7 +90,7 @@ class Heating extends React.Component {
     console.log("Refreshing boiler state...");
     this.props.thing_registry.get_thing_state('Heating').then(state => {
       this.setState({active_schedule: state.active_schedule,
-                     should_be_on: state.should_be_on,
+                     allow_on: state.allow_on,
                      mqtt_thing_reports_on: state.mqtt_thing_reports_on,
                      refreshId: setInterval(this.refresh, millisecToNextSlotChg())});
     });
@@ -157,9 +157,17 @@ class Heating extends React.Component {
   }
 
   renderHeatingOverrides() {
+    let policy_state = "Boiler manager unknown state";
+    if (this.state.allow_on == 'Never') {
+      policy_state = "Boiler should be off";
+    } else if (this.state.allow_on == 'Always') {
+      policy_state = "Boiler should be on";
+    } else if (this.state.allow_on == 'Rule') {
+      policy_state = "Rule controls boiler state";
+    }
     return <div className="card heating_cfg_ctrls">
         <div>
-          Current status: should be on? {this.state.should_be_on}, boiler reports {this.state.mqtt_thing_reports_on}
+          Current status: {policy_state}, boiler reports {this.state.mqtt_thing_reports_on}
         </div>
         <button className="modal-button" onClick={this._mkBoost(1)}>Boost 1 hour</button>
         <button className="modal-button" onClick={this._mkBoost(2)}>Boost 2 hours</button>
@@ -192,8 +200,20 @@ class Heating extends React.Component {
       const slotSet = `slot_toggle=${slot_name}`;
       this.props.thing_registry.set_thing('Heating', slotSet).then(()=>{this.refresh()});
     };
+
+    let descr = "Error";
+    if (slot.allow_on == 'Never') {
+      descr = `Off: ${slot.reason}`
+    } else if (slot.allow_on == 'Always') {
+      descr = `On: ${slot.reason}`
+    } else if (slot.allow_on == 'Rule' && slot.request_on) {
+      descr = `On: Rule ${slot.reason}`
+    } else if (slot.allow_on == 'Rule' && !slot.request_on) {
+      descr = `Off: Rule ${slot.reason}`
+    }
+
     return <button className="modal-button" onClick={cb}>
-             {slot_name}<wbr/> {slot.reason}
+             {slot_name}<wbr/> {descr}
            </button>
   }
 
@@ -207,9 +227,9 @@ class Heating extends React.Component {
     };
 
     return <div>
-            {slot_name}<wbr/> Current: {slot.reason}
+            {slot_name}<wbr/> {slot.reason}
             <select key="`table_schedule_${slot.hour}_${slot.minute}_opt`"
-                    defaultValue={slot.should_be_on}
+                    defaultValue={slot.allow_on}
                     onChange={cb}>
               <option value="Always">Always on</option>
               <option value="Never">Always off</option>

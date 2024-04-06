@@ -9,7 +9,8 @@ sys.path.append(os.path.join(pathlib.Path(__file__).parent.resolve(), "zigbee2mq
 
 from zigbee2mqtt2web_extras.phony import PhonyZMWThing
 
-from .schedule_builder import ScheduleBuilder, ShouldBeOn
+from .schedule import ScheduleSlot
+from .schedule_builder import ScheduleBuilder, AllowOn
 from ._hijack_thing_as_boiler import _hijack_thing_as_boiler
 
 log = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ class Heating(PhonyZMWThing):
         self.boiler_name = 'Batioficina'
         self.boiler = None
         self.pending_state = None
-        self.schedule = ScheduleBuilder(self._on_boiler_state_should_change, self.schedule_file)
+        self.schedule = ScheduleBuilder(self._on_boiler_state_should_change, self.schedule_file, [])
         self._schedule_tick_interval_secs = 60 * 3
 
         self._add_action('active_schedule', 'Get the schedule for the next 24 hours',
@@ -69,7 +70,7 @@ class Heating(PhonyZMWThing):
         tsched = self.schedule.active().as_jsonifyable_dict()
         return {
             "active_schedule": tsched,
-            "should_be_on": tsched[0]['should_be_on'],
+            "allow_on": tsched[0]['allow_on'],
             "mqtt_thing_reports_on": self.boiler.get('boiler_state'),
         }
 
@@ -108,7 +109,7 @@ class Heating(PhonyZMWThing):
             self.zmw.registry.register(self)
             if self.pending_state is not None:
                 log.info("Boiler discovered, applying pending state...")
-                self._on_boiler_state_should_change(new=self.pending_state, old=None)
+                self._on_boiler_state_should_change(new=self.pending_state, old=ScheduleSlot(hour=0, minute=0))
 
             self._scheduler.add_job(func=self._tick, trigger="date", run_date=self.schedule.active().get_slot_change_time())
             # Tick every few minutes, just in case there's a bug in scheduling somewhere and to verify
@@ -128,33 +129,22 @@ class Heating(PhonyZMWThing):
 
     def _on_boiler_state_should_change(self, new, old):
         if self.boiler is None:
-            log.error("Boiler state changed to %s (reason: %s), but no boiler is known yet", new.should_be_on, new.reason)
+            log.error("Boiler state changed to %s (reason: %s), but no boiler is known yet", new.request_on, new.reason)
             self.pending_state = new
             return
 
-        if new.should_be_on == ShouldBeOn.Always:
-            boiler_on = True
-            trigger = "requested always on"
-        elif new.should_be_on == ShouldBeOn.Never:
-            boiler_on = False
-            trigger = "requested always off"
-        elif new.should_be_on == ShouldBeOn.Rule:
-            boiler_on = True # TODO
-            trigger = "rule based"
-        else:
-            log.error("Unknown boiler state %s requested, will turn off", new.should_be_on)
-            boiler_on = False
-            trigger = "error"
-
-        log.info("Boiler state changed to %s (%s), reason: %s", boiler_on, trigger, new.reason)
-        self.boiler.set('boiler_state', boiler_on)
+        log.info("Boiler state changed to %s (Policy: %s, reason: %s)", new.request_on, new.allow_on, new.reason)
+        self.boiler.set('boiler_state', new.request_on)
         self.zmw.registry.broadcast_thing(self.boiler)
 
         self.zmw.announce_system_event({
             'event': 'on_boiler_state_change',
-            'boiler_on': boiler_on,
-            'boiler_on_trigger': trigger,
-            'reason': new.reason,
+            'new_request_on': new.request_on,
+            'old_request_on': old.request_on,
+            'new_allow_on': new.allow_on,
+            'old_allow_on': old.allow_on,
+            'new_reason': new.reason,
+            'old_reason': old.reason,
         })
 
     def _www_log(self):

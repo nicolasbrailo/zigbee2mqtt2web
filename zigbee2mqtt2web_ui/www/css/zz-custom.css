@@ -262,14 +262,11 @@
 .heating_sched td {
   border: 1px solid var(--color-secondary);
 }
-.heating_sched_slotAlways {
+.heating_sched_slotBoilerOn {
   background-color: var(--color-primary);
 }
-.heating_sched_slotNever {
-  /*background-color: var(--color-secondary);*/
-}
-.heating_sched_slotRule {
-  background-color: var(--font-color);
+.heating_sched_slotBoilerOff {
+  /* background-color: var(--font-color); */
 }
 #heating_cfg_ctrls button {
   width: 9rem;

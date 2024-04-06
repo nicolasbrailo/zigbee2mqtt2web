@@ -4,30 +4,29 @@ from enum import Enum
 import copy
 import logging
 
-class ShouldBeOn(str, Enum):
+class AllowOn(str, Enum):
     Always = 'Always'
     Never = 'Never'
     Rule = 'Rule'
 
     @staticmethod
-    def guess_value(should_be_on):
-        if type(should_be_on) == ShouldBeOn:
-            return should_be_on
-        elif type(should_be_on) == type(''):
-            if should_be_on.lower() in ['on', 'always']:
-                return ShouldBeOn.Always
-            elif should_be_on.lower() in ['off', 'never']:
-                return ShouldBeOn.Never
-            elif should_be_on.lower() in ['rule']:
-                return ShouldBeOn.Rule
-        elif type(should_be_on) == type(True):
-            if should_be_on:
-                return ShouldBeOn.Always
+    def guess_value(allow_on):
+        if type(allow_on) == AllowOn:
+            return allow_on
+        elif type(allow_on) == type(''):
+            if allow_on.lower() in ['on', 'always']:
+                return AllowOn.Always
+            elif allow_on.lower() in ['off', 'never']:
+                return AllowOn.Never
+            elif allow_on.lower() in ['rule']:
+                return AllowOn.Rule
+        elif type(allow_on) == type(True):
+            if allow_on:
+                return AllowOn.Always
             else:
-                return ShouldBeOn.Never
+                return AllowOn.Never
 
-        raise 42
-        return ShouldBeOn.Never
+        return AllowOn.Never
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +34,8 @@ log = logging.getLogger(__name__)
 class ScheduleSlot:
     hour: int
     minute: int
-    should_be_on: ShouldBeOn = ShouldBeOn.Never
+    allow_on: AllowOn = AllowOn.Never
+    request_on: bool = False
     reason: str = "Default"
 
     def dictify(self):
@@ -43,12 +43,41 @@ class ScheduleSlot:
 
     def different_from(self, o):
         return o is None or \
-                self.should_be_on != o.should_be_on or \
+                self.allow_on != o.allow_on or \
+                self.request_on != o.request_on or \
                 self.reason != o.reason
 
     def reset(self):
-        self.should_be_on = ShouldBeOn.Never
+        self.allow_on = AllowOn.Never
+        self.request_on = False
         self.reason = "Default"
+
+    def set_policy(self, allow_on, reason):
+        self.allow_on = AllowOn.guess_value(allow_on)
+        self.reason = reason
+        if self.allow_on == AllowOn.Always:
+            self.request_on = True
+        elif self.allow_on == AllowOn.Never:
+            self.request_on = False
+        else:
+            pass
+
+    def set_from_rule(self, request_on, reason):
+        if self.allow_on != AllowOn.Rule:
+            return
+        self.request_on = request_on
+        self.reason = reason
+
+    def toggle(self, reason):
+        if self.allow_on == AllowOn.Rule:
+            if self.request_on:
+                self.set_policy(AllowOn.Never, reason)
+            else:
+                self.set_policy(AllowOn.Always, reason)
+        elif self.allow_on == AllowOn.Always:
+            self.set_policy(AllowOn.Never, reason)
+        else:
+            self.set_policy(AllowOn.Always, reason)
 
 def _hr_mn_to_slot_idx(hour, minute):
     hour = int(hour)
@@ -96,6 +125,7 @@ class Schedule:
         self._sched = [ScheduleSlot(hour=_slot_to_hour(i), minute=_slot_to_minute(i)) for i in range(24 * 4)]
         self._active_slot_idx = _t_obj_to_slot_idx(self._clock.now())
         self._applied_slot = None
+        self._ignore_state_changes = False
         self.tick_skipped_errors = 0
         self._on_state_change_cb = on_state_change_cb
 
@@ -145,17 +175,27 @@ class Schedule:
         return advanced_slots
 
     def _on_state_may_change(self):
+        if self._ignore_state_changes:
+            return
         active = self._sched[self._active_slot_idx]
         applied = self._applied_slot
         if active.different_from(applied):
             self._on_state_change_cb(new=active, old=applied)
             self._applied_slot = copy.copy(active)
 
-    def set_slot(self, hour, minute, should_be_on=ShouldBeOn.Never, reason="User set"):
+    def set_slot(self, hour, minute, allow_on=AllowOn.Never, reason="User set"):
         i = _hr_mn_to_slot_idx(hour, minute)
-        self._sched[i].should_be_on = ShouldBeOn.guess_value(should_be_on)
-        self._sched[i].reason = reason
+        self._sched[i].set_policy(allow_on, reason)
         self._on_state_may_change()
+
+    def set_now_from_rule(self, request_on, reason):
+        self._sched[self._active_slot_idx].set_from_rule(request_on, reason)
+        self._on_state_may_change()
+
+    def applying_rules(self, working_through_rules):
+        self._ignore_state_changes = working_through_rules
+        if not working_through_rules:
+            self._on_state_may_change()
 
     def get_slot(self, hour, minute):
         i = _hr_mn_to_slot_idx(hour, minute)
@@ -169,11 +209,8 @@ class Schedule:
         return _slot_to_hour(idx), _slot_to_minute(idx)
 
     def toggle_slot(self, hour, minute, reason="User set"):
-        slot = self.get_slot(hour, minute)
-        if slot.should_be_on == ShouldBeOn.Always:
-            self.set_slot(hour, minute, should_be_on=ShouldBeOn.Never, reason=reason)
-        else:
-            self.set_slot(hour, minute, should_be_on=ShouldBeOn.Always, reason=reason)
+        self.get_slot(hour, minute).toggle(reason)
+        self._on_state_may_change()
 
     def toggle_slot_by_name(self, slot_nm, reason="User set"):
         self.toggle_slot(*slot_t_to_hr_mn(slot_nm), reason)
@@ -186,17 +223,19 @@ class Schedule:
         start_slot = self._active_slot_idx
         for i in range(hours * 4):
             j = (start_slot + i) % len(self._sched)
-            if self._sched[j].should_be_on != ShouldBeOn.Always:
-                self._sched[j].should_be_on = ShouldBeOn.Always
-                self._sched[j].reason="User boost"
+            if self._sched[j].allow_on != AllowOn.Always:
+                self._sched[j].set_policy(AllowOn.Always, "User boost")
         self._on_state_may_change()
 
+    OFF_NOW_MAX_HOURS = 5
+    OFF_NOW_MAX_SLOTS = 4 * OFF_NOW_MAX_HOURS
     def off_now(self):
         slot = self._active_slot_idx
-        while self._sched[slot].should_be_on != ShouldBeOn.Never:
-            self._sched[slot].should_be_on = ShouldBeOn.Never
-            self._sched[slot].reason = "User requested off"
+        turned_off = 0
+        while self._sched[slot].allow_on != AllowOn.Never and turned_off < self.OFF_NOW_MAX_SLOTS:
+            self._sched[slot].set_policy(AllowOn.Never, "User requested off")
             slot = (slot + 1) % len(self._sched)
+            turned_off += 1
         self._on_state_may_change()
 
     def as_jsonifyable_dict(self):
