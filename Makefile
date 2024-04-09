@@ -1,9 +1,9 @@
 .PHONY: test run shell install ui restart_and_tail_logs tail_logs ssl reinstall_pipenv_deps
 
 test:
-	#python3 -m pipenv run python -m unittest tests/*
-	#python3 -m pipenv run python -m unittest zigbee2mqtt2web_extras/heating/*_test.py
-	python3 -m pipenv run python -m unittest zigbee2mqtt2web_extras/heating/rules_test.py
+	python3 -m pipenv run python -m unittest tests/* 2> /dev/null
+	python3 -m pipenv run python -m unittest zigbee2mqtt2web_extras/heating/*_test.py 2> /dev/null
+	#python3 -m pipenv run python -m unittest zigbee2mqtt2web_extras/heating/rules_test.py
 
 run: system_has_dep_svcs
 	python3 -m pipenv run python ./main.py | tee run.log

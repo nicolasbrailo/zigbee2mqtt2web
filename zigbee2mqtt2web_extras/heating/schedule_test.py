@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime
 
+import copy
 import os
 import pathlib
 import sys
@@ -31,8 +32,8 @@ class StateChangeSaver:
         self.count = 0
 
     def save_state_changes(self, new, old):
-        self.saved_new = new
-        self.saved_old = old
+        self.saved_new = copy.copy(new)
+        self.saved_old = copy.copy(old)
         self.count += 1
 
 

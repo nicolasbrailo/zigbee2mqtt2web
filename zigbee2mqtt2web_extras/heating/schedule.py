@@ -163,6 +163,7 @@ class Schedule:
 
         idx = self._active_slot_idx
         advanced_slots = 0
+        # Reset all the slots we missed
         while idx != now_slot:
             self._sched[idx].reset()
             idx = (idx + 1) % len(self._sched)
@@ -180,6 +181,7 @@ class Schedule:
         active = self._sched[self._active_slot_idx]
         applied = self._applied_slot
         if active.different_from(applied):
+            #log.debug("State changed old=%s new=%s", applied, active)
             self._on_state_change_cb(new=active, old=applied)
             self._applied_slot = copy.copy(active)
 

@@ -24,6 +24,17 @@ def get_schedule_all_slots(policy):
     return sut.as_json()
 
 
+class RuleAlwaysOn:
+    def apply(self, sched):
+        sched.set_now_from_rule(True, self.__class__.__name__)
+class RuleAlwaysOff:
+    def apply(self, sched):
+        sched.set_now_from_rule(False, self.__class__.__name__)
+class RuleAlwaysOnAgain:
+    def apply(self, sched):
+        sched.set_now_from_rule(True, self.__class__.__name__)
+
+
 class ScheduleBuilderTest(unittest.TestCase):
     def test_default_schedule_off(self):
         sut = ScheduleBuilder(ignore_state_changes, None, NO_RULES)
@@ -206,11 +217,8 @@ class ScheduleBuilderTest(unittest.TestCase):
                 self.assertEqual(sut.get_slot(hr, mn).allow_on, AllowOn.Rule, f"Failed template slot {hr}:{mn}")
 
     def test_apply_rules(self):
-        class S:
-            def apply(self, sched):
-                sched.set_now_from_rule(False, "Rule")
         clock = FakeClock(15, 30)
-        sut = ScheduleBuilder(ignore_state_changes, None, [S()], clock)
+        sut = ScheduleBuilder(ignore_state_changes, None, [RuleAlwaysOff()], clock)
         sut.from_json(get_schedule_all_slots(AllowOn.Always))
         sut.active().set_slot(15, 30, allow_on=AllowOn.Rule)
 
@@ -218,37 +226,22 @@ class ScheduleBuilderTest(unittest.TestCase):
         self.assertEqual(sut.active().get_slot(15, 30).request_on, True)
         sut.tick()
         self.assertEqual(sut.active().get_slot(15, 30).allow_on, AllowOn.Rule)
-        self.assertEqual(sut.active().get_slot(15, 30).reason, "Rule")
+        self.assertEqual(sut.active().get_slot(15, 30).reason, "RuleAlwaysOff")
         self.assertEqual(sut.active().get_slot(15, 30).request_on, False)
 
     def test_apply_rules_in_order(self):
-        class R1:
-            def apply(self, sched):
-                sched.set_now_from_rule(True, "Rule1")
-        class R2:
-            def apply(self, sched):
-                sched.set_now_from_rule(False, "Rule2")
         clock = FakeClock(15, 30)
-        sut = ScheduleBuilder(ignore_state_changes, None, [R1(), R2()], clock)
+        sut = ScheduleBuilder(ignore_state_changes, None, [RuleAlwaysOn(), RuleAlwaysOff()], clock)
         sut.from_json(get_schedule_all_slots(AllowOn.Always))
         sut.active().set_slot(15, 30, allow_on=AllowOn.Rule)
         sut.tick()
-        self.assertEqual(sut.active().get_slot(15, 30).reason, "Rule2")
+        self.assertEqual(sut.active().get_slot(15, 30).reason, "RuleAlwaysOff")
         self.assertEqual(sut.active().get_slot(15, 30).request_on, False)
 
     def test_apply_multiple_rules_notify_last(self):
-        class R1:
-            def apply(self, sched):
-                sched.set_now_from_rule(True, "Rule1")
-        class R2:
-            def apply(self, sched):
-                sched.set_now_from_rule(False, "Rule2")
-        class R3:
-            def apply(self, sched):
-                sched.set_now_from_rule(True, "Rule3")
         clock = FakeClock(15, 30)
         state_change_saver = StateChangeSaver()
-        sut = ScheduleBuilder(state_change_saver.save_state_changes, None, [R1(), R2(), R3()], clock)
+        sut = ScheduleBuilder(state_change_saver.save_state_changes, None, [RuleAlwaysOn(), RuleAlwaysOff(), RuleAlwaysOnAgain()], clock)
 
         sut.from_json(get_schedule_all_slots(AllowOn.Always))
         sut.active().set_slot(15, 30, allow_on=AllowOn.Rule)
@@ -256,8 +249,42 @@ class ScheduleBuilderTest(unittest.TestCase):
 
         self.assertEqual(state_change_saver.saved_new.allow_on, AllowOn.Rule)
         self.assertEqual(state_change_saver.saved_new.request_on, True)
-        self.assertEqual(state_change_saver.saved_new.reason, "Rule3")
+        self.assertEqual(state_change_saver.saved_new.reason, "RuleAlwaysOnAgain")
 
+    def test_apply_rules_and_tick_notify_once(self):
+        clock = FakeClock(15, 0)
+        state_change_saver = StateChangeSaver()
+        sut = ScheduleBuilder(state_change_saver.save_state_changes, None, [RuleAlwaysOn(), RuleAlwaysOff(), RuleAlwaysOnAgain()], clock)
+
+        sut.from_json(get_schedule_all_slots(AllowOn.Never))
+        sut.active().set_slot(15, 15, allow_on=AllowOn.Rule)
+        sut.active().set_slot(15, 30, allow_on=AllowOn.Rule)
+        sut.tick()
+
+        start_count = state_change_saver.count
+        self.assertEqual(state_change_saver.saved_new.allow_on, AllowOn.Never)
+        self.assertEqual(state_change_saver.saved_new.request_on, False)
+
+        clock.set_t(15, 15)
+        sut.tick()
+        self.assertEqual(state_change_saver.count, start_count + 1)
+        self.assertEqual(state_change_saver.saved_old.allow_on, AllowOn.Never)
+        self.assertEqual(state_change_saver.saved_old.request_on, False)
+        self.assertEqual(state_change_saver.saved_new.allow_on, AllowOn.Rule)
+        self.assertEqual(state_change_saver.saved_new.request_on, True)
+        self.assertEqual(state_change_saver.saved_new.reason, "RuleAlwaysOnAgain")
+
+        clock.set_t(15, 20)
+        sut.tick()
+        self.assertEqual(state_change_saver.count, start_count + 1)
+
+        clock.set_t(15, 30)
+        sut.tick()
+        self.assertEqual(state_change_saver.count, start_count + 1)
+
+        clock.set_t(15, 45)
+        sut.tick()
+        self.assertEqual(state_change_saver.count, start_count + 2)
 
 
 if __name__ == '__main__':

@@ -69,7 +69,7 @@ class ScheduleBuilder:
             try:
                 rule.apply(self._active)
             except:
-                log.error("Error applying rule %s", rule.__name__, exc_info=True)
+                log.error("Error applying rule %s", str(rule), exc_info=True)
         self.active().applying_rules(False)
 
         self.save_state()
