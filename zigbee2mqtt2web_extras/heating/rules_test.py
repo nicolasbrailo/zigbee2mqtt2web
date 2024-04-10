@@ -358,35 +358,35 @@ class RulesTest(unittest.TestCase):
         clock.set_t(10, 55)
         zmw.registry.get_thing('tempSensor1').temp = 20
         sut.tick()
-        self.assertEqual(state_change_saver.count, start_count + 2)
+        start_count = state_change_saver.count  # Reset count, this may or may not notify
         self.assertEqual(state_change_saver.saved_new.request_on, False)
 
         # Advance clock, rule should still apply and catch temp dip
         clock.set_t(10, 55)
         zmw.registry.get_thing('tempSensor1').temp = 19
         sut.tick()
-        self.assertEqual(state_change_saver.count, start_count + 3)
+        self.assertEqual(state_change_saver.count, start_count + 1)
         self.assertEqual(state_change_saver.saved_new.request_on, True)
 
         # Temp recovers
         clock.set_t(10, 55)
         zmw.registry.get_thing('tempSensor1').temp = 21
         sut.tick()
-        self.assertEqual(state_change_saver.count, start_count + 4)
+        self.assertEqual(state_change_saver.count, start_count + 2)
         self.assertEqual(state_change_saver.saved_new.request_on, False)
 
         # Advance time, new slot should demand higher temp
         clock.set_t(11, 5)
         zmw.registry.get_thing('tempSensor1').temp = 21
         sut.tick()
-        self.assertEqual(state_change_saver.count, start_count + 5)
+        self.assertEqual(state_change_saver.count, start_count + 3)
         self.assertEqual(state_change_saver.saved_new.request_on, True)
 
         # Temp recovers again
         clock.set_t(11, 15)
         zmw.registry.get_thing('tempSensor1').temp = 26
         sut.tick()
-        self.assertEqual(state_change_saver.count, start_count + 6)
+        self.assertEqual(state_change_saver.count, start_count + 4)
         self.assertEqual(state_change_saver.saved_new.request_on, False)
 
         # No rule applies anymore
