@@ -2,6 +2,8 @@ from dataclasses import dataclass
 import logging
 log = logging.getLogger(__name__)
 
+from .schedule import AllowOn
+
 # T below this will be assumed to be a reading error
 MIN_REASONABLE_T = -5
 # T above this will be assumed to be a reading error and ignored
@@ -155,6 +157,7 @@ class ScheduledMinTargetTemp:
         if self._clock is None:
             self._clock = datetime
         self._zmw = zmw
+        self._active_rule = None
         self.sensor_schedules = {}
         for sensor in rule['sensors']:
             sensor_name = sensor['name']
@@ -169,6 +172,10 @@ class ScheduledMinTargetTemp:
                 raise ValueError(f"ScheduledMinTargetTemp was asked to monitor sensor {sensor_name}, but its schedule is empty")
 
     def apply(self, todaysched):
+        if todaysched.get_now_slot().allow_on != AllowOn.Rule:
+            log.error("Now-schedule is not rule based, but we're applying ScheduledMinTargetTemp-rule")
+            return
+
         for sensor_name, scheds in self.sensor_schedules.items():
             for sched in scheds:
                 if sched.is_active(self._clock.now()):
@@ -176,6 +183,16 @@ class ScheduledMinTargetTemp:
                     if temp is not None and temp < sched.target_temp:
                         reason = f"Sensor {sensor_name} reports {temp}C, target is {sched.target_temp}C between {sched.start_time} and {sched.end_time}"
                         todaysched.set_now_from_rule(True, reason)
+                        self._active_rule = sched
+                        return
+
+        # If we're here, no rules applied. Check if we had any active rules, and set the off reason to "rule X no longer apply"
+        if not todaysched.get_now_slot().request_on:
+            if sched.is_active(self._clock.now()):
+                reason = f"Sensor {sensor_name} reports above target temperature of {sched.target_temp}C"
+            else:
+                reason = f"Schedule for {sensor_name} finished at {sched.end_time} and is no longer active"
+            todaysched.set_now_from_rule(False, reason)
 
 
 def create_rules_from_config(zmw, rules_cfg):

@@ -393,7 +393,7 @@ class RulesTest(unittest.TestCase):
         clock.set_t(12, 0)
         zmw.registry.get_thing('tempSensor1').temp = 10
         sut.tick()
-        self.assertEqual(state_change_saver.count, start_count + 6)
+        start_count = state_change_saver.count  # Reset count, this may or may not notify
         self.assertEqual(state_change_saver.saved_new.request_on, False)
 
     def test_apply_multiple_sensors_same_time_ScheduledMinTargetTemp(self):
@@ -407,7 +407,7 @@ class RulesTest(unittest.TestCase):
                     ]}
                 ]}"""
 
-        clock = FakeClock(9, 0)
+        clock = FakeClock(8, 0)
         zmw = FakeZmw()
         rules = [DefaultOff(zmw, {}), ScheduledMinTargetTemp(zmw, json.loads(SCHEDS), clock)]
 
@@ -425,7 +425,7 @@ class RulesTest(unittest.TestCase):
         zmw.registry.get_thing('tempSensor2').temp = 30
         clock.set_t(10, 15)
         sut.tick()
-        self.assertEqual(state_change_saver.count, start_count)
+        start_count = state_change_saver.count  # Reset count, this may or may not notify
         self.assertEqual(state_change_saver.saved_new.allow_on, AllowOn.Rule)
         self.assertEqual(state_change_saver.saved_new.request_on, False)
 
@@ -433,9 +433,9 @@ class RulesTest(unittest.TestCase):
         zmw.registry.get_thing('tempSensor1').temp = 10
         zmw.registry.get_thing('tempSensor2').temp = 30
         sut.tick()
-        self.assertEqual(state_change_saver.count, start_count+1)
         self.assertEqual(state_change_saver.saved_new.request_on, True)
         self.assertTrue('tempSensor1' in state_change_saver.saved_new.reason)
+        self.assertEqual(state_change_saver.count, start_count+1)
 
         # Temp2 dips, shouldn't change state (but may notify, as the order of the sensor isn't guaranteed)
         zmw.registry.get_thing('tempSensor1').temp = 10

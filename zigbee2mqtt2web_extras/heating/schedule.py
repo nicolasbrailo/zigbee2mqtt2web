@@ -199,6 +199,10 @@ class Schedule:
         if not working_through_rules:
             self._on_state_may_change()
 
+    def get_now_slot(self):
+        """ Returns whatever this schedule thinks now is, which may not necessarily match a wallclock """
+        return self._sched[self._active_slot_idx]
+
     def get_slot(self, hour, minute):
         i = _hr_mn_to_slot_idx(hour, minute)
         return self._sched[i]
