@@ -187,12 +187,14 @@ class ScheduledMinTargetTemp:
                         return
 
         # If we're here, no rules applied. Check if we had any active rules, and set the off reason to "rule X no longer apply"
-        if not todaysched.get_now_slot().request_on:
-            if sched.is_active(self._clock.now()):
-                reason = f"Sensor {sensor_name} reports above target temperature of {sched.target_temp}C"
-            else:
-                reason = f"Schedule for {sensor_name} finished at {sched.end_time} and is no longer active"
-            todaysched.set_now_from_rule(False, reason)
+        if self._active_rule is not None:
+            if not todaysched.get_now_slot().request_on:
+                if sched.is_active(self._clock.now()):
+                    reason = f"Sensor {sensor_name} reports above target temperature of {sched.target_temp}C"
+                else:
+                    reason = f"Schedule for {sensor_name} finished at {sched.end_time} and is no longer active"
+                todaysched.set_now_from_rule(False, reason)
+            self._active_rule = None
 
 
 def create_rules_from_config(zmw, rules_cfg):
