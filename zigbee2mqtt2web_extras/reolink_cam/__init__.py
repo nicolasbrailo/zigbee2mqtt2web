@@ -217,7 +217,8 @@ class ReolinkDoorbell:
                 await self._cam.logout()
             except Exception:  # pylint: disable=broad-except
                 pass
-            self._cam = await _connect_to_cam(self._cfg, self._webhook_url)
+            self._cam, rtspurl = await _connect_to_cam(self._cfg, self._webhook_url)
+            #TODO check if the rtspurl changed
 
         must_renew = False
         try:
