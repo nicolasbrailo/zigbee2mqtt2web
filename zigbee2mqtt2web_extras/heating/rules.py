@@ -45,7 +45,7 @@ class DefaultOff:
     def __init__(self, zmw, cfg):
         pass
     def apply(self, sched):
-        log.error("Apply rule DefaultOff...")
+        log.info("Apply rule DefaultOff...")
         sched.set_now_from_rule(False, DefaultOff.REASON)
 
 
@@ -54,7 +54,7 @@ class DefaultOn:
     def __init__(self, zmw, cfg):
         pass
     def apply(self, sched):
-        log.error("Apply rule DefaultOn...")
+        log.info("Apply rule DefaultOn...")
         sched.set_now_from_rule(True, DefaultOff.REASON)
 
 class CheckTempsWithinRange:
@@ -77,7 +77,7 @@ class CheckTempsWithinRange:
             raise ValueError(f"Requested difference between max and min temp is less than {self.MIN_T_DELTA} ({self.max_temp} and {self.min_temp})")
 
     def apply(self, sched):
-        log.error("Check rule CheckTempsWithinRange...")
+        log.debug("Check rule CheckTempsWithinRange...")
         more_than_max = []
         less_than_min = []
         for sensor in self.sensors_to_monitor:
@@ -179,7 +179,7 @@ class ScheduledMinTargetTemp:
             self.sensor_schedules[sensor_name] = time_scheds
 
     def apply(self, todaysched):
-        log.error("Check rule ScheduledMinTargetTemp...")
+        log.debug("Check rule ScheduledMinTargetTemp...")
         if todaysched.get_now_slot().allow_on != AllowOn.Rule:
             log.error("Now-schedule is not rule based, but we're applying ScheduledMinTargetTemp-rule")
             return

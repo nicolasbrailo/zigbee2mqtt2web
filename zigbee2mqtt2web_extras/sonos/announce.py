@@ -8,7 +8,7 @@ https://github.com/jjlawren/sonos-websocket/tree/main
 """
 
 import asyncio
-import aiohttp
+#import aiohttp
 import time
 
 import soco
