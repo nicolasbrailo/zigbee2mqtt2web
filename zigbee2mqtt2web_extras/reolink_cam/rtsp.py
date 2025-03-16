@@ -206,7 +206,8 @@ class Rtsp:
             return
 
         if not self._recording_job:
-            log.error("Cam %s: motion reported. Tried to renew timeout, but recording is not active", self._cam_host)
+            # User may call pet_timer before starting a recording job. We can ignore this because the recording hasn't started yet.
+            # log.warning("Cam %s: motion reported, recording is not active yet. Ignore timer pet", self._cam_host)
             return
 
         with self._update_lock:
