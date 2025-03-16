@@ -341,7 +341,7 @@ class Zigbee2MqttActionValue:
             elif len(self.meta['values']) == 0:
                 # Some things seem to have no metadata for enums, so don't raise an error
                 logger.warning(
-                    'Thing "%s" received enum val "%s", but valid values set is empty', thing_name, val)
+                    'Thing "%s" received enum val "%s", but valid values set is empty', self.thing_name, val)
                 self._current = val
             else:
                 log_bad_set()
