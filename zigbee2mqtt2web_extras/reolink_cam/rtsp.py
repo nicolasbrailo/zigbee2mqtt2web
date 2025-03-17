@@ -9,7 +9,8 @@ from .ffmpeg_helper import rtsp_to_local_file, reencode_to_telegram_vid
 log = logging.getLogger(__name__)
 
 
-def _stop_cmd(log_prefix, timeout, force_log_out, proc, stdout, stderr):
+# ffmpeg returns 255 on SIGINT
+def _stop_cmd(log_prefix, timeout, force_log_out, proc, stdout, stderr, expect_retcodes=[0, 255]):
     proc.send_signal(signal.SIGINT)
     proc.wait(timeout)
 
@@ -17,7 +18,7 @@ def _stop_cmd(log_prefix, timeout, force_log_out, proc, stdout, stderr):
         log.error("%s: failed to stop in time, killing...", log_prefix)
         proc.terminate()
 
-    if proc.returncode != 0:
+    if proc.returncode not in expect_retcodes:
         log.error("%s failed, ret=%s", log_prefix, proc.returncode)
 
     # if proc.returncode != 0 or 
