@@ -114,20 +114,14 @@ class Zigbee2MqttThing:
                 elif mqtt_msg_field == 'voltage':
                     self.voltage = val
                 else:
-                    logger.critical(
+                    logger.warning(
                         'Unsupported action in mqtt message: thing %s ID %d has no %s',
                         self.name,
                         self.thing_id,
-                        mqtt_msg_field)
-                    logger.debug(
-                        'Exception in MQTT message %s',
-                        msg,
+                        mqtt_msg_field,
                         exc_info=True)
-                logger.debug(
-                    'Thing %s updated %s to %s, but field is not declared in schema',
-                    self.name,
-                    mqtt_msg_field,
-                    val)
+                    setattr(self, mqtt_msg_field, val)
+                    logger.debug('Exception in MQTT message %s', msg)
 
         if not self.is_mqtt_spammy:
             if len(changes) != 0:
