@@ -344,11 +344,17 @@ class Zigbee2MqttActionValue:
         if self.meta['type'] == 'composite':
             for key in val:
                 # The safest option is to recursively call _set_value for a
-                # composite childe. We could also call action.set_value, but
+                # composite child. We could also call action.set_value, but
                 # we'd need to carry a flag to know if this call came first
                 # from MQTT or from the user, which may risk a race condition
                 # on the value.
                 # pylint: disable=protected-access
+                if not key in self.meta['composite_actions']:
+                    logger.error(f'{self.thing_name} ignore received value {key} = {val[key]}, but {key} is not declared in the schmea - {self.debug_str()}. Will ignore this message.')
+                    self.meta['composite_actions'][key] = "IGNORE"
+                    return
+                if self.meta['composite_actions'][key] == "IGNORE":
+                    return
                 self.meta['composite_actions'][key].value._set_value(val[key])
             return
 

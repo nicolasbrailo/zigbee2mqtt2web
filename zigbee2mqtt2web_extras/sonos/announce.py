@@ -17,7 +17,6 @@ from soco.snapshot import Snapshot
 import logging
 log = logging.getLogger('ZMWSonos')
 
-
 async def _sonos_ws_connect(api_key, ip_addr):
     uri = f"wss://{ip_addr}:1443/websocket/api"
     headers = {

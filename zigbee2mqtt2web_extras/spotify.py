@@ -24,9 +24,13 @@ _SPOTIFY_SECS_BETWEEN_TOK_REFRESH = 60 * 45
 def _config_spotipy_logger(use_debug_log):
     if not use_debug_log:
         logging.getLogger('spotipy.*').setLevel(logging.INFO)
-        logging.getLogger('spotipy.client').setLevel(logging.INFO)
         logging.getLogger('spotipy.oauth2').setLevel(logging.INFO)
         logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
+        # The client will print an error for http put errors and then raise exceptions
+        # We're intersted in handling the exception, which may or may not be an error depending on
+        # system condition. For example, if we try to stop a player that's not playing, an error
+        # will be printed by spotipy however it's a safe no-op for BatiCasa
+        logging.getLogger('spotipy.client').setLevel(logging.CRITICAL)
 
 
 def _get_spotify_scopes():
