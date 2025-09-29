@@ -27,7 +27,8 @@ class Heating(PhonyZMWThing):
         self.boiler = None
         self.pending_state = None
 
-        log_file = logging.FileHandler(self.log_file, mode='w')
+        #log_file = logging.FileHandler(self.log_file, mode='w')
+        log_file = logging.TimedRotatingFileHandler(self.log_file, when='midnight', backupCount=3)
         log_file.setLevel(logging.DEBUG)
         log_file.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
         log.addHandler(log_file)
