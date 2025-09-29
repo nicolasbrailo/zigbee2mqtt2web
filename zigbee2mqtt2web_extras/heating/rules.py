@@ -181,7 +181,9 @@ class ScheduledMinTargetTemp:
     def apply(self, todaysched):
         log.debug("Check rule ScheduledMinTargetTemp...")
         if todaysched.get_now_slot().allow_on != AllowOn.Rule:
-            log.error("Now-schedule is not rule based, but we're applying ScheduledMinTargetTemp-rule")
+            # This specific rule is only for scheduled slots, but we may be running rules during non scheduled slots (eg when
+            # getting a user boost, we still want to check other rules like maximum or minimum temps)
+            log.debug("Now-schedule is not rule based, but we're applying ScheduledMinTargetTemp-rule")
             return
 
         # There was no active and applicable rule, check if a new rule applies
