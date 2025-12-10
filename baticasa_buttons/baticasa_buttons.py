@@ -3,7 +3,7 @@
 import os
 import pathlib
 
-from zzmw_common.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.service_runner import service_runner_with_www, build_logger
 from zz2m.button_action_service import ButtonActionService
 from zz2m.light_helpers import (
     any_light_on,

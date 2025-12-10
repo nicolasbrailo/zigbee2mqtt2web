@@ -1,12 +1,4 @@
 Next:
-* Untested: bcast of contact sensors
-* Untsted: doorman receives bcast of sensors
-* Untsted: doorman rename
-* Untsted: doorman schedules door open scene
-* Mqtt contact mon -> trigger mqtt events on contact open -> relay to scene service -> Implement door open scene
-* Add back helper with geolocation to understand darkness rate
-* The "door open scene" should remain active while motion is detected in the fron door by the camera
-TODO:
 * Auto port assign
 * Move baticasa_buttons out of generic zmw project
 * Make dashboard load faster - load lights first, deferr other requests?
@@ -14,7 +6,6 @@ TODO:
 * Review all UI code for mqtt_heating, there's too much vibe
 * dashboard svc -> How do I install authbind automatically
 * all svcs -> Add logs view (which is now part of the base svc runner)
-* all svcs -> Rename main.py to follow service name, so they don't look all the same on edit
 * all svcs -> Run tests as part of systemd service start?
 * all svcs -> lint and check test coverage
 * new svc Implement presence sensor to aggregate multiple PIRs, turn on/off lights in kitchen
@@ -28,7 +19,6 @@ TODO:
 * mqtt_doorbell -> audit usage of exceptions, there are many that can escape in reolink.py
 * mqtt_speaker_announce Test mic record for announce service
 * buttons service transition period isn't working for world off
-* buttons service -> refactor logic so it has less duplicate code
 * cronnenbergs: alert Olivia dientes y tarea
 * cronnenbers: vacation mode
 * telegram command to pause notifications

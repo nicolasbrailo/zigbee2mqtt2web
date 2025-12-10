@@ -6,7 +6,7 @@ import os
 import signal
 
 from ffmpeg_helper import rtsp_to_local_file, reencode_to_telegram_vid
-from zzmw_common.service_runner import build_logger
+from zzmw_lib.service_runner import build_logger
 
 log = build_logger("CamRtsp")
 

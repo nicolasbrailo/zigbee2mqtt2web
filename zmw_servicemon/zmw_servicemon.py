@@ -9,8 +9,8 @@ from datetime import datetime
 from ansi2html import Ansi2HTMLConverter
 from flask import abort
 
-from zzmw_common.mqtt_proxy import MqttServiceClient
-from zzmw_common.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.mqtt_proxy import MqttServiceClient
+from zzmw_lib.service_runner import service_runner_with_www, build_logger
 
 from journal_monitor import JournalMonitor
 

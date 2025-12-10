@@ -1,6 +1,7 @@
-import logging
-log = logging.getLogger("Zigbee2MqttProxy")
-log.setLevel(logging.INFO)
+from zzmw_lib.service_runner import build_logger
+log = build_logger("Z2M")
+
+from zz2m.light_helpers import monkeypatch_lights
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from ctypes import c_int32
@@ -10,7 +11,7 @@ import dataclasses
 import os
 import signal
 
-from zzmw_common.mqtt_proxy import MqttProxy
+from zzmw_lib.mqtt_proxy import MqttProxy
 from .thing import parse_from_zigbee2mqtt
 
 class Z2MProxy:
@@ -138,6 +139,7 @@ class Z2MProxy:
 
         is_first_discovery = not self._z2m_devices_discovered
         self._z2m_devices_discovered = True
+        monkeypatch_lights(self)
         if not self._cb_on_z2m_network_discovery:
             log.info('Zigbee2Mqtt network,%s device definition published. Discovered %d things.',
                      " first" if is_first_discovery else "", len(self._known_things.keys()))

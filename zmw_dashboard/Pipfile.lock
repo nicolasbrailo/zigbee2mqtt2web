@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "0039fcc7097636d3fc838c271db774a5eda4dd18c964e59951055a24add3cccb"
+            "sha256": "5194cb512c17323962a713ebbfa1cd9082fedc74b4e2c684a39992bf68821dd1"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -926,7 +926,7 @@
             "markers": "python_version >= '3.9'",
             "version": "==1.22.0"
         },
-        "zzmw-common": {
+        "zzmw-lib": {
             "editable": true,
             "path": "/home/batman/src/BatiCasa/zigbee2mqtt2web/zzmw_lib"
         }

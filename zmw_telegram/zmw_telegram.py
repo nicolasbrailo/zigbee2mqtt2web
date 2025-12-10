@@ -3,8 +3,8 @@ import json
 import pathlib
 import os
 
-from zzmw_common.mqtt_proxy import MqttProxy
-from zzmw_common.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.mqtt_proxy import MqttProxy
+from zzmw_lib.service_runner import service_runner_with_www, build_logger
 
 from pytelegrambot import TelegramLongpollBot
 

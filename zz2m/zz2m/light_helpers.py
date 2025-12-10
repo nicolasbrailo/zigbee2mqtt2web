@@ -3,7 +3,7 @@ from .thing import Zigbee2MqttActionValue
 
 import time
 
-from zzmw_common.service_runner import build_logger
+from zzmw_lib.service_runner import build_logger
 log = build_logger("Z2M")
 
 def _rgb_to_cie_xy(rgb_color):

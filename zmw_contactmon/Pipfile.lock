@@ -202,7 +202,7 @@
             "editable": true,
             "path": "/home/batman/src/BatiCasa/zigbee2mqtt2web/zz2m"
         },
-        "zzmw-common": {
+        "zzmw-lib": {
             "editable": true,
             "path": "/home/batman/src/BatiCasa/zigbee2mqtt2web/zzmw_lib"
         }

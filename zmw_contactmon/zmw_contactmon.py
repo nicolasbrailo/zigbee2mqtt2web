@@ -2,8 +2,8 @@
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from zzmw_common.mqtt_proxy import MqttServiceClient
-from zzmw_common.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.mqtt_proxy import MqttServiceClient
+from zzmw_lib.service_runner import service_runner_with_www, build_logger
 
 from timeout_mon import TimeoutMonitor
 from transition_executor import TransitionExecutor

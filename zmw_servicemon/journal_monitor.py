@@ -7,7 +7,7 @@ from datetime import datetime
 from dateutil import parser
 from systemd import journal
 
-from zzmw_common.service_runner import build_logger
+from zzmw_lib.service_runner import build_logger
 
 log = build_logger("JournalMonitor")
 

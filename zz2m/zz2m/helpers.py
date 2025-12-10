@@ -1,4 +1,4 @@
-from zzmw_common.service_runner import build_logger
+from zzmw_lib.service_runner import build_logger
 log = build_logger("Z2M")
 
 def bind_callbacks_to_z2m_actions(obj, prefix, known_things, global_pre_cb=None):

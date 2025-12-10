@@ -7,8 +7,8 @@ from collections import deque
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from zzmw_common.mqtt_proxy import MqttServiceClient
-from zzmw_common.service_runner import service_runner_with_www, build_logger, get_this_service_logs
+from zzmw_lib.mqtt_proxy import MqttServiceClient
+from zzmw_lib.service_runner import service_runner_with_www, build_logger, get_this_service_logs
 from zz2m.z2mproxy import Z2MProxy
 
 from rules import create_rules_from_config

@@ -10,8 +10,8 @@ from spotipy import SpotifyException
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from zzmw_common.mqtt_proxy import MqttProxy
-from zzmw_common.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.mqtt_proxy import MqttProxy
+from zzmw_lib.service_runner import service_runner_with_www, build_logger
 
 log = build_logger("ZmwSpotify")
 

@@ -8,7 +8,7 @@ import urllib.request
 
 from pathlib import Path
 from urllib.parse import quote
-from zzmw_common.service_runner import build_logger
+from zzmw_lib.service_runner import build_logger
 
 log = build_logger("MqttSpeakerAnnounceTTS")
 

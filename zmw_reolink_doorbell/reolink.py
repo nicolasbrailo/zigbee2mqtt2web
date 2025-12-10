@@ -12,7 +12,7 @@ from threading import Lock
 
 from rtsp import Rtsp
 
-from zzmw_common.service_runner import build_logger
+from zzmw_lib.service_runner import build_logger
 from reolink_aio.api import Host as ReolinkDoorbellHost
 from reolink_aio.exceptions import SubscriptionError
 from reolink_aio.helpers import parse_reolink_onvif_event

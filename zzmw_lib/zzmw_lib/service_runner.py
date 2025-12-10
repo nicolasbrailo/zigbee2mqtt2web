@@ -84,29 +84,6 @@ def _get_config():
     return cfg
 
 
-def service_runner(AppClass):
-    """
-    Run a service application without web interface.
-
-    Loads config.json, instantiates the service class, and runs it with
-    proper signal handling for graceful shutdown.
-
-    Args:
-        AppClass: Service class to instantiate. Must have __init__(cfg) and
-                  loop_forever() and stop() methods.
-    """
-    cfg = _get_config()
-    app = AppClass(cfg)
-
-    def signal_handler(sig, frame):
-        log.info("Shutdown requested by signal, stop app...")
-        app.stop()
-        log.info("Clean exit")
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, signal_handler)
-    app.loop_forever()
-
 def is_safe_path(basedir, path, follow_symlinks=False):
     """
     Validates that a file path is safe and within the allowed base directory.

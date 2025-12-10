@@ -1,0 +1,19 @@
+{
+  "mqtt_ip": "localhost",
+  "mqtt_port": 1883,
+  "http_host": "10.0.0.10",
+  "http_port": 4212,
+
+  "latlon_comment": "Used to determine when it's dark outside, and lights should automatically turn on",
+  "latlon": [
+    51.5476529,
+    -0.1255959
+  ],
+
+  "door_open_scene_timeout_secs": 10,
+  "door_open_scene_thing_to_manage": ["CocinaMesa"],
+
+  "doorbell_contact_sensor": "ContactSensor_FrontDoor",
+  "doorbell_announce_sound": "/home/batman/src/baticasa2/mqtt_door_man/knockknock.mp3",
+  "doorbell_announce_volume": 60
+}

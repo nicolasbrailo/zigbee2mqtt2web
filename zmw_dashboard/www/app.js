@@ -34,8 +34,8 @@ function LightsSection(props) {
     <div className="dashboard-section" id="lights-section">
       {React.createElement(
         MqttLights,
-        MqttLights.buildProps('/mqtt_lights'))}
-      <a href={ProxiedServices.get('mqtt_lights')}><img src="/mqtt_lights/favicon.ico"/></a>
+        MqttLights.buildProps('/zmw_lights'))}
+      <a href={ProxiedServices.get('zmw_lights')}><img src="/zmw_lights/favicon.ico"/></a>
     </div>
   );
 }
@@ -43,10 +43,10 @@ function LightsSection(props) {
 function SpeakersSection(props) {
   return (
     <div className="dashboard-section" id="speakers-section">
-      <a href={ProxiedServices.get('mqtt_speaker_announce')}><img src="/mqtt_speaker_announce/favicon.ico"/></a>
+      <a href={ProxiedServices.get('zmw_speaker_announce')}><img src="/zmw_speaker_announce/favicon.ico"/></a>
       {React.createElement(
         TTSAnnounce,
-        TTSAnnounce.buildProps('/mqtt_speaker_announce'))}
+        TTSAnnounce.buildProps('/zmw_speaker_announce'))}
     </div>
   );
 }
@@ -54,10 +54,10 @@ function SpeakersSection(props) {
 function ContactMonSection(props) {
   return (
     <div className="dashboard-section" id="contactmon-section">
-      <a href={ProxiedServices.get('mqtt_contact_mon')}><img src="/mqtt_contact_mon/favicon.ico"/></a>
+      <a href={ProxiedServices.get('zmw_contactmon')}><img src="/zmw_contactmon/favicon.ico"/></a>
       {React.createElement(
         ContactMonitor,
-        ContactMonitor.buildProps('/mqtt_contact_mon'))}
+        ContactMonitor.buildProps('/zmw_contactmon'))}
     </div>
   );
 }
@@ -65,10 +65,10 @@ function ContactMonSection(props) {
 function MqttHeatingSection(props) {
   return (
     <div className="dashboard-section" id="heating-section">
-      <h2><a href={ProxiedServices.get('mqtt_heating')}><img src="/mqtt_heating/favicon.ico"/></a>Heating</h2>
+      <h2><a href={ProxiedServices.get('zmw_heating')}><img src="/zmw_heating/favicon.ico"/></a>Heating</h2>
       {React.createElement(
         HeatingControls,
-        HeatingControls.buildProps('/mqtt_heating'))}
+        HeatingControls.buildProps('/zmw_heating'))}
     </div>
   );
 }
@@ -76,10 +76,10 @@ function MqttHeatingSection(props) {
 function DoorbellCamSection(props) {
   return (
     <div className="dashboard-section" id="doorbell-cam-section">
-      <a href={ProxiedServices.get('mqtt_doorbell_cam')}><img src="/mqtt_doorbell_cam/favicon.ico"/></a>
+      <a href={ProxiedServices.get('zmw_doorbell_cam')}><img src="/zmw_doorbell_cam/favicon.ico"/></a>
       {React.createElement(
         CamViewer,
-        CamViewer.buildProps('/mqtt_doorbell_cam', ProxiedServices.get('mqtt_doorbell_cam')))}
+        CamViewer.buildProps('/zmw_doorbell_cam', ProxiedServices.get('zmw_doorbell_cam')))}
     </div>
   );
 }
@@ -87,12 +87,12 @@ function DoorbellCamSection(props) {
 function SensorsListSection(props) {
   return (
     <div className="dashboard-section" id="sensors-list-section" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <a href={ProxiedServices.get('mqtt_sensor_mon')}>
-        <img src="/mqtt_sensor_mon/favicon.ico"/>
+      <a href={ProxiedServices.get('zmw_sensormon')}>
+        <img src="/zmw_sensormon/favicon.ico"/>
       </a>
       {React.createElement(
         SensorsList,
-        { metrics: ['temperature'], api_base_path: '/mqtt_sensor_mon' })}
+        { metrics: ['temperature'], api_base_path: '/zmw_sensormon' })}
     </div>
   );
 }
@@ -159,10 +159,10 @@ function Dashboard(props) {
         <SensorsListSection />
 
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-          { renderSvcBtn('Announce', 'mqtt_speaker_announce') }
-          { renderSvcBtn('Contact', 'mqtt_contact_mon') }
-          { renderSvcBtn('Heating', 'mqtt_heating') }
-          { renderSvcBtn('Door', 'mqtt_doorbell_cam') }
+          { renderSvcBtn('Announce', 'zmw_speaker_announce') }
+          { renderSvcBtn('Contact', 'zmw_contactmon') }
+          { renderSvcBtn('Heating', 'zmw_heating') }
+          { renderSvcBtn('Door', 'zmw_reolink_doorbell') }
           { /* TODO move these to a config */}
           { renderBtn("Baticasa Services", "http://10.0.0.10:4200/index.html", "http://10.0.0.10:4200/favicon.ico") }
           { renderBtn("Z2M", "http://10.0.0.10:4100", "/z2m.ico") }

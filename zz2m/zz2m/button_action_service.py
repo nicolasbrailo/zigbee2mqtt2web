@@ -5,8 +5,8 @@ from flask import request
 
 from zz2m.helpers import bind_callbacks_to_z2m_actions
 from zz2m.light_helpers import monkeypatch_lights
-from zzmw_common.mqtt_proxy import MqttServiceClient
-from zzmw_common.service_runner import build_logger
+from zzmw_lib.mqtt_proxy import MqttServiceClient
+from zzmw_lib.service_runner import build_logger
 from zz2m.z2mproxy import Z2MProxy
 
 log = build_logger("ButtonActionService")

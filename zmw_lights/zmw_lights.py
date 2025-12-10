@@ -4,11 +4,11 @@ import pathlib
 from datetime import datetime
 from collections import deque
 
-from zzmw_common.mqtt_proxy import MqttServiceClient
-from zzmw_common.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.mqtt_proxy import MqttServiceClient
+from zzmw_lib.service_runner import service_runner_with_www, build_logger
 
 from zz2m.z2mproxy import Z2MProxy
-from zz2m.light_helpers import monkeypatch_lights, turn_all_lights_off
+from zz2m.light_helpers import turn_all_lights_off
 from zz2m.www import Z2Mwebservice
 
 from apscheduler.triggers.cron import CronTrigger
@@ -35,7 +35,6 @@ class ZmwLights(MqttServiceClient):
 
     def _on_z2m_network_discovery(self, _is_first_discovery, known_things):
         log.info("Z2M network discovered, there are %d lights", len(known_things))
-        monkeypatch_lights(self._z2m)
         self._lights = self._z2m.get_all_registered_things()
         # TODO get delta between old and new lights, if it changed announce the changes
         for light in self._lights:

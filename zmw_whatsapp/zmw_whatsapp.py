@@ -6,8 +6,8 @@ import pathlib
 from datetime import datetime
 from collections import deque
 
-from zzmw_common.mqtt_proxy import MqttProxy
-from zzmw_common.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.mqtt_proxy import MqttProxy
+from zzmw_lib.service_runner import service_runner_with_www, build_logger
 from whatsapp import WhatsApp
 
 log = build_logger("ZmwWhatsapp")

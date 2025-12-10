@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "c039af36b3d05a85c85a33c3f6ba9f61565a495e1f3ee3fac44cabc3c79c2ed3"
+            "sha256": "8e6867dbae5fc0ca42e5cf23e3bc2b11e64766244101f037959068ad38eb8116"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -202,7 +202,7 @@
             "editable": true,
             "path": "/home/batman/src/BatiCasa/zigbee2mqtt2web/zz2m"
         },
-        "zzmw-common": {
+        "zzmw-lib": {
             "editable": true,
             "path": "/home/batman/src/BatiCasa/zigbee2mqtt2web/zzmw_lib"
         }

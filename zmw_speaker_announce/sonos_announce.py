@@ -13,7 +13,7 @@ import soco
 import time
 
 from soco.snapshot import Snapshot
-from zzmw_common.service_runner import build_logger
+from zzmw_lib.service_runner import build_logger
 
 log = build_logger("MqttSpeakerAnnounceSonos")
 
