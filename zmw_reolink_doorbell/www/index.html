@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="icon" href="favicon.ico" type="image/x-icon"/>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<title>Cams</title>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/rel.css">
+
+<style>
+.cam-container {
+  margin: 0;
+  padding: 0;
+  padding-left: 2.5%;
+  margin-left: 2.5%;
+  width: 95%;
+}
+
+.cam-controls {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.snap-button {
+  padding: 12px 20px;
+  border-radius: 6px;
+  border: none;
+  background-color: var(--color-primary);
+  color: var(--font-color);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.snap-button:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.snap-button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+.record-button {
+  padding: 12px 20px;
+  border-radius: 6px;
+  border: none;
+  background-color: var(--color-error);
+  color: white;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.record-button:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.record-button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+.nvr-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.nvr-link:hover {
+  text-decoration: underline;
+}
+
+.cam-image-container {
+  margin-top: 20px;
+}
+
+.cam-image {
+  width: 80%;
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+</style>
+</head>
+
+<body class="dark">
+  <h1><img src="/favicon.ico" alt="Camera"/>Doorbell Camera</h1>
+  <div id="global_loading" class="app-loading">
+    Loading...
+  </div>
+  <div id="global_error_ui" class="no-error">
+    <div id="global_error_msg" class="container"></div>
+    <button id="global_error_ui_ack">OK</button>
+  </div>
+  <div class="row container" id="app_root">
+  </div>
+</body>
+
+<script src='/extjs/z2m.react.js'></script>
+<script src="/app.rel.js"></script>
+<script>z2mStartReactApp('#app_root', CamViewer)</script>
+</html>

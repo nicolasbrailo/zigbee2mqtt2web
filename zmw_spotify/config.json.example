@@ -1,0 +1,15 @@
+{
+  "mqtt_comment": "MQTT server we'll try to listen to",
+  "mqtt_ip": "localhost",
+  "mqtt_port": 1883,
+
+  "http_host": "10.0.0.10",
+  "http_port": 4205,
+
+  "client_id": "YOUR_SPOTIFY_CLIENT_ID",
+  "client_secret": "YOUR_SPOTIFY_CLIENT_SECRET",
+  "redirect_uri": "http://localhost:8888/callback",
+  "spotipy_cache": ".spotify_cache",
+
+  "JSON": "IS SILLY"
+}

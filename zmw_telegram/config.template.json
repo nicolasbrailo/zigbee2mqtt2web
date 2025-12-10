@@ -1,0 +1,16 @@
+{
+  "COMMENT": "Telegram integration",
+  "tok": "THIS_IS_A_PASSWORD_BE_CAREFUL",
+  "short_poll_interval_secs": 5,
+  "long_poll_interval_secs": 30,
+  "bcast_chat_id": 123123123,
+  "accepted_chat_ids": [123, 2345],
+
+  "comment": "How many messages are kept in the service's history",
+  "msg_history_len": 50,
+
+  "http_host": "10.0.0.10",
+  "http_port": 4202,
+
+  "JSON": "IS SILLY"
+}

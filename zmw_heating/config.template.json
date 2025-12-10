@@ -1,0 +1,39 @@
+{
+  "mqtt_comment": "MQTT server we'll try to listen to",
+  "mqtt_ip": "localhost",
+  "mqtt_port": 1883,
+
+  "http_host": "10.0.0.10",
+  "http_port": 4209,
+
+  "zigbee_boiler_name": "Boiler",
+  "schedule_persist_file": "./mqttheating.sched.json",
+  "rules": [
+    {"name": "DefaultOff"},
+    {
+      "name": "CheckTempsWithinRange", "min_temp": 10, "max_temp": 25,
+      "sensors": ["CocinaTempSensor"]
+    },
+    {
+      "name": "CheckTempsWithinRange", "min_temp": 15, "max_temp": 25,
+      "sensors": ["BanioTempSensor", "EmmaTempSensor", "OliviaAQMSensor", "TVRoomAQMSensor", "BaticuartoAQMSensor"]
+    },
+    {
+      "name": "ScheduledMinTargetTemp",
+      "sensors": [{
+        "name": "EmmaTempSensor",
+        "schedule": [
+          {"start": "7:00", "end": "8:00", "days": "week", "target_min_temp": 19, "target_max_temp": 20},
+          {"start": "8:00", "end": "9:00", "days": "weekend", "target_min_temp": 19, "target_max_temp": 20}
+        ]},{
+        "name": "OliviaAQMSensor",
+        "schedule": [
+          {"start": "7:00", "end": "8:00", "days": "week", "target_min_temp": 19, "target_max_temp": 20},
+          {"start": "8:00", "end": "9:00", "days": "weekend", "target_min_temp": 19, "target_max_temp": 20}
+        ]}
+        ]
+    }
+  ],
+
+  "JSON IS": "SILLY"
+}

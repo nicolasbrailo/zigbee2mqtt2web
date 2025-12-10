@@ -1,0 +1,48 @@
+{
+  "mqtt_ip": "localhost",
+  "mqtt_port": 1883,
+  "http_host": "10.0.0.10",
+  "http_port": 4207,
+
+  "COMMENT_chime_skip_timeout_secs": "When calling 'chime skip', audio announcements will be skipped for this many seconds",
+  "chime_skip_default_secs": 120,
+  "chime_skip_max_secs": 300,
+
+  "COMMENT_curfew_hour": "Will execute curfew actions at this time",
+  "curfew_hour": "22:00",
+
+  "COMMENT_actions": "Define behaviour for this service when a contact sensor is opened or closed. See example for possible actions",
+  "EXAMPLE_actions": {
+    "SensorName1": {
+      "normal_state_comment": "This is what the sensor reports in a normal state. For example, a door may have normal state of true, to indicate the sensor will turn false if the door is open",
+      "normal_state": true,
+      "timeout_secs_comment": "If the sensor remains in non-normal state after this timeout, the 'timeout' aciton is executed",
+      "timeout_secs": 300,
+      "open": {
+        "telegram": {
+          "msg": "This message will be relied to the Telegram messaging server"
+        },
+        "whatsapp": {
+          "msg": "This message will be relied to the WA messaging server"
+        },
+        "tts_announce": {
+          "lang": "en",
+          "msg": "A message can be read over local speakers"
+        },
+        "sound_asset_announce": {"local_path": "A local sound asset can be played over speakers. Note that either asset or tts announce are possible, but not both."},
+        "sound_asset_announce": {"public_www": "www.example.net/an asset can also be specified as a url"},
+        "sound_asset_announce": {"public_www": "/this_server_asset or as a path relative to this webserver"}
+      },
+      "close": {
+        "sound_asset_announce": {
+          "public_www": "/this_server_asset or as a path relative to this webserver"
+        }
+      },
+      "timeout": {
+        "telegram": {
+          "msg": "This message will be sent when the sensor reports open for too long"
+        }
+      }
+    }
+  }
+}

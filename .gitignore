@@ -1,19 +1,6 @@
 # Never commit config secrets
-Pipfile
 config.json
 config.spotify_cache.json
-zigbee2mqtt2web_ui/build/
-zmw.cert
-zmw.key
-
-# Cache
-tts_cache
-user_audio_cache
-
-# fw updater hacks
-scripts/zigbee_adapter_fw_update/Pipfile
-scripts/zigbee_adapter_fw_update/Pipfile.lock
-
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

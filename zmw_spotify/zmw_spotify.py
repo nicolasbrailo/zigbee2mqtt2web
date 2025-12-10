@@ -1,0 +1,359 @@
+"""MQTT Spotify control service."""
+import json
+import os
+import pathlib
+
+from spotipy.oauth2 import SpotifyOauthError
+from spotipy.oauth2 import SpotifyOAuth
+from spotipy import Spotify as Spotipy
+from spotipy import SpotifyException
+
+from apscheduler.schedulers.background import BackgroundScheduler
+
+from zzmw_common.mqtt_proxy import MqttProxy
+from zzmw_common.service_runner import service_runner_with_www, build_logger
+
+log = build_logger("ZmwSpotify")
+
+# A token is valid for an hour, so we refresh every 45 minutes
+_SPOTIFY_SECS_BETWEEN_TOK_REFRESH = 60 * 45
+
+
+def _get_spotify_scopes():
+    return 'app-remote-control user-read-playback-state ' \
+           'user-modify-playback-state user-read-currently-playing'
+
+
+def _get_auth_obj(cfg):
+    return SpotifyOAuth(
+        cfg['client_id'],
+        cfg['client_secret'],
+        cfg['redirect_uri'],
+        scope=_get_spotify_scopes(),
+        cache_path=cfg['spotipy_cache'])
+
+
+def _get_valid_auth_obj(cfg):
+    oauth = _get_auth_obj(cfg)
+    tok = None if oauth is None else oauth.get_cached_token()
+    if tok is None or 'access_token' not in tok or 'refresh_token' not in tok:
+        raise RuntimeError('Spotify has no cached token, needs reauth')
+    return oauth
+
+
+def _refresh_access_tok(cfg):
+    oauth = _get_valid_auth_obj(cfg)
+    refresh_tok = oauth.get_cached_token()['refresh_token']
+    new_tok = oauth.refresh_access_token(refresh_tok)
+    if new_tok is None:
+        raise RuntimeError('Refresh token failed')
+    log.debug('Spotify token refresh succeeded')
+
+
+def _new_spotipy(cfg):
+    oauth = _get_valid_auth_obj(cfg).get_cached_token()
+    return Spotipy(auth=oauth['access_token'])
+
+
+class ZmwSpotify(MqttProxy):
+    """MQTT Spotify control service for playback management."""
+
+    def __init__(self, cfg, www):
+        self._cfg = cfg
+        self._topic_base = "zmw_spotify"
+        self._spotipy = None
+
+        # Suppress noisy spotipy logs
+        import logging
+        logging.getLogger('spotipy.*').setLevel(logging.INFO)
+        logging.getLogger('spotipy.oauth2').setLevel(logging.INFO)
+        logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
+        logging.getLogger('spotipy.client').setLevel(logging.CRITICAL)
+
+        # Set up www directory and reauth endpoints
+        www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
+        self._public_url_base = www.register_www_dir(www_path)
+
+        www.serve_url('/reauth', self._serve_reauth_page)
+        www.serve_url('/reauth/complete/<code>', self._complete_reauth)
+        www.serve_url('/status', self._serve_status_page)
+
+        MqttProxy.__init__(self, cfg, self._topic_base)
+
+        # Initialize Spotify auth
+        try:
+            self._refresh_access_tok()
+        except Exception:
+            log.error('Failed to authenticate Spotify, will retry later', exc_info=True)
+
+        # Schedule periodic token refresh
+        self._scheduler = BackgroundScheduler()
+        self._scheduler.start()
+        self._scheduler.add_job(
+            func=self._refresh_access_tok,
+            trigger="interval",
+            seconds=_SPOTIFY_SECS_BETWEEN_TOK_REFRESH)
+
+    def _refresh_access_tok(self):
+        """Refresh Spotify access token and update the spotipy instance."""
+        log.info("Refreshing Spotify access token")
+        try:
+            _refresh_access_tok(self._cfg)
+            self._spotipy = _new_spotipy(self._cfg)
+            log.info("Spotify token refresh succeeded")
+        except RuntimeError:
+            log.error('Failed to authenticate Spotify, needs reauth', exc_info=True)
+            self._spotipy = None
+
+    def _serve_reauth_page(self):
+        """Serve the OAuth reauthorization page."""
+        html = """
+        <h1>Spotify Auth Update</h1>
+        <ol>
+            <li>Go to <a href="{auth_url}" target="blank">this page</a>.
+                If asked, accept the permission request from Spotify.</li>
+            <li>If approved, you'll be redirected to another page. Copy the URL of this new page.</li>
+            <li>
+                Paste the URL here: <input type="text" id="redir_url" onChange="validateCode()"/>
+                <div id="invalid_code" style="display: inline">
+                    That looks like an invalid code! Please try again.
+                </div>
+            </li>
+            <li id="valid_code">
+                That looks like a valid code! <a href="#" id="set_new_code_link">Update Spotify token.</a>
+            </li>
+        </ol>
+
+        <script>
+            document.getElementById("valid_code").style.visibility = "hidden";
+            document.getElementById("invalid_code").style.visibility = "hidden";
+
+            function validateCode() {{
+                var url = document.getElementById("redir_url").value;
+                var sep = "?code=";
+                var code = url.substr(url.indexOf(sep) + sep.length)
+                console.log("Code = ", code);
+
+                if (code.length > 10) {{
+                    document.getElementById("invalid_code").style.visibility = "hidden";
+                    document.getElementById("valid_code").style.visibility = "visible";
+                    document.getElementById("set_new_code_link").href = "{complete_url}" + code;
+                }} else {{
+                    document.getElementById("invalid_code").style.visibility = "visible";
+                    document.getElementById("valid_code").style.visibility = "hidden";
+                }}
+            }}
+        </script>
+        """
+        return html.format(
+            auth_url=_get_auth_obj(self._cfg).get_authorize_url(),
+            complete_url=f"{self._public_url_base}/reauth/complete/")
+
+    def _complete_reauth(self, code):
+        """Complete the OAuth flow with the provided authorization code."""
+        log.info("Starting Spotify reauth with code")
+        try:
+            _get_auth_obj(self._cfg).get_access_token(code)
+            _get_valid_auth_obj(self._cfg)
+        except SpotifyOauthError as ex:
+            log.error("Spotify reauth failed: %s", ex)
+            return str(ex), 400
+        except RuntimeError as ex:
+            log.error("Spotify reauth failed: %s", ex)
+            return str(ex), 400
+
+        self._refresh_access_tok()
+        return "Code accepted! Spotify is now authenticated."
+
+    def _serve_status_page(self):
+        """Serve the service status page."""
+        state = self._get_full_state()
+
+        if not state['is_authenticated']:
+            html = """
+            <h1>Spotify Service Status</h1>
+            <p><strong>Authenticated:</strong> No</p>
+            <p><a href="{reauth_url}">Click here to authenticate with Spotify</a></p>
+            """
+            return html.format(reauth_url=f"{self._public_url_base}/reauth")
+
+        media = state.get('media_info') or {}
+        media_html = "<p>No track playing</p>"
+        if media:
+            media_html = """
+            <p><strong>Title:</strong> {title}</p>
+            <p><strong>Artist:</strong> {artist}</p>
+            <p><strong>Album:</strong> <a href="{album_link}">{album_name}</a></p>
+            <p><strong>Track:</strong> {current_track} / {track_count}</p>
+            <p><strong>Progress:</strong> {current_time:.0f}s / {duration:.0f}s</p>
+            """.format(**media) if media.get('title') else "<p>No track playing</p>"
+            if media.get('icon'):
+                media_html = f'<p><img src="{media["icon"]}" style="max-width: 200px;"/></p>' + media_html
+
+        html = """
+        <h1>Spotify Service Status</h1>
+        <p><strong>Authenticated:</strong> Yes</p>
+        <p><strong>Playing:</strong> {is_playing}</p>
+        <p><strong>Volume:</strong> {volume}%</p>
+        <h2>Now Playing</h2>
+        {media_html}
+        """
+        return html.format(
+            is_playing="Yes" if state['is_playing'] else "No",
+            volume=state['volume'] if state['volume'] is not None else "N/A",
+            media_html=media_html)
+
+    def _with_spotify(self, action_name, func, *args):
+        """Execute a Spotify action with retry on token expiry."""
+        if self._spotipy is None:
+            log.warning("Spotify not authenticated, cannot execute %s", action_name)
+            return None
+
+        try:
+            return func(self._spotipy, *args)
+        except SpotifyException as ex:
+            if ex.http_status != 401:
+                log.error("Spotify action %s failed: %s", action_name, ex)
+                raise
+            log.info('Spotify access token expired, refreshing and retrying')
+            self._refresh_access_tok()
+            if self._spotipy is None:
+                return None
+            return func(self._spotipy, *args)
+
+    # Spotify action implementations
+    def _get_is_playing(self, sp):
+        track = sp.current_user_playing_track()
+        return (track is not None) and track['is_playing']
+
+    def _stop(self, sp):
+        try:
+            sp.pause_playback()
+        except SpotifyException:
+            pass  # Likely already stopped
+
+    def _toggle_play(self, sp):
+        if self._get_is_playing(sp):
+            self._stop(sp)
+        else:
+            sp.start_playback()
+
+    def _relative_jump_to_track(self, sp, val):
+        val = int(val)
+        for _ in range(0, val):
+            sp.next_track()
+        for _ in range(val, 0):
+            sp.previous_track()
+
+    def _get_volume_pct(self, sp):
+        active_devices = [d for d in sp.devices()['devices'] if d['is_active']]
+        if len(active_devices) == 0:
+            return None
+        return active_devices[0]['volume_percent']
+
+    def _set_volume_pct(self, sp, volume):
+        try:
+            sp.volume(int(volume))
+        except SpotifyException as ex:
+            if ex.http_status == 403:
+                log.warning('Setting volume not allowed by Spotify for this device')
+                return
+            raise
+
+    def _get_media_info(self, sp):
+        def pick_album_cover(track):
+            imgs = []
+            try:
+                imgs = sorted([(img['height'] * img['width'], img['url'])
+                               for img in track['item']['album']['images']])
+            except KeyError:
+                pass
+            selected_img = None
+            for img in imgs:
+                area, selected_img = img
+                if area >= 90000:
+                    break
+            return selected_img
+
+        track = sp.current_user_playing_track()
+        if track is None or track['item'] is None:
+            return {}
+        return {
+            'icon': pick_album_cover(track),
+            'title': track['item']['name'],
+            'duration': track['item']['duration_ms'] / 1000,
+            'current_time': track['progress_ms'] / 1000,
+            'artist': ', '.join([x['name'] for x in track['item']['album']['artists']]),
+            'album_link': track['item']['album']['external_urls']['spotify'],
+            'album_name': track['item']['album']['name'],
+            'track_count': track['item']['album']['total_tracks'],
+            'current_track': track['item']['track_number'],
+        }
+
+    def _get_full_state(self):
+        """Get full player state, works even when not authenticated."""
+        if self._spotipy is not None:
+            try:
+                return {
+                    'is_authenticated': True,
+                    'is_playing': self._with_spotify('is_playing', self._get_is_playing),
+                    'volume': self._with_spotify('get_volume', self._get_volume_pct),
+                    'media_info': self._with_spotify('get_media_info', self._get_media_info),
+                }
+            except Exception:
+                log.error("Failed to get player state", exc_info=True)
+
+        return {
+            'is_authenticated': False,
+            'is_playing': False,
+            'reauth_url': f"{self._public_url_base}/reauth",
+            'volume': 0,
+            'media_info': None,
+        }
+
+    def get_service_meta(self):
+        """Metadata for service discovery."""
+        return {
+            "name": self._topic_base,
+            "mqtt_topic": self._topic_base,
+            "methods": [
+                "publish_state", "stop", "toggle_play", "relative_jump_to_track",
+                "set_volume"
+            ],
+            "announces": ["state"],
+            "www": self._public_url_base,
+        }
+
+    def on_mqtt_json_msg(self, topic, payload):
+        """Handle incoming MQTT messages."""
+        match topic:
+            # Query full state
+            case "publish_state":
+                result = self._get_full_state()
+                self.broadcast(f"{self._topic_base}/state", result)
+
+            # Commands
+            case "stop":
+                log.info("Received stop command")
+                self._with_spotify('stop', self._stop)
+            case "toggle_play":
+                log.info("Received toggle_play command")
+                self._with_spotify('toggle_play', self._toggle_play)
+            case "relative_jump_to_track":
+                if 'value' not in payload:
+                    log.error("relative_jump_to_track requires 'value' in payload")
+                    return
+                log.info("Jumping %s tracks", payload['value'])
+                self._with_spotify('relative_jump', self._relative_jump_to_track, payload['value'])
+            case "set_volume":
+                if 'value' not in payload:
+                    log.error("set_volume requires 'value' in payload")
+                    return
+                log.info("Setting volume to %s", payload['value'])
+                self._with_spotify('set_volume', self._set_volume_pct, payload['value'])
+
+            case _:
+                log.warning("Ignoring unknown MQTT topic: %s", topic)
+
+
+service_runner_with_www(ZmwSpotify)

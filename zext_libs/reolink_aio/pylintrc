@@ -1,0 +1,29 @@
+[MASTER]
+reports=no
+
+disable=
+  invalid-name,
+  broad-except,
+  protected-access,
+  abstract-method,
+  missing-function-docstring,
+  duplicate-code,
+  too-few-public-methods,
+  too-many-arguments,
+  too-many-nested-blocks,
+  too-many-branches,
+  too-many-instance-attributes,
+  too-many-lines,
+  too-many-locals,
+  too-many-public-methods,
+  too-many-return-statements,
+  too-many-statements,
+  too-many-boolean-expressions,
+
+[FORMAT]
+
+# Maximum number of characters on a single line.
+max-line-length=175
+
+[EXCEPTIONS]
+overgeneral-exceptions=builtins.Exception

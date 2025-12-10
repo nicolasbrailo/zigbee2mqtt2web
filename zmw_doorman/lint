@@ -1,0 +1,8 @@
+
+************* Module main
+main.py:12:5: W0511: TODO: (fixme)
+main.py:46:13: W0511: TODO: When service goes down, unregister command (fixme)
+
+-------------------------------------------------------------------
+Your code has been rated at 9.74/10 (previous run: 10.00/10, -0.26)
+

@@ -1,0 +1,30 @@
+{
+  "mqtt_comment": "MQTT server we'll try to listen to",
+  "mqtt_ip": "localhost",
+  "mqtt_port": 1883,
+
+  "http_host": "10.0.0.10",
+  "http_port": 4204,
+
+  "cam_host": "10.0.0.20",
+  "cam_user": "admin",
+  "cam_pass": "",
+
+  "COMMENT": "Watchdog for cam subscription",
+  "cam_subscription_check_interval_secs": 60,
+  "COMMENT": "If ONVIF messages arrive in this timewindow, we'll consider them duplicated",
+  "debounce_timeout_sec": 15,
+  "COMMENT": "How often should we check if movement is still detected after the event fires",
+  "cam_movement_active_watchdog": 60,
+
+  "COMMENT_snap_path_on_movement": "If set, will save a single snapshot of the camera whenever movement is detected",
+  "snap_path_on_movement": "/home/batman/src/BatiCasa/web_assets/doorbell_snap.jpg",
+
+  "COMMENT": "Record a clip when movement is reported",
+  "rec_on_movement": true,
+  "rec_path": "/home/batman/extstorage/cams",
+  "rec_default_duration_secs": 20,
+  "rec_retention_days": 15,
+
+  "JSON IS": "SILLY"
+}

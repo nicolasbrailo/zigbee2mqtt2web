@@ -1,0 +1,27 @@
+{
+  "mqtt_comment": "MQTT server we'll try to listen to",
+  "mqtt_ip": "localhost",
+  "mqtt_port": 1883,
+
+  "http_comment": "Externally accessible host/port for assets. Http only assumed.",
+  "http_host": "192.168.1.2",
+  "http_port": 4203,
+  "tts_assets_cache_path": "/tmp",
+  "tts_default_lang": "es",
+
+  "COMMENT1_API": "An API key is needed to do graceful announcements in Sonos. Without an API key, announcements only work if",
+  "COMMENT2_API": "no other media is playing at the moment. You should register your own API key at developer.sonos.com.",
+  "COMMENT3_API": "You may use the example API keys below to test, but they belong to https://github.com/jjlawren/sonos-websocket/",
+  "COMMENT4_API": "and you shouldn't use them for your own system",
+  "COMMENT_EG_api_key": "123e4567-e89b-12d3-a456-426655440000",
+  "COMMENT_EG_key_app_id": "com.jjlawren.sonos_websocket",
+  "COMMENT_EG_api_key_name": "Sonos Websocket",
+
+  "api_key": "",
+  "key_app_id": "thisismadeup",
+  "api_key_name": "BatiCasaAnnounceSrv",
+
+  "COMMENT_speaker_ip_list": "Use an explicit IP list to skip discovery (eg if discovery doesn't work, or if you don't want to wait for discovery",
+  "DISABLED_speaker_ip_list": []
+}
+

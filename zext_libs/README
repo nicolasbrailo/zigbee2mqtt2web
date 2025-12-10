@@ -1,0 +1,1 @@
+Ext libraries must live outside of each project's directory, even if they are only used by a single project. This is beacuse pipenv will always use a relative path for module installed inside a project. When this happens, the service can't be installed in a different directory with the same Pipfile.

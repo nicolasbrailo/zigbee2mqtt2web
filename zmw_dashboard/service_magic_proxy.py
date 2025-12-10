@@ -1,0 +1,114 @@
+""" Forward requests from a Flask http server to arbitrary downstream http services """
+import aiohttp
+
+from flask import abort, request, Response
+from zzmw_common.service_runner import build_logger
+
+log = build_logger("ServiceMagicProxy")
+
+class ServiceMagicProxy:
+    """ Proxy forwarder: will forward request from a local flask server to another http server based on
+    service prefix """
+
+    def __init__(self, service_map, www):
+        self._service_map = service_map
+        self._register_routes(www)
+
+    def get_proxied_services(self):
+        return self._service_map
+
+    def _register_routes(self, www):
+        for svc_prefix, svc_route in self._service_map.items():
+            log.info("Discovered route to service %s", svc_prefix)
+
+            # Register catch-all route for this service
+            route = f'/{svc_prefix}/<path:subpath>'
+
+            # Create wrapper that properly handles async
+            # We need a closure to capture the svc_prefix value
+            def make_handler(prefix):
+                # Use www.serve_url style registration which handles async
+                async def handler(subpath):
+                    return await self._forward_to_service(prefix, subpath)
+                # Set the function name for Flask
+                handler.__name__ = f'proxy_{prefix}'
+                return handler
+
+            handler_func = make_handler(svc_prefix)
+
+            # Register using Flask's route decorator syntax which handles async properly
+            www.route(
+                route,
+                methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'],
+                endpoint=f'proxy_{svc_prefix}'
+            )(handler_func)
+            log.info("Registered proxy route: %s -> %s", route, svc_route)
+
+    async def _forward_to_service(self, svc_prefix, subpath):
+        """Generic proxy handler that forwards requests to upstream services."""
+        if svc_prefix not in self._service_map:
+            log.error("Unknown service prefix: %s", svc_prefix)
+            return abort(404, f"Service '{svc_prefix}' not found")
+
+        upstream_url = self._service_map[svc_prefix]
+        target_url = f"{upstream_url}/{subpath}"
+
+        # Preserve query string
+        if request.query_string:
+            target_url += f"?{request.query_string.decode('utf-8')}"
+
+        log.debug("Proxying %s %s -> %s", request.method, request.path, target_url)
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                # Prepare request kwargs
+                kwargs = {
+                    'timeout': aiohttp.ClientTimeout(total=5),
+                    'allow_redirects': False,
+                }
+
+                # Forward request headers (excluding hop-by-hop headers)
+                headers = {}
+                hop_by_hop = {'connection', 'keep-alive', 'proxy-authenticate',
+                             'proxy-authorization', 'te', 'trailers', 'transfer-encoding', 'upgrade'}
+                for key, value in request.headers:
+                    if key.lower() not in hop_by_hop:
+                        headers[key] = value
+                kwargs['headers'] = headers
+
+                # Forward request body for methods that support it
+                if request.method in ['POST', 'PUT', 'PATCH']:
+                    if request.content_type and 'application/json' in request.content_type:
+                        kwargs['json'] = request.get_json(silent=True)
+                    elif request.data:
+                        kwargs['data'] = request.data
+                    elif request.form:
+                        kwargs['data'] = request.form
+
+                # Make the request
+                async with session.request(request.method, target_url, **kwargs) as resp:
+                    # Read response body
+                    body = await resp.read()
+
+                    # Forward response headers (excluding hop-by-hop headers)
+                    response_headers = {}
+                    for key, value in resp.headers.items():
+                        if key.lower() not in hop_by_hop:
+                            response_headers[key] = value
+
+                    # Create Flask response with upstream status code and headers
+                    return Response(
+                        body,
+                        status=resp.status,
+                        headers=response_headers
+                    )
+
+        except aiohttp.ClientError as e:
+            log.error("Error proxying to %s: %s", target_url, str(e))
+            return abort(502, f"Error connecting to upstream service: {str(e)}")
+        except Exception as e:
+            log.error("Unexpected error proxying to %s: %s", target_url, str(e), exc_info=True)
+            return abort(500, f"Internal proxy error: {str(e)}")
+
+
+

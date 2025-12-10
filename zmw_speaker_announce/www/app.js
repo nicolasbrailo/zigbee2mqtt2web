@@ -1,0 +1,234 @@
+class TTSAnnounce extends React.Component {
+  static buildProps(api_base_path = '') {
+    return {
+      key: 'tts_announce',
+      api_base_path: api_base_path,
+    };
+  }
+
+  constructor(props) {
+    super(props);
+    this.canRecordMic = window.location.protocol === "https:";
+
+    this.state = {
+      ttsPhrase: "",
+      ttsLang: "es-ES",
+      isRecording: false,
+      speakerList: null,
+      announcementHistory: [],
+      historyExpanded: false,
+    };
+
+    this.recorderRef = React.createRef();
+    this.onTTSRequested = this.onTTSRequested.bind(this);
+    this.onMicRecRequested = this.onMicRecRequested.bind(this);
+    this.onMicRecSend = this.onMicRecSend.bind(this);
+    this.onCancel = this.onCancel.bind(this);
+    this.fetchAnnouncementHistory = this.fetchAnnouncementHistory.bind(this);
+  }
+
+  componentDidMount() {
+    this.on_app_became_visible();
+  }
+
+  on_app_became_visible() {
+    mJsonGet(`${this.props.api_base_path}/ls_speakers`, (data) => this.setState({ speakerList: data }));
+    this.fetchAnnouncementHistory();
+  }
+
+  fetchAnnouncementHistory() {
+    mJsonGet(`${this.props.api_base_path}/announcement_history`, (data) => this.setState({ announcementHistory: data }));
+  }
+
+  onTTSRequested() {
+    const phrase = this.state.ttsPhrase.trim() || prompt("What is so important?");
+    if (!phrase) return;
+    this.setState({ ttsPhrase: phrase });
+
+    console.log(`announce {"lang": "${this.state.ttsLang}", "phrase": "${phrase}"}`);
+
+    const newEntry = {
+      timestamp: new Date().toISOString(),
+      phrase: phrase,
+      lang: this.state.ttsLang,
+      volume: 'default',
+      uri: `${this.props.api_base_path}/tts/${phrase}_${this.state.ttsLang}.mp3`
+    };
+
+    this.setState(prev => ({
+      announcementHistory: [...prev.announcementHistory, newEntry].slice(-10)
+    }));
+
+    console.log("BCAST ");
+    console.log(`${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}`)
+    mAjax({
+      url: `${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}`,
+      type: 'get',
+      success: () => {
+        console.log("Sent TTS request");
+        this.fetchAnnouncementHistory();
+      },
+      error: showGlobalError
+    });
+  }
+
+  async onMicRecRequested() {
+    if (!this.canRecordMic) {
+      showGlobalError("Mic recording only works on https pages");
+      return;
+    }
+
+    if (!navigator.mediaDevices) {
+      showGlobalError("Your browser does not support microphone recording");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const rec = new MediaRecorder(stream);
+
+      rec.chunks = [];
+      rec.ondataavailable = e => rec.chunks.push(e.data);
+
+      this.recorderRef.current = rec;
+      rec.start();
+      this.setState({ isRecording: true });
+    } catch (err) {
+      showGlobalError("Mic error: " + err);
+    }
+  }
+
+  onMicRecSend() {
+    const rec = this.recorderRef.current;
+    if (!rec) {
+      showGlobalError("No microphone recording in progress");
+      return;
+    }
+
+    rec.onstop = () => {
+      const blob = new Blob(rec.chunks, { type: "audio/ogg; codecs=opus" });
+
+      const form = new FormData();
+      form.append("audio_data", blob, "mic_cap.ogg");
+
+      mAjax({
+        url: `${this.props.api_base_path}/announce_user_recording`,
+        data: form,
+        cache: false,
+        contentType: false,
+        processData: false,
+        method: "POST",
+        success: () => console.log("Sent user recording"),
+        error: showGlobalError
+      });
+
+      rec.stream.getTracks().forEach(t => t.stop());
+      this.recorderRef.current = null;
+      this.setState({ isRecording: false });
+    };
+
+    rec.stop();
+  }
+
+  onCancel() {
+    const rec = this.recorderRef.current;
+    if (rec) {
+      rec.stream.getTracks().forEach(t => t.stop());
+      this.recorderRef.current = null;
+    }
+    this.setState({ isRecording: false });
+  }
+
+  render() {
+    if (this.state.isRecording) {
+      return (
+        <ul className="player-announce-methods">
+          <li>
+            <button className="player-button" onClick={this.onMicRecSend}>Send</button>
+          </li>
+          <li>
+            <button className="player-button" onClick={this.onCancel}>Cancel</button>
+          </li>
+        </ul>
+      );
+    }
+
+    return (
+      <div className="announce-container">
+        <div className="announce-input-div">
+          <input
+            type="text"
+            placeholder="Text to announce"
+            value={this.state.ttsPhrase}
+            onChange={e => this.setState({ ttsPhrase: e.target.value })}
+          />
+        </div>
+
+        <div className="announce-ctrls-div">
+          <button onClick={this.onTTSRequested}>
+            Announce!
+          </button>
+
+          <select
+            value={this.state.ttsLang}
+            onChange={e => this.setState({ ttsLang: e.target.value })}
+          >
+            { /* https://developers.google.com/assistant/console/languages-locales */ }
+            <option value="es-ES">ES</option>
+            <option value="es-419">es 419</option>
+            <option value="en-GB">EN GB</option>
+          </select>
+
+          {this.canRecordMic && (
+            <button onClick={this.onMicRecRequested}>
+              Record
+            </button>
+          )}
+        </div>
+
+        {this.state.speakerList && (
+          <div className="announce-speaker-list">
+            Will announce in: <ul>
+              {this.state.speakerList.map(x => <li key={x}>{x}</li>) }
+            </ul>
+          </div>
+        )}
+
+        <div className="announce-history-section">
+          <small
+            onClick={() => this.setState({ historyExpanded: !this.state.historyExpanded })}
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+          >
+            {this.state.historyExpanded ? '▼' : '▶'} Announcement History ({this.state.announcementHistory.length})
+          </small>
+
+          {this.state.historyExpanded && (
+            <div className="announce-history-list card">
+              {this.state.announcementHistory.length === 0 ? (
+                <p>No announcements yet</p>
+              ) : (
+                <ul>
+                  {this.state.announcementHistory.slice().reverse().map((item, idx) => (
+                    <li key={idx}>
+                      <div className="history-item">
+                        <span className="history-timestamp">
+                          {new Date(item.timestamp).toLocaleString()}
+                        </span>
+                        <span className="history-phrase">
+                          "{item.phrase}"
+                        </span>
+                        <span className="history-details">
+                          (Lang: {item.lang}, vol: {item.volume}, <a href={item.uri}>link</a>)
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+}

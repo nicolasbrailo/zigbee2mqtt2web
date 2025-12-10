@@ -1,0 +1,12 @@
+{
+  "minified": true,
+  "targets": {
+    "chrome": "80",
+    "firefox": "80",
+    "android": "80"
+  },
+  "presets": [
+      "@babel/preset-env",
+      "@babel/preset-react"
+  ]
+}

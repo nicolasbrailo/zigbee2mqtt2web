@@ -1,0 +1,39 @@
+Next:
+* Untested: bcast of contact sensors
+* Untsted: doorman receives bcast of sensors
+* Untsted: doorman rename
+* Untsted: doorman schedules door open scene
+* Mqtt contact mon -> trigger mqtt events on contact open -> relay to scene service -> Implement door open scene
+* Add back helper with geolocation to understand darkness rate
+* The "door open scene" should remain active while motion is detected in the fron door by the camera
+TODO:
+* Auto port assign
+* Move baticasa_buttons out of generic zmw project
+* Make dashboard load faster - load lights first, deferr other requests?
+* RGB parsing is broken
+* Review all UI code for mqtt_heating, there's too much vibe
+* dashboard svc -> How do I install authbind automatically
+* all svcs -> Add logs view (which is now part of the base svc runner)
+* all svcs -> Rename main.py to follow service name, so they don't look all the same on edit
+* all svcs -> Run tests as part of systemd service start?
+* all svcs -> lint and check test coverage
+* new svc Implement presence sensor to aggregate multiple PIRs, turn on/off lights in kitchen
+* new svc mqtt_shelly_plugs new svc
+* new svc Build notification service that decides to multiplex to WA or Telegram
+* mqtt lights -> stream changes from mqtt to web socet to UI
+* mqtt heating config -> rules can be simplified, the scheduled min temp is too complex. Instead, express it as a list of schedules (one per sensor and active time)
+* mqtt_sensor_mon sensor GC is likely broken (or never worked?) Seems it only removes old samples
+* mqtt_sensor_mon sensor db path is absolute, make it relative to run dir?
+* baticasa_doorbell can be made generic, there is no custom logic there
+* mqtt_doorbell -> audit usage of exceptions, there are many that can escape in reolink.py
+* mqtt_speaker_announce Test mic record for announce service
+* buttons service transition period isn't working for world off
+* buttons service -> refactor logic so it has less duplicate code
+* cronnenbergs: alert Olivia dientes y tarea
+* cronnenbers: vacation mode
+* telegram command to pause notifications
+* telegram bot -> Have a timer to register commands, to give a few seconds to services who want to reg a new command to do it all at once (N services start, wait 5 seconds, then publish to Telegram the list of commands)
+* telegram send msg on system error for any monitored service
+* misc Look for lost z2m devices
+* misc Look into journal rotation - why isn't it rotating on its own
+* misc Can I join baticasa_doorbell with the main mqtt_doorbell service?
