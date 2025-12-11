@@ -2649,13 +2649,13 @@ function MqttHeatingSection(props) {
   );
 }
 
-function DoorbellCamSection(props) {
+function ReolinkDoorbellSection(props) {
   return (
-    <div className="dashboard-section" id="doorbell-cam-section">
-      <a href={ProxiedServices.get('zmw_doorbell_cam')}><img src="/zmw_doorbell_cam/favicon.ico"/></a>
+    <div className="dashboard-section" id="reolink-doorbell-section">
+      <a href={ProxiedServices.get('zmw_reolink_doorbell')}><img src="/zmw_reolink_doorbell/favicon.ico"/></a>
       {React.createElement(
         CamViewer,
-        CamViewer.buildProps('/zmw_doorbell_cam', ProxiedServices.get('zmw_doorbell_cam')))}
+        CamViewer.buildProps('/zmw_reolink_doorbell', ProxiedServices.get('zmw_reolink_doorbell')))}
     </div>
   );
 }
@@ -2752,7 +2752,7 @@ function Dashboard(props) {
           {expandedSection === 'Announce' && <SpeakersSection />}
           {expandedSection === 'Contact' && <ContactMonSection />}
           {expandedSection === 'Heating' && <MqttHeatingSection />}
-          {expandedSection === 'Door' && <DoorbellCamSection />}
+          {expandedSection === 'Door' && <ReolinkDoorbellSection />}
         </div>
       </div>
     </div>
