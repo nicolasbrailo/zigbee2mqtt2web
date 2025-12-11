@@ -7,8 +7,9 @@ from collections import deque
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from zzmw_lib.mqtt_proxy import MqttServiceClient
-from zzmw_lib.service_runner import service_runner_with_www, build_logger, get_this_service_logs
+from zzmw_lib.zmw_mqtt_service import ZmwMqttServiceNoCommands
+from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.logs import build_logger
 from zz2m.z2mproxy import Z2MProxy
 
 from rules import create_rules_from_config
@@ -17,9 +18,9 @@ from schedule import ScheduleSlot
 
 log = build_logger("ZmwHeating")
 
-class ZmwHeating(MqttServiceClient):
+class ZmwHeating(ZmwMqttServiceNoCommands):
     def __init__(self, cfg, www):
-        super().__init__(cfg, svc_deps=['zmw_telegram'])
+        super().__init__(cfg, svc_deps=['ZmwTelegram'])
 
         self._z2m_boiler_name = cfg['zigbee_boiler_name']
         self._rules = create_rules_from_config(cfg['rules'])
@@ -61,15 +62,6 @@ class ZmwHeating(MqttServiceClient):
                              cb_on_z2m_network_discovery=self._on_z2m_network_discovery,
                              cb_is_device_interesting=lambda t: t.name in wanted_things)
 
-    def get_service_meta(self):
-        return {
-            "name": "zmw_heating",
-            "mqtt_topic": None,
-            "methods": [],
-            "announces": [],
-            "www": self._public_url_base,
-        }
-
     def svc_state(self):
         tsched = self.schedule.active().as_jsonifyable_dict()
         sensors = {}
@@ -84,14 +76,17 @@ class ZmwHeating(MqttServiceClient):
         }
 
     def on_service_came_up(self, service_name):
-        if service_name == "zmw_telegram":
-            self.message_svc("zmw_telegram", "register_command",
+        if service_name == "ZmwTelegram":
+            self.message_svc("ZmwTelegram", "register_command",
                              {'cmd': 'tengofrio',
                               'descr': 'Heating boost'})
 
-    def on_service_message(self, service_name, msg_topic, msg):
-        if service_name == 'zmw_telegram' and msg_topic.startswith("on_command/tengofrio"):
-            self.schedule.active().boost(1)
+    def on_dep_published_message(self, service_name, msg_topic, msg):
+        log.debug("%s.%s: %s", service_name, msg_topic, msg)
+        match service_name:
+            case 'ZmwTelegram':
+                if msg_topic.startswith("on_command/tengofrio"):
+                    self.schedule.active().boost(1)
 
     def _on_z2m_network_discovery(self, _is_first_discovery, known_things):
         if self._boiler is not None:
@@ -233,6 +228,6 @@ class ZmwHeating(MqttServiceClient):
             return
 
         msg = f'Heating is now {now_on} (was {old_on}). Reason: {new.reason}'
-        self.message_svc("zmw_telegram", "send_text", {'msg': msg})
+        self.message_svc("ZmwTelegram", "send_text", {'msg': msg})
 
 service_runner_with_www(ZmwHeating)

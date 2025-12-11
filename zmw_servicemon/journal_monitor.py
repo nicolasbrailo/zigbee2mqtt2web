@@ -1,6 +1,7 @@
 """Systemd journal monitoring for service errors."""
 import os
 import signal
+import subprocess
 import threading
 from datetime import datetime
 
@@ -10,6 +11,11 @@ from systemd import journal
 from zzmw_lib.service_runner import build_logger
 
 log = build_logger("JournalMonitor")
+
+def _systemd_svc_exists(service_name):
+    result = subprocess.run(['systemctl', 'list-unit-files', f'{service_name}.service'],
+                            capture_output=True, text=True)
+    return service_name in result.stdout
 
 class JournalMonitor:
     """Monitors systemd journal for warnings and errors from specified services"""
@@ -70,6 +76,9 @@ class JournalMonitor:
         if service_name in self._monitored_services:
             # Already monitoring
             return
+
+        if not _systemd_svc_exists(service_name):
+            log.error("Asked to monitor unit %s, but service doesn't exist. Will add it to monitor list, but it probably won't work.", service_name)
 
         self._monitored_services.add(service_name)
 

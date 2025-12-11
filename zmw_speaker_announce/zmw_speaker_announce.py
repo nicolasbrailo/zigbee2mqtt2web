@@ -8,8 +8,9 @@ from datetime import datetime
 
 from flask import abort, request
 
-from zzmw_lib.mqtt_proxy import MqttProxy
-from zzmw_lib.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.logs import build_logger
+from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 
 from sonos_helpers import get_sonos_by_name, config_soco_logger
 from sonos_announce import sonos_announce
@@ -18,40 +19,27 @@ from tts import get_local_path_tts
 log = build_logger("ZmwSpeakerAnnounce")
 config_soco_logger(False)
 
-class ZmwSpeakerAnnounce(MqttProxy):
+class ZmwSpeakerAnnounce(ZmwMqttService):
     """MQTT proxy for Sonos speaker announcements."""
     def __init__(self, cfg, www):
+        super().__init__(cfg, "zmw_speaker_announce")
         self._cfg = cfg
-        self._topic_base = "zmw_speaker_announce"
         self._public_tts_base = f"{www.public_url_base}/tts"
-        self._public_www_base = www.public_url_base
-        self._tts_assets_cache_path = cfg['tts_assets_cache_path']
         self._announce_vol = cfg['announce_volume']
         self._announcement_history = deque(maxlen=10)
+
+        # Save cache path for tts and register it as a www dir, to serve assets
+        self._tts_assets_cache_path = cfg['tts_assets_cache_path']
         if not os.path.isdir(self._tts_assets_cache_path):
             raise FileNotFoundError(f"Invalid cache path '{self._tts_assets_cache_path}'")
-
-        MqttProxy.__init__(self, cfg, self._topic_base)
         www.register_www_dir(cfg['tts_assets_cache_path'], '/tts/')
+
+        # Register all other endpoints
         www.register_www_dir(os.path.join(pathlib.Path(__file__).parent.resolve(), 'www'), '/')
         www.serve_url('/announce_tts', self._www_announce_tts)
-        www.serve_url('/ls_speakers', self._www_known_speakers)
-        www.serve_url('/announcement_history', self._www_announcement_history)
+        www.serve_url('/ls_speakers', lambda: json.dumps(sorted(list(get_sonos_by_name()))))
+        www.serve_url('/announcement_history', lambda: json.dumps(list(self._announcement_history)))
 
-    def get_service_meta(self):
-        return {
-            "name": self._topic_base,
-            "mqtt_topic": self._topic_base,
-            "methods": ["ls", "tts", "save_asset", "play_asset"],
-            "announces": ["ls_reply", "tts_reply", "save_asset_reply"],
-            "www": self._public_www_base,
-        }
-
-    def _www_known_speakers(self):
-        return json.dumps(sorted(list(get_sonos_by_name())))
-
-    def _www_announcement_history(self):
-        return json.dumps(list(self._announcement_history))
 
     def _record_announcement(self, phrase, lang, volume, uri):
         entry = {
@@ -66,14 +54,10 @@ class ZmwSpeakerAnnounce(MqttProxy):
     def _www_announce_tts(self):
         """Web endpoint for TTS announcements."""
         lang = request.args.get('lang', self._cfg['tts_default_lang'])
+        vol = self._get_payload_vol(request.args)
         txt = request.args.get('phrase')
         if txt is None:
             return abort(400, "Message has no phrase")
-        try:
-            vol = int(request.args.get('vol', self._announce_vol))
-        except ValueError:
-            log.warning("Ignore non-number volume (%s) requested by user", request.args.get('vol'))
-            vol = self._announce_vol
 
         local_path = get_local_path_tts(self._tts_assets_cache_path, txt, lang)
         remote_path = f"{self._public_tts_base}/{local_path}"
@@ -81,10 +65,12 @@ class ZmwSpeakerAnnounce(MqttProxy):
         sonos_announce(remote_path, volume=vol, ws_api_cfg=self._cfg)
         return "OK"
 
-    def on_mqtt_json_msg(self, topic, payload):
-        match topic:
+    def on_service_received_message(self, subtopic, payload):
+        match subtopic:
+            case "ls_reply":
+                pass # Ignore self-reply
             case "ls":
-                self.broadcast(f"{self._topic_base}/ls_reply", list(get_sonos_by_name()))
+                self.publish_own_svc_message(f"ls_reply", list(get_sonos_by_name()))
             case "tts_reply":
                 pass # Ignore self-reply
             case "tts":
@@ -96,7 +82,7 @@ class ZmwSpeakerAnnounce(MqttProxy):
             case "play_asset":
                 self._play_asset(payload)
             case _:
-                log.error("Unknown message %s payload %s", topic, payload)
+                log.error("Unknown message %s payload %s", subtopic, payload)
 
     def _tts_and_play(self, payload):
         if 'msg' not in payload:
@@ -106,7 +92,7 @@ class ZmwSpeakerAnnounce(MqttProxy):
         local_path = get_local_path_tts(self._tts_assets_cache_path, payload['msg'], lang)
         remote_path = f"{self._public_tts_base}/{local_path}"
         msg = {'local_path': local_path, 'uri': remote_path}
-        self.broadcast(f"{self._topic_base}/tts_reply", msg)
+        self.publish_own_svc_message(f"tts_reply", msg)
         vol = self._get_payload_vol(payload)
         self._record_announcement(payload['msg'], lang, vol, remote_path)
         sonos_announce(remote_path, volume=vol, ws_api_cfg=self._cfg)
@@ -116,20 +102,20 @@ class ZmwSpeakerAnnounce(MqttProxy):
             local_path = str(local_path)
             if not os.path.isfile(local_path):
                 log.warning('Bad path to asset: "%s" is not a file', local_path)
-                self.broadcast(f"{self._topic_base}/save_asset_reply",
+                self.publish_own_svc_message(f"save_asset_reply",
                                {'status': 'error', 'cause': 'Bad path to asset "{local_path}"'})
                 return None
             # If file existed, overwrite
             local_asset_path = shutil.copy2(local_path, self._tts_assets_cache_path)
         except OSError as e:
             log.error("Saving asset failed", exc_info=True)
-            self.broadcast(f"{self._topic_base}/save_asset_reply", {'status': 'error', 'cause': str(e)})
+            self.publish_own_svc_message(f"save_asset_reply", {'status': 'error', 'cause': str(e)})
             return None
 
         fname = os.path.basename(local_asset_path)
         asset_uri = f"{self._public_tts_base}/{fname}"
         log.info("Saved asset '%s' to '%s', available at uri '%s'", local_path, local_asset_path, asset_uri)
-        self.broadcast(f"{self._topic_base}/save_asset_reply", {
+        self.publish_own_svc_message(f"save_asset_reply", {
             'status': 'ok',
             'asset': fname,
             'uri': asset_uri})

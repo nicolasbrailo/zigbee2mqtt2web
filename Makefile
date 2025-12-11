@@ -5,6 +5,13 @@ LINT_DIRS := $(patsubst %/Makefile,%,$(wildcard */Makefile))
 systemdeps:
 	sudo apt-get install -y python3-pkgconfig libsystemd-dev pylint autopep8
 
+.PHONY: test
+test:
+	@echo "Running test on all projects..."
+	@for dir in $(LINT_DIRS); do \
+		make -C $$dir test || true; \
+	done
+
 .PHONY: lint
 lint:
 	@echo "Running lint on all projects..."

@@ -3,7 +3,8 @@
 
 .PHONY: devrun
 devrun:
-	pipenv run python3 ./main.py
+	# Run the service corresponding to the active directory
+	pipenv run python3 ./$(notdir $(CURDIR)).py
 
 .PHONY: test
 test:

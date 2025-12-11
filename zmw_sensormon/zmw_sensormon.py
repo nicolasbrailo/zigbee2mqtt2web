@@ -1,6 +1,7 @@
 """Sensor monitoring and history service."""
-from zzmw_lib.mqtt_proxy import MqttServiceClient
-from zzmw_lib.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.zmw_mqtt_nullsvc import ZmwMqttNullSvc
+from zzmw_lib.logs import build_logger
+from zzmw_lib.service_runner import service_runner_with_www
 
 from zz2m.z2mproxy import Z2MProxy
 from zz2m.www import Z2Mwebservice
@@ -27,10 +28,10 @@ def interesting_actions(thing):
             acts.append(action_name)
     return acts
 
-class ZmwSensormon(MqttServiceClient):
+class ZmwSensormon(ZmwMqttNullSvc):
     """MQTT service for monitoring sensor data and maintaining history."""
     def __init__(self, cfg, www):
-        super().__init__(cfg, svc_deps=[])
+        super().__init__(cfg)
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
 
@@ -41,15 +42,6 @@ class ZmwSensormon(MqttServiceClient):
                              cb_on_z2m_network_discovery=self._on_z2m_network_discovery,
                              cb_is_device_interesting=lambda t: len(interesting_actions(t)) > 0)
         self._z2mw = Z2Mwebservice(www, self._z2m)
-
-    def get_service_meta(self):
-        return {
-            "name": "zmw_sensormon",
-            "mqtt_topic": None,
-            "methods": [],
-            "announces": [],
-            "www": self._public_url_base,
-        }
 
     def _on_z2m_network_discovery(self, _is_first_discovery, known_things):
         for thing_name, thing in known_things.items():

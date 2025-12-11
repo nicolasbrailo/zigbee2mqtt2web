@@ -8,7 +8,7 @@ import urllib.request
 
 from pathlib import Path
 from urllib.parse import quote
-from zzmw_lib.service_runner import build_logger
+from zzmw_lib.logs import build_logger
 
 log = build_logger("MqttSpeakerAnnounceTTS")
 
@@ -41,8 +41,10 @@ def get_local_path_tts(cache_path, phrase, lang):
     cache_fname = hashlib.md5(url.encode('utf-8')).hexdigest() + '.mp3'
     cached = Path(os.path.join(cache_path, cache_fname))
 
-    log.info('TTS requested lang "%s" phrase "%s"', lang, phrase)
-    if not cached.is_file():
+    if cached.is_file():
+        log.info('Found cached TTS request lang "%s" phrase "%s" at %s', lang, phrase, cached)
+    else:
+        log.info('TTS requested lang "%s" phrase "%s"', lang, phrase)
         log.info('Phrase not cached, need to download...')
         try:
             with urllib.request.urlopen(url) as req:

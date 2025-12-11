@@ -5,7 +5,7 @@ rebuild_deps: pipenv_rebuild_deps_base
 	pipenv install spotipy
 
 sub_all:
-	mosquitto_sub -h localhost -p 1883 -t 'zmw_spotify/#' -v
+	mosquitto_sub -v -h localhost -p 1883 -t 'zmw_spotify/#' -v
 sub_state:
 	mosquitto_sub -h localhost -p 1883 -t 'zmw_spotify/state' -v
 test_publish_state:

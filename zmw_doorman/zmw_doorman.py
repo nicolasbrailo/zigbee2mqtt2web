@@ -1,22 +1,23 @@
 """Doorbell event handler and notification service."""
 import time
 
-from zzmw_lib.mqtt_proxy import MqttServiceClient
-from zzmw_lib.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.zmw_mqtt_service import ZmwMqttServiceNoCommands
+from zzmw_lib.logs import build_logger
 
 from door_open_scene import DoorOpenScene
 
 log = build_logger("ZmwDoorman")
 
-class ZmwDoorman(MqttServiceClient):
+class ZmwDoorman(ZmwMqttServiceNoCommands):
     """Doorbell service that handles button press events and motion detection."""
 
     # TODO:
     # * Add command to send video
     # * Telegram command to pause notifications
     def __init__(self, cfg, www):
-        super().__init__(cfg, ['zmw_speaker_announce', 'zmw_whatsapp',
-                               'zmw_telegram', 'zmw_reolink_doorbell', 'zmw_contactmon'])
+        super().__init__(cfg, svc_deps=['ZmwSpeakerAnnounce', 'ZmwWhatsapp', 'ZmwTelegram',
+                                        'ZmwReolinkDoorbell', 'ZmwContactmon'])
         self._cfg = cfg
         # Ensure required config keys exist
         _ = self._cfg["doorbell_announce_volume"]
@@ -29,31 +30,25 @@ class ZmwDoorman(MqttServiceClient):
 
         self._door_open_scene = DoorOpenScene(cfg, self)
 
-    def get_service_meta(self):
-        return {
-            "name": "zmw_doorman",
-            "mqtt_topic": None,
-            "www": None,
-        }
-
     def on_service_came_up(self, service_name):
-        if service_name == "zmw_telegram":
-            self.message_svc("zmw_telegram", "register_command",
+        if service_name == "ZmwTelegram":
+            self.message_svc("ZmwTelegram", "register_command",
                              {'cmd': self._telegram_cmd_door_snap,
                               'descr': 'Take and send a doorbell cam picture'})
 
-    def on_service_message(self, service_name, msg_topic, msg):
+    def on_dep_published_message(self, service_name, msg_topic, msg):
+        log.debug("%s.%s: %s", service_name, msg_topic, msg)
         match service_name:
-            case 'zmw_contactmon':
+            case 'ZmwContactmon':
                 self.on_contact_report(msg_topic, msg)
-            case 'zmw_speaker_announce':
+            case 'ZmwSpeakerAnnounce':
                 pass
-            case 'zmw_whatsapp':
+            case 'ZmwWhatsapp':
                 pass
-            case 'zmw_telegram':
+            case 'ZmwTelegram':
                 if msg_topic.startswith("on_command/"):
                     self.on_telegram_cmd(msg_topic[len("on_command/"):], msg)
-            case 'zmw_reolink_doorbell':
+            case 'ZmwReolinkDoorbell':
                 match msg_topic:
                     case "on_snap_ready":
                         self.on_snap_ready(msg)
@@ -85,7 +80,7 @@ class ZmwDoorman(MqttServiceClient):
                     "First snap to arrive will be sent, others will be ignored."
                 )
             self._waiting_on_telegram_snap = time.time()
-            self.message_svc("zmw_reolink_doorbell", "snap", {})
+            self.message_svc("ZmwReolinkDoorbell", "snap", {})
 
     def on_snap_ready(self, msg):
         """Handle camera snap ready event."""
@@ -107,13 +102,13 @@ class ZmwDoorman(MqttServiceClient):
             return
 
         log.info("Received camera snap, sending over Telegram")
-        self.message_svc("zmw_telegram", "send_photo", {'path': msg['snap_path']})
+        self.message_svc("ZmwTelegram", "send_photo", {'path': msg['snap_path']})
         self._waiting_on_telegram_snap = None
 
     def on_doorbell_button_pressed(self, msg):
         """Handle doorbell button press event."""
         log.info("Doorbell reports button pressed, announce over speakers")
-        self.message_svc("zmw_speaker_announce", "play_asset", {
+        self.message_svc("ZmwSpeakerAnnounce", "play_asset", {
                             'vol': self._cfg.get("doorbell_announce_volume", "default"),
                             'local_path': self._cfg["doorbell_announce_sound"]})
 
@@ -121,15 +116,15 @@ class ZmwDoorman(MqttServiceClient):
             log.warning("Doorbell button pressed but no snap available")
         else:
             log.info("Send visitor snap from doorbell camera")
-            self.message_svc("zmw_whatsapp", "send_photo",
+            self.message_svc("ZmwWhatsapp", "send_photo",
                              {'path': msg['snap_path'], 'msg': "RING!"})
-            self.message_svc("zmw_telegram", "send_photo",
+            self.message_svc("ZmwTelegram", "send_photo",
                              {'path': msg['snap_path'], 'msg': "RING!"})
 
     def on_door_motion_detected(self, msg):
         """Handle door motion detection event."""
         log.info("Door reports motion! Sending snap over WA")
-        self.message_svc("zmw_whatsapp", "send_photo",
+        self.message_svc("ZmwWhatsapp", "send_photo",
                          {'path': msg['path_to_img'], 'msg': "Motion detected"})
         self._door_open_scene.pet_timer()
 

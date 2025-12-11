@@ -11,7 +11,6 @@ import dataclasses
 import os
 import signal
 
-from zzmw_lib.mqtt_proxy import MqttProxy
 from .thing import parse_from_zigbee2mqtt
 
 class Z2MProxy:

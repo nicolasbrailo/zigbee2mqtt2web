@@ -41,7 +41,7 @@ class TestTransitionExecutor:
         self.executor.on_transition('Sensor1', 'open')
 
         self.svc_mgr.message_svc.assert_any_call(
-            'mqtt_telegram',
+            'ZmwTelegram',
             'send_text',
             {'msg': 'Door opened'}
         )
@@ -51,7 +51,7 @@ class TestTransitionExecutor:
         self.executor.on_transition('Sensor1', 'open')
 
         self.svc_mgr.message_svc.assert_any_call(
-            'mqtt_whatsapp',
+            'ZmwWhatsapp',
             'send_text',
             {'msg': 'WA message'}
         )
@@ -61,7 +61,7 @@ class TestTransitionExecutor:
         self.executor.on_transition('Sensor1', 'close')
 
         self.svc_mgr.message_svc.assert_any_call(
-            'mqtt_speaker_announce',
+            'ZmwSpeakerAnnounce',
             'tts',
             {'msg': 'Door closed', 'lang': 'en'}
         )
@@ -71,7 +71,7 @@ class TestTransitionExecutor:
         self.executor.on_transition('Sensor1', 'close')
 
         self.svc_mgr.message_svc.assert_any_call(
-            'mqtt_speaker_announce',
+            'ZmwSpeakerAnnounce',
             'play_asset',
             {'public_www': 'http://example.com/sound.mp3'}
         )
@@ -82,8 +82,8 @@ class TestTransitionExecutor:
 
         assert self.svc_mgr.message_svc.call_count == 2
         calls = [call[0] for call in self.svc_mgr.message_svc.call_args_list]
-        assert ('mqtt_telegram', 'send_text', {'msg': 'Door opened'}) in calls
-        assert ('mqtt_whatsapp', 'send_text', {'msg': 'WA message'}) in calls
+        assert ('ZmwTelegram', 'send_text', {'msg': 'Door opened'}) in calls
+        assert ('ZmwWhatsapp', 'send_text', {'msg': 'WA message'}) in calls
 
     def test_telegram_skipped_when_skipping_sms(self):
         """Test telegram action NOT invoked when skipping_sms is True"""
@@ -94,7 +94,7 @@ class TestTransitionExecutor:
         # Should not call telegram service
         telegram_calls = [
             call for call in self.svc_mgr.message_svc.call_args_list
-            if call[0][0] == 'mqtt_telegram'
+            if call[0][0] == 'ZmwTelegram'
         ]
         assert len(telegram_calls) == 0
 
@@ -107,7 +107,7 @@ class TestTransitionExecutor:
         # Should not call whatsapp service
         whatsapp_calls = [
             call for call in self.svc_mgr.message_svc.call_args_list
-            if call[0][0] == 'mqtt_whatsapp'
+            if call[0][0] == 'ZmwWhatsapp'
         ]
         assert len(whatsapp_calls) == 0
 
@@ -304,7 +304,7 @@ class TestTransitionExecutor:
         # Should skip None config but still execute whatsapp
         whatsapp_calls = [
             call for call in self.svc_mgr.message_svc.call_args_list
-            if call[0][0] == 'mqtt_whatsapp'
+            if call[0][0] == 'ZmwWhatsapp'
         ]
         assert len(whatsapp_calls) == 1
 

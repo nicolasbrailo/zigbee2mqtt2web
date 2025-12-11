@@ -8,62 +8,15 @@ import sys
 import threading
 import time
 
+from flask import Flask
+from flask import send_from_directory, abort, redirect, url_for
+from werkzeug.serving import make_server, WSGIRequestHandler
+
 from inotify_simple import INotify, flags
 from systemd.journal import JournalHandler
 
-
-def build_logger(name, lvl=logging.DEBUG):
-    """
-    Create a logger configured for systemd journal or console output.
-
-    Automatically detects if running under systemd (via INVOCATION_ID env var) and
-    configures appropriate handlers. Ensures third-party library logs are filtered
-    at INFO level while allowing app logs at DEBUG level.
-
-    Args:
-        name: Logger name (typically the service/module name)
-        lvl: Log level for this logger (default: logging.DEBUG)
-
-    Returns:
-        Configured logging.Logger instance
-    """
-    # Configure root logger ONCE with proper handler/formatter for third-party libs
-    root = logging.getLogger()
-    if not root.handlers:  # Only configure if not already done
-        if os.getenv("INVOCATION_ID"):
-            # Running under systemd
-            root_handler = JournalHandler()
-            root_handler.setFormatter(logging.Formatter('%(message)s'))
-        else:
-            # Running standalone
-            root_handler = logging.StreamHandler()
-            root_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
-
-        root_handler.setLevel(logging.DEBUG)
-        root.addHandler(root_handler)
-        root.setLevel(logging.INFO)  # Root stays at INFO to filter third-party noise
-
-    # Create isolated logger for your app code
-    log = logging.getLogger(name)
-    log.setLevel(logging.DEBUG)
-    log.propagate = False
-    log.handlers.clear()
-
-    # Same handler setup as root, but isolated
-    if os.getenv("INVOCATION_ID"):
-        # We're running under systemd, don't bother with stdout
-        handler = JournalHandler()
-        handler.setLevel(lvl)
-        handler.setFormatter(logging.Formatter('%(message)s'))
-        log.addHandler(handler)
-    else:
-        handler = logging.StreamHandler()
-        handler.setLevel(lvl)
-        handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
-        log.addHandler(handler)
-
-    return log
-
+from .zmw_mqtt_base import ZmwMqttBase
+from .logs import build_logger
 
 log = build_logger("ServiceRunner")
 
@@ -257,11 +210,6 @@ def service_runner_with_www(AppClass):
     The Flask app runs in a background thread while the main thread
     runs the service's loop_forever().
     """
-    # Import in helper method, so that services that don't need flask doesn't have to install a dep
-    from flask import Flask
-    from flask import send_from_directory, abort, redirect, url_for
-    from werkzeug.serving import make_server, WSGIRequestHandler
-
     # Custom request handler that skips the timestamp in logs
     class CustomRequestHandler(WSGIRequestHandler):
         def log_date_time_string(self):
@@ -332,6 +280,24 @@ def service_runner_with_www(AppClass):
     # Add endpoints for common www things
     flaskapp.serve_url('/zmw.css', lambda: send_from_directory(_lib_www_path, 'build/zmw.css'))
     flaskapp.serve_url('/zmw.js', lambda: send_from_directory(_lib_www_path, 'build/zmw.js'))
+
+    if not issubclass(AppClass, ZmwMqttBase):
+        raise ValueError("Don't know how to run app '%s', this runner is meant to be used with ZmwMqttServices", AppClass.__name__)
+
+    # Add get_service_meta to the class before instantiation (in case it's abstract)
+    if getattr(getattr(AppClass, 'get_service_meta', None), '__isabstractmethod__', False):
+        def _get_service_meta(self):
+            # Assume that systemd name is going to be FooBar -> foo_bar
+            systemd_name = ''.join(f'_{c.lower()}' if c.isupper() and i > 0 else c.lower() for i, c in enumerate(self.__class__.__name__))
+            return {
+                "name": self.__class__.__name__,
+                "systemd_name": systemd_name,
+                "mqtt_topic": self.get_service_mqtt_topic(),
+                "www": flaskapp.public_url_base,
+            }
+        AppClass.get_service_meta = _get_service_meta
+        # Clear from abstract methods set so ABC allows instantiation
+        AppClass.__abstractmethods__ = AppClass.__abstractmethods__ - {'get_service_meta'}
 
     app = AppClass(cfg, flaskapp)
 

@@ -125,25 +125,25 @@ class TransitionExecutor:
             log.info("Skipping SMS: Sensor %s would Telegram '%s'", sensor_name, cfg)
             return
         log.debug("Sensor %s Telegram's '%s'", sensor_name, cfg)
-        self._svc_mgr.message_svc("zmw_telegram", "send_text", {'msg': cfg['msg']})
+        self._svc_mgr.message_svc("ZmwTelegram", "send_text", {'msg': cfg['msg']})
 
     def _whatsapp(self, sensor_name, cfg):
         if self._skipping_sms:
             log.info("Skipping SMS: Sensor %s would WA '%s'", sensor_name, cfg)
             return
         log.debug("Sensor %s WA's '%s'", sensor_name, cfg)
-        self._svc_mgr.message_svc("zmw_whatsapp", "send_text", {'msg': cfg['msg']})
+        self._svc_mgr.message_svc("ZmwWhatsapp", "send_text", {'msg': cfg['msg']})
 
     def _tts_announce(self, sensor_name, cfg):
         if self._skipping_chime:
             log.info("Skipping announcement: Sensor %s would TTS '%s'", sensor_name, cfg)
             return
         log.debug("Sensor %s TTS '%s'", sensor_name, cfg)
-        self._svc_mgr.message_svc("zmw_speaker_announce", "tts", {'msg': cfg['msg'], 'lang': cfg['lang']})
+        self._svc_mgr.message_svc("ZmwSpeakerAnnounce", "tts", {'msg': cfg['msg'], 'lang': cfg['lang']})
 
     def _sound_asset_announce(self, sensor_name, cfg):
         if self._skipping_chime:
             log.info("Skipping announcement: Sensor %s would play '%s'", sensor_name, cfg)
             return
         log.debug("Sensor %s plays '%s'", sensor_name, cfg)
-        self._svc_mgr.message_svc("zmw_speaker_announce", "play_asset", cfg)
+        self._svc_mgr.message_svc("ZmwSpeakerAnnounce", "play_asset", cfg)

@@ -2,8 +2,9 @@
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from zzmw_lib.mqtt_proxy import MqttServiceClient
-from zzmw_lib.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.zmw_mqtt_service import ZmwMqttService
+from zzmw_lib.logs import build_logger
 
 from timeout_mon import TimeoutMonitor
 from transition_executor import TransitionExecutor
@@ -15,13 +16,14 @@ import pathlib
 
 log = build_logger("ZmwContactmon")
 
-class ZmwContactmon(MqttServiceClient):
+class ZmwContactmon(ZmwMqttService):
     """
     Monitors Z2M contact sensors and executes configured actions (notifications,
     announcements) when sensors change state, timeout, or violate curfew.
     """
     def __init__(self, cfg, www):
-        super().__init__(cfg, ['zmw_speaker_announce', 'zmw_whatsapp', 'zmw_telegram'])
+        super().__init__(cfg, svc_topic='zmw_contactmon',
+                         svc_deps=['ZmwSpeakerAnnounce', 'ZmwWhatsapp', 'ZmwTelegram'])
 
         self._sched = BackgroundScheduler()
         self._sched.start()
@@ -48,15 +50,11 @@ class ZmwContactmon(MqttServiceClient):
 
         self._z2m = Z2mContactSensorDebouncer(cfg, self, self._actions_on_sensor_change, self._on_sensor_change)
 
+    def on_service_received_message(self, subtopic, msg):
+        pass
 
-    def get_service_meta(self):
-        return {
-            "name": "zmw_contactmon",
-            "mqtt_topic": "zmw_contactmon",
-            "methods": [],
-            "announces": ["$sensor/contact"],
-            "www": self._public_url_base,
-        }
+    def on_dep_published_message(self, svc_name, subtopic, msg):
+        pass
 
     def _svc_state(self):
         return {
@@ -72,7 +70,7 @@ class ZmwContactmon(MqttServiceClient):
         self._exec.on_transition(thing.name, contact_action)
         self._timeouts.notify_change(thing, entering_non_normal)
 
-        self.broadcast(f"zmw_contactmon/{thing.name}/contact", {
+        self.publish_own_svc_message(f"{thing.name}/contact", {
                 "sensor": thing.name,
                 "contact": contact,
                 "prev_contact": prev_contact_state,

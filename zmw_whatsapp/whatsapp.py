@@ -24,9 +24,11 @@ Note you can't send arbitrary messages to a phone number, you will need to
 """
 import json
 import requests
-
 import logging
-log = logging.getLogger(__name__)
+
+from zzmw_lib.logs import build_logger
+
+log = build_logger("ZmwWA")
 
 # Comment out to see requests to WA's API
 logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)

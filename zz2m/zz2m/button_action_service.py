@@ -4,14 +4,13 @@ import pathlib
 from flask import request
 
 from zz2m.helpers import bind_callbacks_to_z2m_actions
-from zz2m.light_helpers import monkeypatch_lights
-from zzmw_lib.mqtt_proxy import MqttServiceClient
-from zzmw_lib.service_runner import build_logger
+from zzmw_lib.zmw_mqtt_nullsvc import ZmwMqttNullSvc
+from zzmw_lib.logs import build_logger
 from zz2m.z2mproxy import Z2MProxy
 
 log = build_logger("ButtonActionService")
 
-class ButtonActionService(MqttServiceClient):
+class ButtonActionService(ZmwMqttNullSvc):
     """ Helper to implement a service that will enable buttons and scenes (consider scenes like a type of button!)
     Extend this class and
     1. Create a methode that starts with `_scene_` (eg _scene_all_off) to expose a scene
@@ -22,7 +21,7 @@ class ButtonActionService(MqttServiceClient):
     Start the service with service_runner_with_www(YourClass)
     """
     def __init__(self, cfg, www, www_path):
-        super().__init__(cfg, svc_deps=[])
+        super().__init__(cfg)
 
         # Set up www directory and endpoints
         self._public_url_base = www.register_www_dir(www_path)
@@ -37,19 +36,9 @@ class ButtonActionService(MqttServiceClient):
 
         self._z2m = Z2MProxy(cfg, self, cb_on_z2m_network_discovery=self._on_z2m_network_discovery)
 
-    def get_service_meta(self):
-        return {
-            "name": "baticasa_buttons",
-            "mqtt_topic": None,
-            "methods": [],
-            "announces": [],
-            "www": self._public_url_base,
-        }
-
     def _on_z2m_network_discovery(self, _is_first_discovery, known_things):
         """Handle Z2M network discovery and bind button callbacks."""
         log.info("Z2M network discovered, there are %d things", len(known_things))
-        monkeypatch_lights(self._z2m)
         self._unbound_callbacks, self._bound_callbacks = bind_callbacks_to_z2m_actions(self, '_z2m_cb_', known_things, global_pre_cb=self._discover_btn_actions)
         self._unbound_callbacks = sorted(self._unbound_callbacks)
         self._bound_callbacks = sorted(self._bound_callbacks)

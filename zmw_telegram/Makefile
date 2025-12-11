@@ -14,7 +14,7 @@ test_reg_cmds:
 	mosquitto_pub -t 'zmw_telegram/register_command' -m '{"cmd": "mqtt_ping", "descr": "Test mqtt proxy"}'
 
 test_listen_all:
-	mosquitto_sub -h 127.0.0.1 -t 'zmw_telegram/#'
+	mosquitto_sub -v -h 127.0.0.1 -t 'zmw_telegram/#'
 
 test_listen_cmds:
 	mosquitto_sub -h 127.0.0.1 -t 'zmw_telegram/on_command/mqtt_ping'

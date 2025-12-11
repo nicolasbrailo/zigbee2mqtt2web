@@ -9,14 +9,15 @@ from datetime import datetime
 from ansi2html import Ansi2HTMLConverter
 from flask import abort
 
-from zzmw_lib.mqtt_proxy import MqttServiceClient
-from zzmw_lib.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.zmw_mqtt_service import ZmwMqttServiceNoCommands
+from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.logs import build_logger
 
 from journal_monitor import JournalMonitor
 
 log = build_logger("ZmwServicemon")
 
-class ZmwServicemon(MqttServiceClient):
+class ZmwServicemon(ZmwMqttServiceNoCommands):
     """ Monitor other z2m2w services running on this host """
 
     def __init__(self, cfg, www):
@@ -36,15 +37,6 @@ class ZmwServicemon(MqttServiceClient):
         www.serve_url('/ls', self.known_services)
         www.serve_url('/systemd_status', self.systemd_status)
         www.serve_url('/recent_errors', self.recent_errors)
-
-    def get_service_meta(self):
-        return {
-            "name": "zmw_servicemon",
-            "mqtt_topic": None,
-            "methods": [],
-            "announces": [],
-            "www": self._public_url_base,
-        }
 
     def known_services(self):
         """Return JSON list of all known services and their metadata."""
@@ -85,7 +77,7 @@ class ZmwServicemon(MqttServiceClient):
         self._services[svc_name]['alive'] = up
         if up:
             self._services[svc_name]['last_seen'] = datetime.now()
-        self._journal_monitor.monitor_unit(svc_name)
+        self._journal_monitor.monitor_unit(svc_meta.get('systemd_name', svc_name))
 
     def on_dep_became_stale(self, name):
         if name not in self._services:

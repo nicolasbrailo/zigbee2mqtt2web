@@ -3,20 +3,21 @@ import json
 import os
 import pathlib
 
-from zzmw_lib.mqtt_proxy import MqttServiceClient
-from zzmw_lib.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.zmw_mqtt_service import ZmwMqttServiceNoCommands
+from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.logs import build_logger
 from service_magic_proxy import ServiceMagicProxy
 
 log = build_logger("ZmwDashboard")
 
 
-class ZmwDashboard(MqttServiceClient):
+class ZmwDashboard(ZmwMqttServiceNoCommands):
     """Dashboard service that aggregates other services with generic proxying."""
     def __init__(self, cfg, www):
         super().__init__(cfg, svc_deps=[
-                "zmw_lights", "zmw_speaker_announce", "zmw_contactmon",
-                "zmw_heating", "zmw_reolink_doorbell", "zmw_sensormon",
-                "baticasa_buttons"])
+                "ZmwLights", "ZmwSpeakerAnnounce", "ZmwContactmon",
+                "ZmwHeating", "ZmwReolinkDoorbell", "ZmwSensormon",
+                "BaticasaButtons"])
 
         self._svc_proxy = None
         self._www = www
@@ -26,15 +27,6 @@ class ZmwDashboard(MqttServiceClient):
         # We'll call www.setup_complete when the service is ready, otherwise we'll try to setup routes after
         # the service may have started.
         self._www.startup_automatically = False
-
-    def get_service_meta(self):
-        return {
-            "name": "zmw_dashboard",
-            "mqtt_topic": None,
-            "methods": [],
-            "announces": [],
-            "www": self._public_www_base,
-        }
 
     def on_all_service_deps_running(self):
         proxies = {}
@@ -56,7 +48,6 @@ class ZmwDashboard(MqttServiceClient):
     def on_service_announced_meta(self, svc_name, meta):
         if self._svc_proxy is None:
             # Not setup yet, so it's safe to ignore new services
-            log.debug("SVC UP BUT NO PROXY YET")
             return
         self._svc_proxy.on_service_announced_meta(svc_name, meta.get("www"))
 

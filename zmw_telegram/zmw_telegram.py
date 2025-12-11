@@ -3,8 +3,9 @@ import json
 import pathlib
 import os
 
-from zzmw_lib.mqtt_proxy import MqttProxy
-from zzmw_lib.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.zmw_mqtt_service import ZmwMqttService
+from zzmw_lib.logs import build_logger
+from zzmw_lib.service_runner import service_runner_with_www
 
 from pytelegrambot import TelegramLongpollBot
 
@@ -42,50 +43,25 @@ class TelBot(TelegramLongpollBot):
         set a message in Telegram, but it's a known recipient """
         log.warning("Telegram bot received unknown message: %s", msg)
 
-class ZmwTelegram(MqttProxy):
+class ZmwTelegram(ZmwMqttService):
     """MQTT to Telegram bridge service for bidirectional messaging."""
 
     def __init__(self, cfg, www):
-        self._cfg = cfg
-        self._topic_base = "zmw_telegram"
+        super().__init__(cfg, "zmw_telegram")
+        self._bcast_chat_id = cfg['bcast_chat_id']
         self._msg = TelBot(cfg)
 
         # Set up www directory and endpoints
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
-        www.serve_url('/messages', self.get_messages)
+        www.serve_url('/messages', lambda: json.dumps(list(self._msg.get_history()), default=str))
 
-        MqttProxy.__init__(self, cfg, self._topic_base)
-
-    def get_messages(self):
-        """Flask endpoint to serve message history"""
-        return json.dumps(list(self._msg.get_history()), default=str)
-
-    def _relay_cmd(self, _bot, msg):
-        """ Relay an mqtt-registered callback from Telegram back to mqtt. The Telegram client already
-        validates this command is known, so we can just relay the command itself. """
-        if 'cmd' not in msg:
-            log.warning("Received user message but can'find associated cmd. Ignoring. Full message:\n\t%s", msg)
-            return
-
-        log.info("Received Telegram command '%s', relaying over mqtt", msg['cmd'])
-        self.broadcast(f"{self._topic_base}/on_command/{msg['cmd']}", msg)
-
-    def get_service_meta(self):
-        return {
-            "name": self._topic_base,
-            "mqtt_topic": self._topic_base,
-            "methods": ["register_command", "send_photo", "send_text"],
-            "announces": ["on_command"],
-            "www": self._public_url_base,
-        }
-
-    def on_mqtt_json_msg(self, topic, payload):
-        if topic.startswith('on_command/'):
+    def on_service_received_message(self, subtopic, payload):
+        if subtopic.startswith('on_command/'):
             # We're relaying a Telegram command over mqtt, ignore self-echo
             return
 
-        match topic:
+        match subtopic:
             case "register_command":
                 if 'cmd' not in payload or 'descr' not in payload:
                     log.error("Received request to add command, but missing 'cmd' or 'descr': '%s'", payload)
@@ -100,14 +76,29 @@ class ZmwTelegram(MqttProxy):
                     log.error("Received request to send image but path is not a file: '%s'", payload)
                     return
                 log.info("Sending photo to bcast chat, path %s", payload['path'])
-                self._msg.send_photo(self._cfg['bcast_chat_id'], payload['path'], payload.get('msg', None))
+                self._msg.send_photo(self._bcast_chat_id, payload['path'], payload.get('msg', None))
             case "send_text":
                 if not 'msg' in payload:
                     log.error("Received request to send message but payload has no text: '%s'", payload)
                     return
                 log.info("Sending text to bcast chat, message %s", payload['msg'])
-                self._msg.send_message(self._cfg['bcast_chat_id'], payload['msg'])
+                self._msg.send_message(self._bcast_chat_id, payload['msg'])
             case _:
-                log.error("Ignoring unknown message '%s'", topic)
+                log.error("Ignoring unknown message '%s'", subtopic)
+
+    def _relay_cmd(self, _bot, msg):
+        """ Relay an mqtt-registered callback from Telegram back to mqtt. The Telegram client already
+        validates this command is known, so we can just relay the command itself. """
+        if 'cmd' not in msg:
+            log.warning("Received user message but can't find associated cmd. Ignoring. Full message:\n\t%s", msg)
+            return
+
+        log.info("Received Telegram command '%s', relaying over mqtt", msg['cmd'])
+        # Commands may have a / as a prefix, strip it to ensure we only send a single slash
+        if msg['cmd'][0] == '/':
+            cmd = msg['cmd'][1:]
+        else:
+            cmd = msg['cmd']
+        self.publish_own_svc_message(f"on_command/{cmd}", msg)
 
 service_runner_with_www(ZmwTelegram)

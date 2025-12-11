@@ -10,14 +10,21 @@ from spotipy import SpotifyException
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from zzmw_lib.mqtt_proxy import MqttProxy
-from zzmw_lib.service_runner import service_runner_with_www, build_logger
+from zzmw_lib.zmw_mqtt_service import ZmwMqttService
+from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.logs import build_logger
 
 log = build_logger("ZmwSpotify")
 
+# Suppress noisy spotipy logs
+import logging
+logging.getLogger('spotipy.*').setLevel(logging.INFO)
+logging.getLogger('spotipy.oauth2').setLevel(logging.INFO)
+logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
+logging.getLogger('spotipy.client').setLevel(logging.CRITICAL)
+
 # A token is valid for an hour, so we refresh every 45 minutes
 _SPOTIFY_SECS_BETWEEN_TOK_REFRESH = 60 * 45
-
 
 def _get_spotify_scopes():
     return 'app-remote-control user-read-playback-state ' \
@@ -55,30 +62,20 @@ def _new_spotipy(cfg):
     return Spotipy(auth=oauth['access_token'])
 
 
-class ZmwSpotify(MqttProxy):
+class ZmwSpotify(ZmwMqttService):
     """MQTT Spotify control service for playback management."""
 
     def __init__(self, cfg, www):
+        super().__init__(cfg, "zmw_spotify")
         self._cfg = cfg
-        self._topic_base = "zmw_spotify"
         self._spotipy = None
-
-        # Suppress noisy spotipy logs
-        import logging
-        logging.getLogger('spotipy.*').setLevel(logging.INFO)
-        logging.getLogger('spotipy.oauth2').setLevel(logging.INFO)
-        logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
-        logging.getLogger('spotipy.client').setLevel(logging.CRITICAL)
 
         # Set up www directory and reauth endpoints
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
-
         www.serve_url('/reauth', self._serve_reauth_page)
         www.serve_url('/reauth/complete/<code>', self._complete_reauth)
         www.serve_url('/status', self._serve_status_page)
-
-        MqttProxy.__init__(self, cfg, self._topic_base)
 
         # Initialize Spotify auth
         try:
@@ -311,28 +308,12 @@ class ZmwSpotify(MqttProxy):
             'media_info': None,
         }
 
-    def get_service_meta(self):
-        """Metadata for service discovery."""
-        return {
-            "name": self._topic_base,
-            "mqtt_topic": self._topic_base,
-            "methods": [
-                "publish_state", "stop", "toggle_play", "relative_jump_to_track",
-                "set_volume"
-            ],
-            "announces": ["state"],
-            "www": self._public_url_base,
-        }
-
-    def on_mqtt_json_msg(self, topic, payload):
+    def on_service_received_message(self, subtopic, payload):
         """Handle incoming MQTT messages."""
-        match topic:
-            # Query full state
+        match subtopic:
             case "publish_state":
-                result = self._get_full_state()
-                self.broadcast(f"{self._topic_base}/state", result)
+                self.publish_own_svc_message("state", self._get_full_state())
 
-            # Commands
             case "stop":
                 log.info("Received stop command")
                 self._with_spotify('stop', self._stop)
@@ -353,7 +334,7 @@ class ZmwSpotify(MqttProxy):
                 self._with_spotify('set_volume', self._set_volume_pct, payload['value'])
 
             case _:
-                log.warning("Ignoring unknown MQTT topic: %s", topic)
+                log.warning("Ignoring unknown MQTT topic: %s", subtopic)
 
 
 service_runner_with_www(ZmwSpotify)
