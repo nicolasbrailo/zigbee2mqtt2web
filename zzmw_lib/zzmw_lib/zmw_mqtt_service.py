@@ -28,7 +28,7 @@ class ZmwMqttService(ZmwMqttBase):
         self._all_deps_alive = False
         # Add a random (prime) delay to pings, to minimize chances we're syncing pings with other services
         random_delay = random.choice([2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59])
-        self._deps_ping = 10# 3 * 60 + random_delay
+        self._deps_ping = 3 * 60 + random_delay
         # Number of missed pings before marking a dep as down
         self._dep_stale_timeout = self._deps_ping * 3
         self.subscribe_with_cb(self._global_svc_discovery_announce_topic, lambda _t, payload: self._on_service_updown(True, payload))
