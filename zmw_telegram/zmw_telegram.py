@@ -2,6 +2,8 @@
 import json
 import pathlib
 import os
+import time
+from collections import deque
 
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 from zzmw_lib.logs import build_logger
@@ -46,15 +48,31 @@ class TelBot(TelegramLongpollBot):
 class ZmwTelegram(ZmwMqttService):
     """MQTT to Telegram bridge service for bidirectional messaging."""
 
+    _RATE_LIMIT_MAX_MSGS = 3
+    _RATE_LIMIT_WINDOW_SECS = 60
+
     def __init__(self, cfg, www):
         super().__init__(cfg, "zmw_telegram")
         self._bcast_chat_id = cfg['bcast_chat_id']
         self._msg = TelBot(cfg)
+        self._msg_times = deque(maxlen=self._RATE_LIMIT_MAX_MSGS)
 
         # Set up www directory and endpoints
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
         www.serve_url('/messages', lambda: json.dumps(list(self._msg.get_history()), default=str))
+
+    def _rate_limited_send(self, send_fn):
+        """Rate-limit outgoing messages. Allows max 3 messages per minute."""
+        now = time.time()
+        if len(self._msg_times) == self._RATE_LIMIT_MAX_MSGS:
+            oldest = self._msg_times[0]
+            if now - oldest < self._RATE_LIMIT_WINDOW_SECS:
+                log.error("Rate limit exceeded: %d messages in the last %d seconds, dropping message",
+                          self._RATE_LIMIT_MAX_MSGS, self._RATE_LIMIT_WINDOW_SECS)
+                return
+        self._msg_times.append(now)
+        send_fn()
 
     def on_service_received_message(self, subtopic, payload):
         if subtopic.startswith('on_command/'):
@@ -76,13 +94,14 @@ class ZmwTelegram(ZmwMqttService):
                     log.error("Received request to send image but path is not a file: '%s'", payload)
                     return
                 log.info("Sending photo to bcast chat, path %s", payload['path'])
-                self._msg.send_photo(self._bcast_chat_id, payload['path'], payload.get('msg', None))
+                self._rate_limited_send(
+                    lambda: self._msg.send_photo(self._bcast_chat_id, payload['path'], payload.get('msg', None)))
             case "send_text":
                 if not 'msg' in payload:
                     log.error("Received request to send message but payload has no text: '%s'", payload)
                     return
                 log.info("Sending text to bcast chat, message %s", payload['msg'])
-                self._msg.send_message(self._bcast_chat_id, payload['msg'])
+                self._rate_limited_send(lambda: self._msg.send_message(self._bcast_chat_id, payload['msg']))
             case _:
                 log.error("Ignoring unknown message '%s'", subtopic)
 
