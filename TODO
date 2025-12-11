@@ -5,7 +5,6 @@
 * Make dashboard load faster - load lights first, deferr other requests?
 * Review all UI code for mqtt_heating, there's too much vibe
 * dashboard svc -> How do I install authbind automatically
-* all svcs -> Add logs view (which is now part of the base svc runner)
 * all svcs -> Run tests as part of systemd service start?
 * all svcs -> lint and check test coverage
 * new svc Implement presence sensor to aggregate multiple PIRs, turn on/off lights in kitchen

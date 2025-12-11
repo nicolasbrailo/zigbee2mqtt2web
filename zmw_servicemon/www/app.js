@@ -50,7 +50,7 @@ class ServiceMonitor extends React.Component {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '10px', marginBottom: '20px' }}>
         {Object.values(this.state.services).map((srv) => (
-          <div key={srv.name} className="card" style={{ padding: '10px' }}>
+          <div key={srv.name} className="card" style={{ padding: '10px', position: 'relative', paddingBottom: '35px' }}>
             <h4 style={{ margin: '0 0 5px 0' }}>
             {srv.www ? (
               <a href={srv.www} target="_blank" rel="noopener noreferrer">
@@ -71,6 +71,13 @@ class ServiceMonitor extends React.Component {
               <em>Methods:</em> {srv.methods.join(", ")}
             </div>
             ))}
+
+            {srv.www && (
+              <a href={`${srv.www}/svc_logs.html`} target="_blank" rel="noopener noreferrer"
+                 style={{ position: 'absolute', bottom: '8px', right: '8px', fontSize: '0.8em' }}>
+                📜 Logs
+              </a>
+            )}
           </div>
         ))}
       </div>
