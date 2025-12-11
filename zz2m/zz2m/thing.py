@@ -5,7 +5,7 @@ from typing import Callable
 import json
 from json import JSONDecodeError
 
-from zzmw_lib.service_runner import build_logger
+from zzmw_lib.logs import build_logger
 log = build_logger("Z2M")
 
 _Z2M_IGNORE_ACTIONS = ['update']

@@ -3,7 +3,6 @@
 * Audit UI styles
 * Move baticasa_buttons out of generic zmw project
 * Make dashboard load faster - load lights first, deferr other requests?
-* RGB parsing is broken
 * Review all UI code for mqtt_heating, there's too much vibe
 * dashboard svc -> How do I install authbind automatically
 * all svcs -> Add logs view (which is now part of the base svc runner)

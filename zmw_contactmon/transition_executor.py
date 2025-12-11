@@ -2,7 +2,7 @@
 
 from flask import abort
 from datetime import datetime, timedelta
-from zzmw_lib.service_runner import build_logger
+from zzmw_lib.logs import build_logger
 
 log = build_logger("Z2mContactSensorDebouncer")
 

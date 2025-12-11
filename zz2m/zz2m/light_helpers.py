@@ -3,7 +3,7 @@ from .thing import Zigbee2MqttActionValue
 
 import time
 
-from zzmw_lib.service_runner import build_logger
+from zzmw_lib.logs import build_logger
 log = build_logger("Z2M")
 
 def _rgb_to_cie_xy(rgb_color):
@@ -177,7 +177,8 @@ def _rgb_str_to_cie_xy(rgb):
                 rgb[1], 16), int(
                 rgb[2], 16)))
 
-    if len(rgb) == 6:
+    if len(rgb) == 6 or len(rgb) == 8:
+        # For len == 8 it's RRGGBBAA. We don't support alpha, so ignore it.
         return _rgb_to_cie_xy(
             (int(rgb[0:2], 16), int(rgb[2:4], 16), int(rgb[4:6], 16)))
 
