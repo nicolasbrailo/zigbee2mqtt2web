@@ -1,11 +1,4 @@
 {
-  "mqtt_comment": "MQTT server we'll try to listen to",
-  "mqtt_ip": "localhost",
-  "mqtt_port": 1883,
-
-  "http_host": "10.0.0.10",
-  "http_port": 4209,
-
   "zigbee_boiler_name": "Boiler",
   "schedule_persist_file": "./mqttheating.sched.json",
   "rules": [

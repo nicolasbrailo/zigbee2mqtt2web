@@ -37,11 +37,11 @@ class _MqttProxy(MqttProxy):
 
 class ZmwReolinkDoorbell(ReolinkDoorbell):
     """MQTT-enabled doorbell camera that broadcasts events and handles commands."""
-    def __init__(self, cfg, webhook):
+    def __init__(self, cfg, webhook, public_url_base):
         ReolinkDoorbell.__init__(self, cfg, webhook)
         self._mqtt = _MqttProxy(cfg, "zmw_reolink_doorbell")
         self._mqtt.on_mqtt_json_msg = self.on_mqtt_json_msg
-        self._mqtt._public_url_base = cfg.get('_public_url_base', f"http://{cfg['http_host']}:{cfg['http_port']}/")
+        self._mqtt._public_url_base = public_url_base
         self._mqtt.loop_forever_bg()
 
     def disconnect(self):
@@ -130,11 +130,8 @@ class DoorbellService:
         # Build webhook URL from Flask server info
         webhook_url = f"{www.public_url_base}/doorbell"
 
-        # Pass public URL to config so MqttDoorbellCam can set it
-        cfg['_public_url_base'] = www.public_url_base
-
         # Initialize camera and NVR
-        self.cam = ZmwReolinkDoorbell(cfg, webhook_url)
+        self.cam = ZmwReolinkDoorbell(cfg, webhook_url, www.public_url_base)
         self.nvr = Nvr(cfg['rec_path'], www)
         self._stop_event = threading.Event()
 

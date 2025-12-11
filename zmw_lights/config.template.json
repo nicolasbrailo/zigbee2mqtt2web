@@ -1,9 +1,0 @@
-{
-  "mqtt_ip": "localhost",
-  "mqtt_port": 1883,
-
-  "http_host": "10.0.0.10",
-  "http_port": 4206,
-
-  "JSON IS": "SILLY"
-}

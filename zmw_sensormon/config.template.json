@@ -1,8 +1,4 @@
 {
-  "mqtt_comment": "MQTT server we'll try to listen to",
-  "mqtt_ip": "localhost",
-  "mqtt_port": 1883,
-
   "db_path": "/home/batman/run/baticasa/sensors.sqlite",
   "retention_days": 7,
 

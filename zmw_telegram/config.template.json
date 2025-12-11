@@ -9,8 +9,5 @@
   "comment": "How many messages are kept in the service's history",
   "msg_history_len": 50,
 
-  "http_host": "10.0.0.10",
-  "http_port": 4202,
-
   "JSON": "IS SILLY"
 }

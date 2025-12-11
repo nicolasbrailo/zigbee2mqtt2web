@@ -1,12 +1,8 @@
 {
-  "mqtt_comment": "MQTT server we'll try to listen to",
-  "mqtt_ip": "localhost",
-  "mqtt_port": 1883,
-
   "error_history_len": 100,
   "rate_limit_window_mins": 5,
 
-  "http_host": "10.0.0.10",
+  "COMMENT": "Better give this service a fixed port, it's useful to know where to find it",
   "http_port": 4200,
 
   "JSON IS": "SILLY"

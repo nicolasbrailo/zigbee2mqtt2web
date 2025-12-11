@@ -1,9 +1,4 @@
 {
-  "mqtt_ip": "localhost",
-  "mqtt_port": 1883,
-  "http_host": "10.0.0.10",
-  "http_port": 4207,
-
   "COMMENT_chime_skip_timeout_secs": "When calling 'chime skip', audio announcements will be skipped for this many seconds",
   "chime_skip_default_secs": 120,
   "chime_skip_max_secs": 300,

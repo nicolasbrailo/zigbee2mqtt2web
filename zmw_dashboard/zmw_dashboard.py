@@ -53,4 +53,11 @@ class ZmwDashboard(MqttServiceClient):
         # Try to continue with whatever deps we have
         self.on_all_service_deps_running()
 
+    def on_service_announced_meta(self, svc_name, meta):
+        if self._svc_proxy is None:
+            # Not setup yet, so it's safe to ignore new services
+            log.debug("SVC UP BUT NO PROXY YET")
+            return
+        self._svc_proxy.on_service_announced_meta(svc_name, meta.get("www"))
+
 service_runner_with_www(ZmwDashboard)

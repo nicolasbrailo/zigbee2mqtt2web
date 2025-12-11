@@ -61,8 +61,8 @@ class MqttProxy(ABC):
             log.warning('Skipping MQTT for dev server. Stuff may break')
             return
 
-        self._mqtt_ip = cfg['mqtt_ip']
-        self._mqtt_port = cfg['mqtt_port']
+        self._mqtt_ip = cfg.get('mqtt_ip', 'localhost')
+        self._mqtt_port = cfg.get('mqtt_port', 1883)
         self._topic = topic
         self._topics_with_cb = {}
 
@@ -373,6 +373,7 @@ class MqttServiceClient(MqttProxy):
             if name in self._known_services and self._known_services[name]['mqtt_topic'] == svc_meta['mqtt_topic']:
                 self._known_services[name]['last_seen'] = datetime.now()
                 log.debug('Ping from service dep %s, mark as not stale', name)
+                self.on_service_announced_meta(name, svc_meta)
                 return
 
             if name in self._known_services and self._known_services[name]['mqtt_topic'] != svc_meta['mqtt_topic']:
@@ -392,6 +393,8 @@ class MqttServiceClient(MqttProxy):
             self._known_services[name]['last_seen'] = datetime.now()
             if svc_just_came_up:
                 self.on_service_came_up(name)
+            else:
+                self.on_service_announced_meta(name, svc_meta)
         else:
             log.info('Dependency "%s" is now down', svc_meta['name'])
             self._known_services.pop(svc_meta['name'], None)
@@ -491,6 +494,10 @@ class MqttServiceClient(MqttProxy):
         subscriptions being setup, and when a service cames up we're only guaranteed to have started
         the subscription process, but the subscription is not guaranteed to have completed """
         log.info("Service dep %s is now running", service_name)
+
+    def on_service_announced_meta(self, name, svc_meta):
+        """ Called any time a service announces metadata. May or may not contain a change to metadata. """
+        pass
 
     def on_service_message(self, service_name, msg_topic, msg):
         """

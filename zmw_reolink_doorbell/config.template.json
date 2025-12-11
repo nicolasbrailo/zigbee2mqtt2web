@@ -1,11 +1,4 @@
 {
-  "mqtt_comment": "MQTT server we'll try to listen to",
-  "mqtt_ip": "localhost",
-  "mqtt_port": 1883,
-
-  "http_host": "10.0.0.10",
-  "http_port": 4204,
-
   "cam_host": "10.0.0.20",
   "cam_user": "admin",
   "cam_pass": "",

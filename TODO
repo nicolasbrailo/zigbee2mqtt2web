@@ -1,5 +1,6 @@
 Next:
-* Auto port assign
+* Audit UI styles
+* Telegram and Whatsapp -> Add ratelimiting to ensure we're not spamming
 * Move baticasa_buttons out of generic zmw project
 * Make dashboard load faster - load lights first, deferr other requests?
 * RGB parsing is broken

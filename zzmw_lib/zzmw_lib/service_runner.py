@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import signal
+import socket
 import subprocess
 import sys
 import threading
@@ -66,14 +67,97 @@ def build_logger(name, lvl=logging.DEBUG):
 
 log = build_logger("ServiceRunner")
 
+
+def _get_lan_ip():
+    """
+    Get LAN IP by checking which interface would route to an external host.
+
+    This creates a UDP socket and "connects" to an external IP (no data is sent),
+    then checks which local IP was selected for the connection.
+
+    Returns:
+        str: The LAN IP address, or None if it cannot be determined
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+    except OSError:
+        return None
+
+
+def _get_http_host(cfg):
+    """
+    Get the HTTP host to bind to.
+
+    If cfg['http_host'] exists and is not None, use it.
+    Otherwise, try to auto-detect the LAN IP.
+    If detection fails, fall back to '0.0.0.0'.
+
+    Returns:
+        str: The host address to bind to
+    """
+    if cfg.get('http_host') is not None:
+        return cfg['http_host']
+
+    lan_ip = _get_lan_ip()
+    if lan_ip is not None:
+        return lan_ip
+
+    log.error("Could not determine LAN IP, falling back to 0.0.0.0. Service discovery will break.")
+    return '0.0.0.0'
+
+
+def _get_port(cfg, host):
+    """
+    Get a port for the HTTP server.
+
+    If cfg['http_port'] exists and is not None, use it.
+    Otherwise, try to find a free port in range 4201-4299.
+    If no port in range is available, fall back to OS-assigned port.
+
+    Returns:
+        int: The port number to use
+    """
+    if cfg.get('http_port') is not None:
+        return cfg['http_port']
+
+    # Try to find a free port in the preferred range
+    for port in range(4201, 4300):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind((host, port))
+                return port
+        except OSError:
+            continue
+
+    # Fall back to OS-assigned port
+    log.warning("No free port found in range 4201-4299, falling back to OS-assigned port")
+    return 0
+
+
 def _get_config():
-    with open('config.json', 'r') as fp:
-        cfg = json.loads(fp.read())
+    """ Will open config.json for this service. If the config file doesn't exist, returns an empty map. Will kill the
+    running service if the config changes, or if a new config file is created after the service has been started with
+    no config file, so the service will have a chance to reload. """
+    config_exists = os.path.exists('config.json')
+
+    if config_exists:
+        with open('config.json', 'r') as fp:
+            cfg = json.loads(fp.read())
+    else:
+        log.info("Config file config.json not found, using empty config")
+        cfg = {}
 
     def _reload_on_cfg_change():
         inotify = INotify()
-        inotify.add_watch("config.json", flags.MODIFY)
+        if config_exists:
+            inotify.add_watch("config.json", flags.MODIFY)
+        else:
+            inotify.add_watch(".", flags.CREATE)
         for ev in inotify.read():
+            if not config_exists and ev.name != "config.json":
+                continue
             log.info("Config file config.json has changed, will reload service (by shutting it down!)")
             os.kill(os.getpid(), signal.SIGTERM)
             time.sleep(1)
@@ -185,9 +269,13 @@ def service_runner_with_www(AppClass):
 
     cfg = _get_config()
     flaskapp = Flask(AppClass.__name__)
-    wwwserver = make_server(cfg['http_host'], cfg['http_port'], flaskapp, request_handler=CustomRequestHandler)
+    http_host = _get_http_host(cfg)
+    wwwserver = make_server(http_host,
+                            _get_port(cfg, http_host),
+                            flaskapp, request_handler=CustomRequestHandler)
+    flaskapp.public_url_base = f"http://{http_host}:{wwwserver.server_port}"
+    log.info("Will serve www requests to %s", flaskapp.public_url_base)
 
-    flaskapp.public_url_base = f"http://{cfg['http_host']}:{cfg['http_port']}"
     def serve_url(url_path, view_func, methods=['GET']):
         return flaskapp.add_url_rule(rule=url_path,
                                      endpoint=url_path,

@@ -1,5 +1,8 @@
 """ Forward requests from a Flask http server to arbitrary downstream http services """
 import aiohttp
+import os
+import signal
+import time
 
 from flask import abort, request, Response
 from zzmw_lib.service_runner import build_logger
@@ -16,6 +19,19 @@ class ServiceMagicProxy:
 
     def get_proxied_services(self):
         return self._service_map
+
+    def on_service_announced_meta(self, svc_name, www_url):
+        if svc_name not in self._service_map:
+            # We don't care about this service
+            return
+        if self._service_map[svc_name] != www_url:
+            log.error("Service '%s' changed its www path from '%s' to '%s', proxying will break. ",
+                      svc_name, self._service_map[svc_name], www_url)
+            log.info("This service will restart in a few seconds to trigger service-rediscovery...")
+            time.sleep(3)
+            os.kill(os.getpid(), signal.SIGTERM)
+            time.sleep(1)
+            log.critical("Sent SIGTERM, if you're seeing this something is broken...")
 
     def _register_routes(self, www):
         for svc_prefix, svc_route in self._service_map.items():

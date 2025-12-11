@@ -1,0 +1,4 @@
+{
+  "COMMENT": "Remember to use authbind here eg: /usr/bin/authbind --deep $startupCmd",
+  "http_port": 80
+}

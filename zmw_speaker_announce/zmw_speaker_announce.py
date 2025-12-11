@@ -23,8 +23,8 @@ class ZmwSpeakerAnnounce(MqttProxy):
     def __init__(self, cfg, www):
         self._cfg = cfg
         self._topic_base = "zmw_speaker_announce"
-        self._public_tts_base = f"http://{cfg['http_host']}:{cfg['http_port']}/tts"
-        self._public_www_base = f"http://{cfg['http_host']}:{cfg['http_port']}/"
+        self._public_tts_base = f"{www.public_url_base}/tts"
+        self._public_www_base = www.public_url_base
         self._tts_assets_cache_path = cfg['tts_assets_cache_path']
         self._announce_vol = cfg['announce_volume']
         self._announcement_history = deque(maxlen=10)

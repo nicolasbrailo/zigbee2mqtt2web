@@ -1,8 +1,4 @@
 {
-  "mqtt_comment": "MQTT server we'll try to listen to",
-  "mqtt_ip": "localhost",
-  "mqtt_port": 1883,
-
   "http_comment": "Externally accessible host/port for assets. Http only assumed.",
   "http_host": "192.168.1.2",
   "http_port": 4203,
