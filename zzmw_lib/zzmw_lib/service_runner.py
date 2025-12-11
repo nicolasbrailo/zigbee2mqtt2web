@@ -234,9 +234,16 @@ def service_runner_with_www(AppClass):
     flaskapp.serve_url = serve_url
     flaskapp.url_cb_ret_none = url_cb_ret_none
     flaskapp.register_www_dir = register_www_dir
-    flaskapp.serve_url('/svc_logs', get_this_service_logs)
     flaskapp.startup_automatically = True
     flaskapp.setup_complete = _www_serve_bg
+
+    _lib_www_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'www')
+    # Add an endpoint to retrieve logs for this service
+    flaskapp.serve_url('/svc_logs', get_this_service_logs)
+    flaskapp.serve_url('/svc_logs.html', lambda: send_from_directory(_lib_www_path, 'svc_logs.html'))
+    # Add endpoints for common www things
+    flaskapp.serve_url('/zmw.css', lambda: send_from_directory(_lib_www_path, 'build/zmw.css'))
+    flaskapp.serve_url('/zmw.js', lambda: send_from_directory(_lib_www_path, 'build/zmw.js'))
 
     app = AppClass(cfg, flaskapp)
 

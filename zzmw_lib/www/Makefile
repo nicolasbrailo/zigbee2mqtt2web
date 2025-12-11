@@ -1,25 +1,23 @@
-
 build:
 	mkdir -p build/npm
 	mkdir -p build/extjs
 
-build/rel.css: ./css/* build
-	./build/npm/node_modules/.bin/uglifycss ./css/* > build/rel.css
+.PHONY: css
+css: build/zmw.css
+build/zmw.css: ./css/* build
+	./build/npm/node_modules/.bin/uglifycss ./css/* > build/zmw.css
 
-build/extjs: build build/extjs/z2m.react.js build/extjs/z2m.js build/extjs/react.js build/extjs/react.dom.js build/extjs/dygraph.js
-
-.PHONE: rel-z2m-js
-rel-z2m-js: build/extjs/z2m.react.js
-
-build/extjs/z2m.react.js: build/extjs/react.js build/extjs/react.dom.js js/localStorageManager.js js/VisibilityCallback.js js/z2m.js
-	@# Order of deps is important, react needs to be imported first, then react.dom, then app
-	cat $^ > $@
-
-build/extjs/z2m.js: js/z2m.js
-	./babel_compile_single.sh $< $@
-
-build/extjs/VisibilityCallback.js: js/VisibilityCallback.js
-	./babel_compile_single.sh $< $@
+.PHONY: zmw.js
+js: build/zmw.js
+build/zmw.js: build build/extjs/react.dom.js build/extjs/react.js js/*
+	@# Order is important (eg we need to define react before zmw)
+	cat build/extjs/react.js \
+			build/extjs/react.dom.js \
+			js/localStorageManager.js \
+			js/VisibilityCallback.js \
+			js/z2m.js \
+		> build/zmw.big.js
+	./babel_compile_single.sh build/zmw.big.js build/zmw.js
 
 build/extjs/react.js:
 	wget -O "$@.unsafe" https://unpkg.com/react@18.3.1/umd/react.production.min.js
@@ -44,7 +42,6 @@ build/extjs/dygraph.js:
 	# If checksum fails, this won't run
 	cp $@.unsafe $@
 	rm $@.unsafe
-
 
 rebuild-deps: build
 	sudo npm install uglifycss -g

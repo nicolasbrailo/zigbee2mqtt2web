@@ -4,8 +4,6 @@ devrun:
 	/usr/bin/authbind --deep pipenv run python3 ./main.py
 
 rebuild_ui:
-	@ln -s ../../zzmw_lib/www/build/rel.css ./www/ || true
-	@ln -s ../../zzmw_lib/www/build/extjs ./www/ || true
 	cat \
 		../baticasa_buttons/www/app.js \
 		../zmw_contactmon/www/app.js \

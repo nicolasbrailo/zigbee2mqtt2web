@@ -12,8 +12,6 @@ test:
 .PHONY: rebuild_ui
 rebuild_ui:
 	../zzmw_lib/www/babel_compile_single.sh ./www/app.js ./www/app.rel.js
-	@ln -s ../../zzmw_lib/www/build/rel.css ./www/ || true
-	@ln -s ../../zzmw_lib/www/build/extjs ./www/ || true
 
 .PHONY: install_svc
 install_svc:

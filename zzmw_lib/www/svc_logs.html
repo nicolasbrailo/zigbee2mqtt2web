@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Heating logs</title>
+<title>Service logs</title>
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -84,90 +84,11 @@
     border-radius: 10px;
     color: var(--color-error);
   }
-
-  #state_history_container {
-    margin-bottom: 20px;
-    max-width: 100%;
-    overflow-x: auto;
-  }
-
-  .state_entry {
-    font-family: var(--font-family-mono);
-    font-size: 0.85em;
-    padding: 8px;
-    border-bottom: 1px solid var(--color-lightGrey);
-    display: flex;
-    gap: 15px;
-    align-items: center;
-  }
-
-  .state_header {
-    font-family: var(--font-family-mono);
-    font-size: 0.85em;
-    font-weight: bold;
-    padding: 8px;
-    border-bottom: 2px solid var(--color-darkGrey);
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    color: var(--color-text);
-  }
-
-  .state_time {
-    color: var(--color-darkGrey);
-    white-space: nowrap;
-    min-width: 150px;
-  }
-
-  .state_value {
-    font-weight: bold;
-    min-width: 50px;
-  }
-
-  .state_on {
-    color: var(--color-success);
-  }
-
-  .state_off {
-    color: var(--color-grey);
-  }
-
-  .state_reason {
-    color: var(--color-secondary);
-    flex: 1;
-  }
-
-  #config_rules_container {
-    margin-bottom: 20px;
-    max-width: 100%;
-    overflow-x: auto;
-  }
-
-  .rule_entry {
-    font-family: var(--font-family-mono);
-    font-size: 0.85em;
-    padding: 8px;
-    border-bottom: 1px solid var(--color-lightGrey);
-  }
-
-  .rule_unknown {
-    color: var(--color-error);
-  }
-
-  .rule_name {
-    font-weight: bold;
-    color: var(--color-secondary);
-  }
-
-  .rule_details {
-    margin-left: 20px;
-    color: var(--color-text);
-  }
 </style>
 </head>
 
 <body class="dark">
-  <h1><img src="/favicon.ico" />Heating manager logs</h1>
+  <h1><img src="/favicon.ico" />Service logs</h1>
 
   <div class="container">
     <div id="log_controls" class="card">
@@ -177,20 +98,6 @@
     </div>
 
     <div id="error_display" style="display:none;" class="error_display"></div>
-
-    <div id="state_history_container" class="card">
-      <h3>Boiler State History</h3>
-      <div id="state_history_entries">
-        <!-- State history will be inserted here -->
-      </div>
-    </div>
-
-    <div id="config_rules_container" class="card">
-      <h3>Config Rules</h3>
-      <div id="config_rules_entries">
-        <!-- Config rules will be inserted here -->
-      </div>
-    </div>
 
     <h3>Service logs</h3>
     <div id="logs_container" class="card">
@@ -321,124 +228,9 @@
     container.innerHTML = html;
   }
 
-  function refreshStateHistory() {
-    mJsonGet('/svc_state', function(data) {
-      if (data.error) {
-        console.error('Error loading state history: ' + data.error);
-        document.getElementById('state_history_entries').innerHTML =
-          '<p>Error loading state history.</p>';
-        return;
-      }
-
-      const stateHistory = data.boiler_state_history || [];
-      renderStateHistory(stateHistory);
-    }, function(error) {
-      console.error('Failed to fetch state history: ' + (error.statusText || 'Network error'));
-      document.getElementById('state_history_entries').innerHTML =
-        '<p>Failed to load state history.</p>';
-    });
-  }
-
-  function renderConfigRules(rules) {
-    const container = document.getElementById('config_rules_entries');
-
-    if (!rules || rules.length === 0) {
-      container.innerHTML = '<p>No config rules available.</p>';
-      return;
-    }
-
-    let html = '';
-    rules.forEach(rule => {
-      const ruleName = rule.name;
-
-      if (ruleName === 'DefaultOff' || ruleName === 'DefaultOn') {
-        html += `
-          <div class="rule_entry">
-            <span class="rule_name">${escapeHtml(ruleName)}</span>
-            <div class="rule_details">
-              Schedule: Always active
-            </div>
-          </div>
-        `;
-      } else if (ruleName === 'CheckTempsWithinRange') {
-        const minTemp = rule.min_temp;
-        const maxTemp = rule.max_temp;
-        const sensors = rule.sensors || [];
-        const sensorsList = sensors.join(', ');
-
-        html += `
-          <div class="rule_entry">
-            <span class="rule_name">${escapeHtml(ruleName)}</span>
-            <div class="rule_details">
-              Schedule: Always active<br/>
-              Min: ${minTemp}°C, Max: ${maxTemp}°C<br/>
-              Sensors: ${escapeHtml(sensorsList)}
-            </div>
-          </div>
-        `;
-      } else if (ruleName === 'ScheduledMinTargetTemp') {
-        const sensors = rule.sensors || [];
-        sensors.forEach(sensorData => {
-          const sensorName = sensorData.name;
-          const schedule = sensorData.schedule || [];
-
-          schedule.forEach(schedEntry => {
-            const start = schedEntry.start;
-            const end = schedEntry.end;
-            const days = schedEntry.days;
-            const targetMin = schedEntry.target_min_temp;
-            const targetMax = schedEntry.target_max_temp;
-
-            html += `
-              <div class="rule_entry">
-                <span class="rule_name">${escapeHtml(ruleName)}</span>
-                <div class="rule_details">
-                  Sensor: ${escapeHtml(sensorName)}<br/>
-                  Schedule: ${escapeHtml(start)} - ${escapeHtml(end)} (${escapeHtml(days)})<br/>
-                  Target: ${targetMin}°C - ${targetMax}°C
-                </div>
-              </div>
-            `;
-          });
-        });
-      } else {
-        html += `
-          <div class="rule_entry">
-            <span class="rule_unknown">Rule not known</span>
-          </div>
-        `;
-      }
-    });
-
-    container.innerHTML = html;
-  }
-
-  function refreshConfigRules() {
-    mJsonGet('/get_cfg_rules', function(data) {
-      if (data.error) {
-        console.error('Error loading config rules: ' + data.error);
-        document.getElementById('config_rules_entries').innerHTML =
-          '<p>Error loading config rules.</p>';
-        return;
-      }
-
-      // Assuming the response is directly an array
-      const rules = Array.isArray(data) ? data : [];
-      renderConfigRules(rules);
-    }, function(error) {
-      console.error('Failed to fetch config rules: ' + (error.statusText || 'Network error'));
-      document.getElementById('config_rules_entries').innerHTML =
-        '<p>Failed to load config rules.</p>';
-    });
-  }
-
   function refreshLogs() {
     document.getElementById('log_status').textContent = 'Loading logs...';
     document.getElementById('error_display').style.display = 'none';
-
-    // Refresh state history, config rules, and logs
-    refreshStateHistory();
-    refreshConfigRules();
 
     mJsonGet('/svc_logs', function(data) {
       if (data.error) {
@@ -468,3 +260,4 @@
   refreshLogs();
 </script>
 </html>
+

@@ -1,21 +1,3 @@
-const showGlobalError = (msg) => {
-  if (typeof(msg) == "string") {
-    m$('global_error_msg').innerText = msg;
-  } else if (typeof(msg) == "object" && msg.responseText || msg.status || msg.statusText) {
-    // Probably an ajax response object
-    const stat = `Error ${msg.status||'???'}: ${msg.statusText||'unknown'}`;
-    m$('global_error_msg').innerText = `${stat} \n\n ${msg.responseText||''}`;
-  } else {
-    m$('global_error_msg').innerText = msg;
-  }
-  m$('global_error_ui').classList.remove('no-error');
-};
-
-m$('global_error_ui_ack').onclick = () => {
-  m$('global_error_msg').innerText = '';
-  m$('global_error_ui').classList.add('no-error');
-};
-
 function m$(elem) {
   return document.getElementById(elem);
 }
@@ -114,3 +96,22 @@ function z2mStartReactApp(appRootSelector, appClass, apiBasePath='') {
   }
 }
 
+const showGlobalError = (msg) => {
+  if (typeof(msg) == "string") {
+    m$('global_error_msg').innerText = msg;
+  } else if (typeof(msg) == "object" && msg.responseText || msg.status || msg.statusText) {
+    // Probably an ajax response object
+    const stat = `Error ${msg.status||'???'}: ${msg.statusText||'unknown'}`;
+    m$('global_error_msg').innerText = `${stat} \n\n ${msg.responseText||''}`;
+  } else {
+    m$('global_error_msg').innerText = msg;
+  }
+  m$('global_error_ui').classList.remove('no-error');
+};
+
+if (m$('global_error_ui_ack')) {
+  m$('global_error_ui_ack').onclick = () => {
+    m$('global_error_msg').innerText = '';
+    m$('global_error_ui').classList.add('no-error');
+  };
+}

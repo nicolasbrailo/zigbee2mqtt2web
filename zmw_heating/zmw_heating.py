@@ -201,15 +201,11 @@ class ZmwHeating(MqttServiceClient):
             self._pending_state = new
             return
 
-        if old.request_on == new.request_on == self._curr_val:
-            log.debug("Boiler state hasn't changed (state is %s, reason %s), will skip update z2m",
-                      new.request_on, new.reason)
-            return
-
         log.info(
-            "Boiler state changed to %s, notifying MQTT thing "
-            "(Policy: %s, reason: %s)",
+            "Boiler state or reason changed, notifying MQTT thing "
+            "(%s, Policy: %s, reason: %s)",
             new.request_on, new.allow_on, new.reason)
+        is_first_set = self._curr_val is None
         if new.request_on in (True, 1, self._on_val):
             self._curr_val = self._on_val
         else:
@@ -221,13 +217,22 @@ class ZmwHeating(MqttServiceClient):
 
         now_on = 'on' if new.request_on else 'off'
         old_on = 'on' if old.request_on else 'off'
-        msg = f'Heating is now {now_on} (was {old_on}). Reason: {new.reason}'
-        self.message_svc("zmw_telegram", "send_text", {'msg': msg})
         self._boiler_state_history.append({
             'time': datetime.now(),
             'new_state': now_on,
             'old_state': old_on,
             'reason': new.reason,
         })
+
+        if old.request_on == new.request_on:
+            log.debug("Boiler state hasn't actually changed (state is %s, reason %s), will skip Telegram notification",
+                      new.request_on, new.reason)
+            return
+        elif is_first_set:
+            log.debug("Skip Telegram notifications for service startup")
+            return
+
+        msg = f'Heating is now {now_on} (was {old_on}). Reason: {new.reason}'
+        self.message_svc("zmw_telegram", "send_text", {'msg': msg})
 
 service_runner_with_www(ZmwHeating)

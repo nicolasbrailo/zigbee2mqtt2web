@@ -9,7 +9,7 @@ from zzmw_lib.mqtt_proxy import MqttServiceClient
 from zzmw_lib.service_runner import service_runner_with_www, build_logger
 
 from zz2m.z2mproxy import Z2MProxy
-from zz2m.light_helpers import monkeypatch_lights, turn_all_lights_off
+from zz2m.light_helpers import turn_all_lights_off
 
 from apscheduler.triggers.cron import CronTrigger
 
@@ -47,7 +47,6 @@ class ZmwCronenberg(MqttServiceClient):
         Callback when Z2M network is discovered.
         """
         log.info("Z2M network discovered, there are %d things", len(known_things))
-        monkeypatch_lights(self._z2m)
 
     def get_service_meta(self):
         return {
