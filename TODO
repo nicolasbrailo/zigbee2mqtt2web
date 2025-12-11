@@ -1,8 +1,6 @@
-Next:
 * When running restart_and_logs from a dir that's not the svc dir, it will look for logs.sh in cwd
 * How to discover if another service is using the same mqtt_topic?
 * Audit UI styles
-* Telegram and Whatsapp -> Add ratelimiting to ensure we're not spamming
 * Move baticasa_buttons out of generic zmw project
 * Make dashboard load faster - load lights first, deferr other requests?
 * RGB parsing is broken

@@ -63,15 +63,17 @@ class ZmwTelegram(ZmwMqttService):
         www.serve_url('/messages', lambda: json.dumps(list(self._msg.get_history()), default=str))
 
     def _rate_limited_send(self, send_fn):
-        """Rate-limit outgoing messages. Allows max 3 messages per minute."""
+        """Rate-limit outgoing messages. Allows max 3 messages per minute.
+        Continued attempts reset the cooldown window."""
         now = time.time()
-        if len(self._msg_times) == self._RATE_LIMIT_MAX_MSGS:
-            oldest = self._msg_times[0]
-            if now - oldest < self._RATE_LIMIT_WINDOW_SECS:
-                log.error("Rate limit exceeded: %d messages in the last %d seconds, dropping message",
-                          self._RATE_LIMIT_MAX_MSGS, self._RATE_LIMIT_WINDOW_SECS)
-                return
+        oldest = self._msg_times[0] if len(self._msg_times) == self._RATE_LIMIT_MAX_MSGS else None
+        # Append message first, so that if spamming never stops we don't enable messaging again
+        # Only after a minute of no-messages we'll allow now ones to go through
         self._msg_times.append(now)
+        if oldest is not None and now - oldest < self._RATE_LIMIT_WINDOW_SECS:
+            log.error("Rate limit exceeded: %d messages in the last %d seconds, dropping message",
+                      self._RATE_LIMIT_MAX_MSGS, self._RATE_LIMIT_WINDOW_SECS)
+            return
         send_fn()
 
     def on_service_received_message(self, subtopic, payload):
