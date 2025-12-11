@@ -5,10 +5,10 @@ import astral
 import datetime
 
 
-def is_sun_out(lat, lon):
+def is_sun_out(lat, lon, tolerance_mins=45):
     """ Returns true if there is plenty of light outside """
     day = astral_sun(astral.Observer(lat, lon), date=datetime.date.today())
-    tolerance = datetime.timedelta(minutes=45)
+    tolerance = datetime.timedelta(minutes=tolerance_mins)
     sunrise = day['sunrise'] + tolerance
     sunset = day['sunset'] - tolerance
     ahora = datetime.datetime.now(day['sunset'].tzinfo)
