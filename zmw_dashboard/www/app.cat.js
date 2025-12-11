@@ -1218,7 +1218,7 @@ class Light extends React.Component {
 
   changeRGB(v) {
     this.setState({ color_rgb: v });
-    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.name}`, `color_rgb=${v}`);
+    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.name}`, `color_rgb=${encodeURIComponent(v)}`);
   }
 
   render() {
