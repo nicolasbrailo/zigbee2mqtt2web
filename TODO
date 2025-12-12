@@ -1,3 +1,5 @@
+* Temp sensors -> Apply "windchill" factor
+* Monitor arbitrary svc with servicemon
 * When running restart_and_logs from a dir that's not the svc dir, it will look for logs.sh in cwd
 * Audit UI styles
 * Move baticasa_buttons out of generic zmw project
@@ -7,7 +9,6 @@
 * all svcs -> Run tests as part of systemd service start?
 * all svcs -> lint and check test coverage
 * new svc Implement presence sensor to aggregate multiple PIRs, turn on/off lights in kitchen
-* new svc mqtt_shelly_plugs new svc
 * new svc Build notification service that decides to multiplex to WA or Telegram
 * Move all door actions to doormon instead of contactmon?
 * mqtt lights -> stream changes from mqtt to web socet to UI

@@ -1,0 +1,4 @@
+{
+  "devices_to_monitor": ["10.10.30.18"],
+  "bcast_period_secs": 5
+}

@@ -314,7 +314,7 @@ class SensorsList extends React.Component {
   loadSensorData(sensors) {
     const basePath = this.props.api_base_path || '';
     sensors.forEach(sensor => {
-      mJsonGet(`${basePath}/z2m/get/${sensor}`, data => {
+      mJsonGet(`${basePath}/sensors/get/${sensor}`, data => {
         this.setState(prevState => ({
           sensorData: {
             ...prevState.sensorData,
@@ -331,8 +331,13 @@ class SensorsList extends React.Component {
       device_temperature: '°C',
       humidity: '%',
       voltage: 'V',
+      voltage_volts: 'V',
       battery: '%',
       pm25: 'µg/m³',
+      active_power_watts: 'W',
+      current_amps: 'A',
+      lifetime_energy_use_watt_hour: 'Wh',
+      last_minute_energy_use_watt_hour: 'Wh',
     };
     return units[metric] || '';
   }

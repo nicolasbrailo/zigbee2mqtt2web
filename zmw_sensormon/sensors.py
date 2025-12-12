@@ -82,6 +82,20 @@ def _maybe_create_table(conn, sensor_name, metrics):
         f'  {metric_cols} REAL'
         ')')
 
+    # Add any missing columns to existing tables
+    _add_missing_columns(conn, sensor_name, validated_metrics)
+
+
+def _add_missing_columns(conn, sensor_name, metrics):
+    """Add any columns that exist in metrics but not in the table."""
+    res = conn.execute(f"SELECT name FROM PRAGMA_TABLE_INFO('{sensor_name}')")
+    existing_columns = {row[0] for row in res.fetchall()}
+
+    for metric in metrics:
+        if metric not in existing_columns:
+            log.info("Adding missing column '%s' to table '%s'", metric, sensor_name)
+            conn.execute(f'ALTER TABLE {sensor_name} ADD COLUMN {metric} REAL')
+
 
 def _discard_old_samples_by_retention_count(conn, sensor_name, retention_rows):
     if retention_rows is None or retention_rows <= 0:
