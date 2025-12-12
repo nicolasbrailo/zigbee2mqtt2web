@@ -123,5 +123,3 @@ class TelegramMonitor extends React.Component {
     );
   }
 }
-
-z2mStartReactApp('#app_root', TelegramMonitor);
