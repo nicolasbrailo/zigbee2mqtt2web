@@ -64,14 +64,27 @@ class JournalMonitor:
         with self._recent_errors_lock:
             return self._recent_errors.copy()
 
+    def clear_recent_errors(self):
+        """ Clear list of errors """
+        with self._recent_errors_lock:
+            self._recent_errors = []
+            self._recent_errors.append({
+                'service': self._own_service_name,
+                'priority': 5,
+                'priority_name': 'INFO',
+                'message': 'Error log cleared by user',
+                'timestamp': datetime.now().isoformat(),
+            })
+            return self._recent_errors
+
     def monitor_unit(self, service_name):
         """
         Schedule adding a service to monitoring. If the service is already being monitored,
         this is a no-op. Otherwise, schedules a journal monitor restart after a delay.
         """
-        if service_name == self._own_service_name:
-            # Skip monitoring our own service to prevent error loops
-            return
+        # if service_name == self._own_service_name:
+        #     # Skip monitoring our own service to prevent error loops
+        #     return
 
         if service_name in self._monitored_services:
             # Already monitoring

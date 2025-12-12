@@ -34,13 +34,14 @@ class ZmwServicemon(ZmwMqttServiceNoCommands):
             own_service_name="zmw_servicemon"
         )
 
-        www.serve_url('/ls', self.known_services)
+        www.serve_url('/ls', lambda: json.dumps(dict(sorted(self._services.items())), default=str))
         www.serve_url('/systemd_status', self.systemd_status)
-        www.serve_url('/recent_errors', self.recent_errors)
-
-    def known_services(self):
-        """Return JSON list of all known services and their metadata."""
-        return json.dumps(dict(sorted(self._services.items())), default=str)
+        www.serve_url('/recent_errors', lambda: json.dumps(self._journal_monitor.get_recent_errors(), default=str))
+        www.serve_url('/recent_errors_clear', lambda: self._journal_monitor.clear_recent_errors())
+        def _log_error():
+            log.error("Hola!")
+            return ""
+        www.serve_url('/recent_errors_test_new', _log_error)
 
     def systemd_status(self):
         """Execute services_status.sh script and return HTML-formatted systemd status."""
@@ -54,10 +55,6 @@ class ZmwServicemon(ZmwMqttServiceNoCommands):
         syslogcmd = subprocess.run(cmd.split(), stdout=subprocess.PIPE, text=True, check=True).stdout
         conv = Ansi2HTMLConverter(inline=True, scheme='ansi2html')
         return conv.convert(syslogcmd, full=False)
-
-    def recent_errors(self):
-        """Return JSON list of recent errors from the journal monitor."""
-        return json.dumps(self._journal_monitor.get_recent_errors(), default=str)
 
     def _on_service_logged_err(self, err):
         # TODO: Forward to Telegram

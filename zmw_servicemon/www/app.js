@@ -44,21 +44,48 @@ class ServiceMonitor extends React.Component {
     return diffMinutes > 5;
   }
 
+  formatServiceName(srv) {
+    let name = srv.name;
+    if (name.startsWith('Zmw')) {
+      name = name.slice(3);
+    }
+    if (srv.www) {
+      try {
+        const url = new URL(srv.www);
+        const port = url.port || (url.protocol === 'https:' ? '443' : '80');
+        name = `${name}:${port}`;
+      } catch (e) {}
+    }
+    return name;
+  }
+
   renderServices() {
     if (!this.state.services) return <div>Loading services...</div>;
 
+    const services = Object.values(this.state.services);
+    const total = services.length;
+    const running = services.filter(srv => !this.isStale(srv.last_seen)).length;
+    const unhealthy = total - running;
+    let statusSummary = `${running} out of ${total} services up and running`;
+    if (unhealthy > 0) {
+      statusSummary += `, ${unhealthy} service${unhealthy > 1 ? 's' : ''} unhealthy`;
+    }
+
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '10px', marginBottom: '20px' }}>
-        {Object.values(this.state.services).map((srv) => (
+      <div>
+        <h1>ZMW Services</h1>
+        <p>{statusSummary}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '10px', marginBottom: '20px' }}>
+        {services.map((srv) => (
           <div key={srv.name} className="card" style={{ padding: '10px', position: 'relative', paddingBottom: '35px' }}>
             <h4 style={{ margin: '0 0 5px 0' }}>
             {srv.www ? (
               <a href={srv.www} target="_blank" rel="noopener noreferrer">
                 <img src={`${srv.www}/favicon.ico`} style={{ width: '16px', height: '16px', marginRight: '5px', verticalAlign: 'middle' }} />
-                {srv.name}
+                {this.formatServiceName(srv)}
               </a>
             ) : (
-              <strong>{srv.name}</strong>
+              <strong>{this.formatServiceName(srv)}</strong>
             )}
             </h4>
 
@@ -80,19 +107,51 @@ class ServiceMonitor extends React.Component {
             )}
           </div>
         ))}
+        </div>
       </div>
     );
   }
 
   renderSystemdStatus() {
+    let statusSummary = null;
+    if (this.state.systemdServicesStdout) {
+      const lines = this.state.systemdServicesStdout.split('\n').filter(line => line.trim());
+      const total = lines.length;
+      const running = lines.filter(line => line.includes('active') && line.includes('running')).length;
+      const unhealthy = total - running;
+      statusSummary = `${running} out of ${total} services up and running`;
+      if (unhealthy > 0) {
+        statusSummary += `, ${unhealthy} service${unhealthy > 1 ? 's' : ''} unhealthy`;
+      }
+    }
+
     return <div>
       <h1>Systemd services status</h1>
       {!this.state.systemdServicesStdout ? (
         <div>Loading systemd...</div>
       ):(
-        <pre dangerouslySetInnerHTML={{__html: this.state.systemdServicesStdout}}></pre>
+        <div>
+          <p>{statusSummary}</p>
+          <pre dangerouslySetInnerHTML={{__html: this.state.systemdServicesStdout}}></pre>
+        </div>
       )}
     </div>
+  }
+
+  clearRecentErrors() {
+    mJsonGet('/recent_errors_clear', () => {
+      mJsonGet('/recent_errors', (data) => {
+        this.setState({ recentErrors: data });
+      });
+    });
+  }
+
+  simulateError() {
+    mJsonGet('/recent_errors_test_new', () => {
+      mJsonGet('/recent_errors', (data) => {
+        this.setState({ recentErrors: data });
+      });
+    });
   }
 
   renderRecentErrors() {
@@ -101,13 +160,13 @@ class ServiceMonitor extends React.Component {
     const errors = this.state.recentErrors;
     if (errors.length === 0) {
       return <div>
-        <h1>Recent Errors</h1>
+        <h1>Recent Errors <button onClick={() => this.simulateError()}>Simulate error</button></h1>
         <p>No errors detected! All services running cleanly.</p>
       </div>;
     }
 
     return <div style={{ margin: '20px' }}>
-      <h1>Recent Errors ({errors.length})</h1>
+      <h1>Recent Errors ({errors.length}) <button onClick={() => this.clearRecentErrors()}>Clear</button> <button onClick={() => this.simulateError()}>Simulate error</button></h1>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ backgroundColor: '#333', color: 'white' }}>
