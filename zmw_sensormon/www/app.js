@@ -1,5 +1,17 @@
 const INTERESTING_PLOT_METRICS = ['temperature', 'humidity', 'pm25', 'voc_index'];
 
+function buildUrlForPeriod(period, prefix = '/history') {
+  if (!period || period == 'all') return '';
+  let unit = 'days';
+  let time = 1;
+  if (period == "hour_1") { unit = "hours"; time = 1; }
+  if (period == "hour_6") { unit = "hours"; time = 6; }
+  if (period == "hour_12") { unit = "hours"; time = 12; }
+  if (period == "day_1") { unit = "days"; time = 1; }
+  if (period == "day_2") { unit = "days"; time = 2; }
+  return `${prefix}/${unit}/${time}`;
+}
+
 function simple_dygraph_plot(html_elm_id, url) {
   let dygraph_opts = {
                       fillGraph: false,
@@ -43,11 +55,13 @@ class SensorsHistoryPane extends React.Component {
     const urlQueryPeriod = urlParams.get('period');
     const period = urlQueryPeriod ? [urlQueryPeriod] : 'day_2';
     const plotSingleMetric = !!urlQueryMetric;
+    const selectedSensor = urlParams.get('sensor');
 
     return {
       plotSingleMetric,
       metrics_to_plot: metric,
       period,
+      selectedSensor,
       key: 'SensorsHistoryPane',
     };
   }
@@ -64,6 +78,8 @@ class SensorsHistoryPane extends React.Component {
       period: this.props.period,
       allMetrics: [],
       selectedMetrics: this.props.metrics_to_plot,
+      selectedSensor: this.props.selectedSensor,
+      sensorMetrics: null,
     };
   }
 
@@ -151,6 +167,16 @@ class SensorsHistoryPane extends React.Component {
   }
 
   render_plots() {
+    // Single sensor view: show all metrics for one sensor
+    if (this.state.selectedSensor) {
+      if (!this.state.sensorMetrics) {
+        this.loadMetricsForSensor(this.state.selectedSensor);
+        return "Loading sensor metrics...";
+      }
+      return this.renderSingleSensor(this.state.selectedSensor, this.state.sensorMetrics);
+    }
+
+    // Metric-based views
     const metrics = this.state.selectedMetrics;
 
     if (metrics.length === 1 && !this.state.sensors) {
@@ -163,23 +189,48 @@ class SensorsHistoryPane extends React.Component {
     }
   }
 
-  renderMetricInAllSensors(metrics) {
-    function buildUrlForPeriod(period) {
-      if (!period || period == 'all') return '';
-      let unit = 'days';
-      let time = 1;
-      if (period == "hour_1") { unit = "hours"; time = 1; }
-      if (period == "hour_6") { unit = "hours"; time = 6; }
-      if (period == "hour_12") { unit = "hours"; time = 12; }
-      if (period == "day_1") { unit = "days"; time = 1; }
-      if (period == "day_2") { unit = "days"; time = 2; }
-      return `/${unit}/${time}`;
+  loadMetricsForSensor(sensorName) {
+    mAjax({
+      url: `/sensors/metrics/${sensorName}`,
+      cache: false,
+      type: 'get',
+      dataType: 'text',
+      success: (metricsJson) => { this.setState({ sensorMetrics: JSON.parse(metricsJson) }); },
+      error: (err) => { console.log(err); showGlobalError(err); },
+    });
+  }
+
+  renderSingleSensor(sensorName, metrics) {
+    let local_plots = [];
+    for (const metric of metrics) {
+      const plotId = `local_plot_${sensorName}_${metric}`;
+      const url = `/sensors/get_metric_in_sensor_csv/${sensorName}/${metric}${buildUrlForPeriod(this.state.period)}`;
+
+      setTimeout(() => {
+        const plotDiv = document.getElementById(plotId);
+        if (plotDiv) {
+          plotDiv.innerHTML = '';
+        }
+        simple_dygraph_plot(plotId, url);
+      }, 50);
+
+      local_plots.push(
+        <div className="card" key={`${sensorName}_${metric}_${this.state.period}_div`}>
+          <h3><a href={`?metric=${metric}`}>{metric}</a> for {sensorName}</h3>
+          <div id={plotId} />
+          <div id={`${plotId}_label`} />
+        </div>
+      );
     }
 
+    return local_plots;
+  }
+
+  renderMetricInAllSensors(metrics) {
     let local_plots = [];
     for (const metric of metrics) {
       const plotId = `local_plot_${metric}`;
-      const url = `/sensors/get_single_metric_in_all_sensors_csv/${metric}${buildUrlForPeriod(this.state.period)}`;
+      const url = `/sensors/get_single_metric_in_all_sensors_csv/${metric}${buildUrlForPeriod(this.state.period, '')}`;
 
       // Clear existing plot div content to force recreation
       setTimeout(() => {
@@ -214,18 +265,6 @@ class SensorsHistoryPane extends React.Component {
   }
 
   renderSingleMetric(metric, sensors) {
-    function buildUrlForPeriod(period) {
-      if (!period || period == 'all') return '';
-      let unit = 'days';
-      let time = 1;
-      if (period == "hour_1") { unit = "hours"; time = 1; }
-      if (period == "hour_6") { unit = "hours"; time = 6; }
-      if (period == "hour_12") { unit = "hours"; time = 12; }
-      if (period == "day_1") { unit = "days"; time = 1; }
-      if (period == "day_2") { unit = "days"; time = 2; }
-      return `/history/${unit}/${time}`;
-    }
-
     let local_plots = [];
     for (const sensor of sensors) {
       const plotId = `local_plot_${sensor}`;
@@ -387,7 +426,7 @@ class SensorsList extends React.Component {
       <ul className="sensors-list keyval-list">
         {this.state.sensors.map(sensor => (
           <li key={sensor} className="bd-dark modal-button">
-            <strong>{sensor}:</strong> {this.renderSensorValues(sensor)}
+            <strong><a href={`?sensor=${sensor}`}>{sensor}</a>:</strong> {this.renderSensorValues(sensor)}
           </li>
         ))}
       </ul>

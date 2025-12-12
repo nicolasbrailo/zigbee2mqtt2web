@@ -209,6 +209,7 @@ class SensorsHistory:
         database is exposed over certain http endpoints """
         server.add_url_rule('/sensors/ls', None, self.get_known_sensors)
         server.add_url_rule('/sensors/metrics', None, self.get_known_metrics)
+        server.add_url_rule('/sensors/metrics/<sensor_name>', None, self.get_metrics_for_sensor)
         server.add_url_rule('/sensors/measuring/<metric>', None, self.get_known_sensors_measuring)
         server.add_url_rule('/sensors/get_metric_in_sensor_csv/<sensor_name>/<metric>',
                             None, self.get_metric_in_sensor_csv)
@@ -297,6 +298,12 @@ class SensorsHistory:
                     can_measure.append(sensor)
             return can_measure
 
+    def get_metrics_for_sensor(self, sensor_name):
+        """ Returns a list of all metrics available for a specific sensor """
+        with sqlite3.connect(self._dbpath) as conn:
+            if sensor_name not in _get_known_sensors(conn):
+                return []
+            return _get_sensor_metrics(conn, sensor_name)
 
     def get_metric_in_sensor_csv(self, sensor_name, metric):
         """ Retrieves all measurements of $metric for $sensor """
