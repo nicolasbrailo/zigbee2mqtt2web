@@ -14,7 +14,7 @@ log = build_logger("JournalMonitor")
 
 def _systemd_svc_exists(service_name):
     result = subprocess.run(['systemctl', 'list-unit-files', f'{service_name}.service'],
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, check=False)
     return service_name in result.stdout
 
 class JournalMonitor:
@@ -91,7 +91,8 @@ class JournalMonitor:
             return
 
         if not _systemd_svc_exists(service_name):
-            log.error("Asked to monitor unit %s, but service doesn't exist. Will add it to monitor list, but it probably won't work.", service_name)
+            log.error("Asked to monitor unit %s, but service doesn't exist. "
+                      "Will add it to monitor list, but it probably won't work.", service_name)
 
         self._monitored_services.add(service_name)
 

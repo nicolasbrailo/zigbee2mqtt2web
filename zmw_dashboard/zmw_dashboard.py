@@ -1,5 +1,4 @@
 """ Dashboard - unified UI for different mqtt services """
-import json
 import os
 import pathlib
 
@@ -45,10 +44,10 @@ class ZmwDashboard(ZmwMqttServiceNoCommands):
         # Try to continue with whatever deps we have
         self.on_all_service_deps_running()
 
-    def on_service_announced_meta(self, svc_name, meta):
+    def on_service_announced_meta(self, name, svc_meta):
         if self._svc_proxy is None:
             # Not setup yet, so it's safe to ignore new services
             return
-        self._svc_proxy.on_service_announced_meta(svc_name, meta.get("www"))
+        self._svc_proxy.on_service_announced_meta(name, svc_meta.get("www"))
 
 service_runner_with_www(ZmwDashboard)

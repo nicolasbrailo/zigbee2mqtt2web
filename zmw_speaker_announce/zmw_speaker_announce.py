@@ -70,7 +70,7 @@ class ZmwSpeakerAnnounce(ZmwMqttService):
             case "ls_reply":
                 pass # Ignore self-reply
             case "ls":
-                self.publish_own_svc_message(f"ls_reply", list(get_sonos_by_name()))
+                self.publish_own_svc_message("ls_reply", list(get_sonos_by_name()))
             case "tts_reply":
                 pass # Ignore self-reply
             case "tts":
@@ -92,7 +92,7 @@ class ZmwSpeakerAnnounce(ZmwMqttService):
         local_path = get_local_path_tts(self._tts_assets_cache_path, payload['msg'], lang)
         remote_path = f"{self._public_tts_base}/{local_path}"
         msg = {'local_path': local_path, 'uri': remote_path}
-        self.publish_own_svc_message(f"tts_reply", msg)
+        self.publish_own_svc_message("tts_reply", msg)
         vol = self._get_payload_vol(payload)
         self._record_announcement(payload['msg'], lang, vol, remote_path)
         sonos_announce(remote_path, volume=vol, ws_api_cfg=self._cfg)
@@ -102,20 +102,20 @@ class ZmwSpeakerAnnounce(ZmwMqttService):
             local_path = str(local_path)
             if not os.path.isfile(local_path):
                 log.warning('Bad path to asset: "%s" is not a file', local_path)
-                self.publish_own_svc_message(f"save_asset_reply",
+                self.publish_own_svc_message("save_asset_reply",
                                {'status': 'error', 'cause': 'Bad path to asset "{local_path}"'})
                 return None
             # If file existed, overwrite
             local_asset_path = shutil.copy2(local_path, self._tts_assets_cache_path)
         except OSError as e:
             log.error("Saving asset failed", exc_info=True)
-            self.publish_own_svc_message(f"save_asset_reply", {'status': 'error', 'cause': str(e)})
+            self.publish_own_svc_message("save_asset_reply", {'status': 'error', 'cause': str(e)})
             return None
 
         fname = os.path.basename(local_asset_path)
         asset_uri = f"{self._public_tts_base}/{fname}"
         log.info("Saved asset '%s' to '%s', available at uri '%s'", local_path, local_asset_path, asset_uri)
-        self.publish_own_svc_message(f"save_asset_reply", {
+        self.publish_own_svc_message("save_asset_reply", {
             'status': 'ok',
             'asset': fname,
             'uri': asset_uri})

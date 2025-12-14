@@ -38,3 +38,8 @@ Start a new service by copying an existing one. Then:
 * Try it out with `make devrun`
 * When ready, `make install_svc`. The service will now forever run in the background and you can monitor it from servicemon.
 
+If you are developing a service that won't be upstreamed to zmw:
+
+* common.mk won't work for you, as it will assume you are working on the root of the project. You will need to manager your own pipfile (or copypaste the zmw common makefile).
+
+

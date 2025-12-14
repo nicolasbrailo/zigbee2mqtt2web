@@ -2,6 +2,8 @@
 config.json
 config.spotify_cache.json
 
+lint
+
 # Vibecoding
 .claude
 

@@ -28,7 +28,7 @@ class DoorOpenSceneLightManager:
 
         for _, thing in known_things.items():
             if thing.thing_type != 'light':
-                log.error("Asked to monitor %s for door-open scene, but it's not a light", thing_name)
+                log.error("Asked to monitor %s for door-open scene, but it's not a light", thing.name)
             else:
                 self._known_things[thing.name] = thing
                 thing.on_any_change_from_mqtt = lambda t=thing: self._light_received_mqtt_update(t)
@@ -88,7 +88,8 @@ class DoorOpenScene:
             return
 
         if self._door_open_scene_timer is not None:
-            return self.pet_timer()
+            self.pet_timer()
+            return
 
         log.debug("DoorOpenScene starting, it is dark outside")
         self._door_open_scene_timer = threading.Timer(
@@ -111,10 +112,7 @@ class DoorOpenScene:
         )
         self._door_open_scene_timer.start()
 
-
     def _on_door_open_scene_timeout(self):
         """ Called when the door-open scene timer expires """
         self._door_open_scene_timer = None
         self._light_mgr.stop()
-
-

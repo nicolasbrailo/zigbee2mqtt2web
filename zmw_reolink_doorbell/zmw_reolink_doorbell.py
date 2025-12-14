@@ -81,11 +81,16 @@ class ZmwReolinkDoorbellCam(ReolinkDoorbell):
         })
 
 class ZmwReolinkDoorbell(ZmwMqttService):
+    """ Bridge between Zmw services and a Reolink cam """
     def __init__(self, cfg, www):
         super().__init__(cfg, "zmw_reolink_doorbell")
 
-        # Register Flask routes using www.serve_url()
-        www.serve_url('/doorbell', lambda: self.cam.on_cam_webhook(), methods=['GET', 'POST'])
+        # Initialize camera and NVR
+        self.cam = ZmwReolinkDoorbellCam(cfg, webhook_url=f"{www.public_url_base}/doorbell", mqtt=self)
+        self.nvr = Nvr(cfg['rec_path'], www)
+
+        # Register Flask routes
+        www.serve_url('/doorbell', self.cam.on_cam_webhook, methods=['GET', 'POST'])
         www.serve_url('/snap', lambda: send_file(self.cam.get_snapshot(), mimetype='image/jpeg'))
         www.serve_url('/lastsnap', lambda: send_file(self.cam.get_last_snapshot_path(), mimetype='image/jpeg'))
         www.serve_url('/record', self._record)
@@ -94,9 +99,7 @@ class ZmwReolinkDoorbell(ZmwMqttService):
         wwwdir = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         www.register_www_dir(wwwdir)
 
-        # Initialize camera and NVR. Connect to camera (starts background tasks)
-        self.cam = ZmwReolinkDoorbellCam(cfg, webhook_url=f"{www.public_url_base}/doorbell", mqtt=self)
-        self.nvr = Nvr(cfg['rec_path'], www)
+        # Connect to camera (starts background tasks)
         self.cam.connect()
 
     def _record(self):
@@ -117,7 +120,7 @@ class ZmwReolinkDoorbell(ZmwMqttService):
         self.cam.disconnect()
         super().stop()
 
-    def on_service_received_message(self, subtopic, _payload):
+    def on_service_received_message(self, subtopic, payload):
         """Handle MQTT messages for snapshot and recording commands."""
         match subtopic:
             case "snap":

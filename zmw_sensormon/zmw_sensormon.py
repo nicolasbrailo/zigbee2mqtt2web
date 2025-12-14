@@ -46,9 +46,11 @@ class ShellyAdapter:
         self._values = {}
 
     def get(self, metric_name):
+        """Return the current value for a metric."""
         return self._values.get(metric_name)
 
     def update(self, payload):
+        """Update internal values from a Shelly MQTT payload and notify listeners."""
         for metric in self.METRICS:
             payload_key = next((k for k, v in self.PAYLOAD_TO_METRIC.items() if v == metric), metric)
             if payload_key in payload:
@@ -72,6 +74,7 @@ class ShellyPlugMonitor:
         return {metric: adapter.get(metric) for metric in ShellyAdapter.METRICS}
 
     def on_message(self, topic, payload):
+        """Handle incoming Shelly MQTT messages and update sensor history."""
         parts = topic.split('/')
         if len(parts) != 2:
             log.warning("Unexpected shelly topic format '%s': %s", topic, payload)

@@ -42,20 +42,20 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
                              {'cmd': self._telegram_cmd_door_snap,
                               'descr': 'Take and send a doorbell cam picture'})
 
-    def on_dep_published_message(self, service_name, msg_topic, msg):
-        log.debug("%s.%s: %s", service_name, msg_topic, msg)
-        match service_name:
+    def on_dep_published_message(self, svc_name, subtopic, msg):
+        log.debug("%s.%s: %s", svc_name, subtopic, msg)
+        match svc_name:
             case 'ZmwContactmon':
-                self.on_contact_report(msg_topic, msg)
+                self.on_contact_report(subtopic, msg)
             case 'ZmwSpeakerAnnounce':
                 pass
             case 'ZmwWhatsapp':
                 pass
             case 'ZmwTelegram':
-                if msg_topic.startswith("on_command/"):
-                    self.on_telegram_cmd(msg_topic[len("on_command/"):], msg)
+                if subtopic.startswith("on_command/"):
+                    self.on_telegram_cmd(subtopic[len("on_command/"):], msg)
             case 'ZmwReolinkDoorbell':
-                match msg_topic:
+                match subtopic:
                     case "on_snap_ready":
                         self.on_snap_ready(msg)
                     case "on_doorbell_button_pressed":
@@ -69,7 +69,7 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
                     case _:
                         pass
             case _:
-                log.error("Received unexpected message from service %s/%s: %s", service_name, msg_topic, msg)
+                log.error("Received unexpected message from service %s/%s: %s", service_name, subtopic, msg)
 
     def on_contact_report(self, msg_topic, msg):
         if self._cfg["doorbell_contact_sensor"] in msg_topic:

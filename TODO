@@ -1,13 +1,11 @@
 * Check logs, exc_info isn't working?
 * Truncate logs in servicemon and offer a way to see complete line
 * Move baticasa_buttons out of generic zmw project
-* Add volume control on announcements
 * RGB get prop from z2m is broken, always null
 * Temp sensors -> Apply "windchill" factor
 * Monitor arbitrary svc with servicemon
 * dashboard svc -> How do I install authbind automatically
 * all svcs -> Run tests as part of systemd service start?
-* all svcs -> lint and check test coverage
 * new svc Implement presence sensor to aggregate multiple PIRs, turn on/off lights in kitchen
 * new svc Build notification service that decides to multiplex to WA or Telegram
 * Move all door actions to doormon instead of contactmon?

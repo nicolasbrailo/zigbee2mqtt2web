@@ -18,9 +18,11 @@ class ServiceMagicProxy:
         self._register_routes(www)
 
     def get_proxied_services(self):
+        """Return the map of service names to their proxy URLs."""
         return self._service_map
 
     def on_service_announced_meta(self, svc_name, www_url):
+        """Handle service announcement and restart if the www URL changed."""
         if svc_name not in self._service_map:
             # We don't care about this service
             return
@@ -122,9 +124,6 @@ class ServiceMagicProxy:
         except aiohttp.ClientError as e:
             log.error("Error proxying to %s: %s", target_url, str(e))
             return abort(502, f"Error connecting to upstream service: {str(e)}")
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             log.error("Unexpected error proxying to %s: %s", target_url, str(e), exc_info=True)
             return abort(500, f"Internal proxy error: {str(e)}")
-
-
-

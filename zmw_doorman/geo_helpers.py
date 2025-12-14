@@ -4,7 +4,6 @@ from astral.sun import sun as astral_sun
 import astral
 import datetime
 
-
 def is_sun_out(lat, lon, tolerance_mins=45):
     """ Returns true if there is plenty of light outside """
     day = astral_sun(astral.Observer(lat, lon), date=datetime.date.today())
@@ -14,7 +13,6 @@ def is_sun_out(lat, lon, tolerance_mins=45):
     ahora = datetime.datetime.now(day['sunset'].tzinfo)
     sun_out = sunrise < ahora < sunset
     return sun_out
-
 
 def late_night(latlon, late_night_start_hour):
     """ Returns true if it's dark outside, and also it's late at night """
@@ -29,4 +27,3 @@ def late_night(latlon, late_night_start_hour):
         if local_hour >= late_night_start_hour or local_hour <= next_sunrise.hour:
             return True
     return False
-

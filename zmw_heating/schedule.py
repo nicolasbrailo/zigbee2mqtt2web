@@ -1,3 +1,4 @@
+"""Heating schedule management with time slots."""
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from enum import Enum
@@ -13,6 +14,7 @@ class AllowOn(str, Enum):
 
     @staticmethod
     def guess_value(allow_on):
+        """Convert various inputs to AllowOn enum."""
         if isinstance(allow_on, AllowOn):
             return allow_on
         if isinstance(allow_on, str):
@@ -38,20 +40,24 @@ class ScheduleSlot:
     reason: str = "Default"
 
     def dictify(self):
+        """Convert slot to dict."""
         return asdict(self)
 
     def different_from(self, o):
+        """Check if slot differs from another."""
         return o is None or \
                 self.allow_on != o.allow_on or \
                 self.request_on != o.request_on or \
                 self.reason != o.reason
 
     def reset(self):
+        """Reset slot to defaults."""
         self.allow_on = AllowOn.NEVER
         self.request_on = False
         self.reason = "Default"
 
     def set_policy(self, allow_on, reason):
+        """Set slot policy and reason."""
         self.allow_on = AllowOn.guess_value(allow_on)
         self.reason = reason
         if self.allow_on == AllowOn.ALWAYS:
@@ -62,12 +68,14 @@ class ScheduleSlot:
             pass
 
     def set_from_rule(self, request_on, reason):
+        """Set state from rule if slot allows rules."""
         if self.allow_on != AllowOn.RULE:
             return
         self.request_on = request_on
         self.reason = reason
 
     def toggle(self, reason):
+        """Toggle slot on/off state."""
         if self.allow_on == AllowOn.RULE:
             if self.request_on:
                 self.set_policy(AllowOn.NEVER, reason)
@@ -97,6 +105,7 @@ def _slot_to_minute(i):
     return (i % 4) * 15
 
 def hr_mn_to_slot_t(hr, mn):
+    """Format hour/minute as HH:MM string."""
     return f'{hr:02}:{mn:02}'
 
 def slot_t_to_hr_mn(slot_t):
@@ -131,6 +140,7 @@ class Schedule:
         self._on_state_may_change()
 
     def get_slot_change_time(self):
+        """Return time when next slot begins."""
         next_slot = (self._active_slot_idx + 1) % len(self._sched)
         next_slot_hour = _slot_to_hour(next_slot)
         next_slot_minute = _slot_to_minute(next_slot)
@@ -185,15 +195,18 @@ class Schedule:
             self._applied_slot = copy.copy(active)
 
     def set_slot(self, hour, minute, allow_on=AllowOn.NEVER, reason="User set"):
+        """Set policy for a specific slot."""
         i = _hr_mn_to_slot_idx(hour, minute)
         self._sched[i].set_policy(allow_on, reason)
         self._on_state_may_change()
 
     def set_now_from_rule(self, request_on, reason):
+        """Apply rule result to current slot."""
         self._sched[self._active_slot_idx].set_from_rule(request_on, reason)
         self._on_state_may_change()
 
     def applying_rules(self, working_through_rules):
+        """Enable/disable state change callbacks during rule processing."""
         self._ignore_state_changes = working_through_rules
         if not working_through_rules:
             self._on_state_may_change()
@@ -203,10 +216,12 @@ class Schedule:
         return self._sched[self._active_slot_idx]
 
     def get_slot(self, hour, minute):
+        """Get slot at specific time."""
         i = _hr_mn_to_slot_idx(hour, minute)
         return self._sched[i]
 
     def get_last_slot_hr_mn(self):
+        """Get hour/minute of previous slot."""
         if self._active_slot_idx == 0:
             idx = len(self._sched) - 1
         else:
@@ -214,13 +229,16 @@ class Schedule:
         return _slot_to_hour(idx), _slot_to_minute(idx)
 
     def toggle_slot(self, hour, minute, reason="User set"):
+        """Toggle slot on/off at specific time."""
         self.get_slot(hour, minute).toggle(reason)
         self._on_state_may_change()
 
     def toggle_slot_by_name(self, slot_nm, reason="User set"):
+        """Toggle slot on/off by HH:MM name."""
         self.toggle_slot(*slot_t_to_hr_mn(slot_nm), reason)
 
     def boost(self, hours):
+        """Turn on heating for specified hours."""
         hours = int(hours)
         if hours > 12 or hours < 0:
             raise ValueError(f"Hour must be 0..12, not {hours}")
@@ -235,6 +253,7 @@ class Schedule:
     OFF_NOW_MAX_HOURS = 5
     OFF_NOW_MAX_SLOTS = 4 * OFF_NOW_MAX_HOURS
     def off_now(self):
+        """Turn off heating until next off slot."""
         slot = self._active_slot_idx
         turned_off = 0
         while self._sched[slot].allow_on != AllowOn.NEVER and turned_off < self.OFF_NOW_MAX_SLOTS:

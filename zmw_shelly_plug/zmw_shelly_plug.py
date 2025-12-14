@@ -42,12 +42,12 @@ class ZmwShellyPlug(ZmwMqttService):
             self._timer = None
         super().stop()
 
-    def on_service_received_message(self, subtopic, msg):  # pylint: disable=unused-argument
+    def on_service_received_message(self, _subtopic, _payload):
         """Handle incoming service messages (ignored)."""
 
-    def on_dep_published_message(self, svc_name, subtopic, payload):  # pylint: disable=unused-argument
+    def on_dep_published_message(self, svc_name, subtopic, payload):
         """Handle messages from dependencies (unexpected)."""
-        log.error("Unexpected dep message %s %s", subtopic, payload)
+        log.error("Unexpected dep %s message %s %s", svc_name, subtopic, payload)
 
 
 service_runner_with_www(ZmwShellyPlug)

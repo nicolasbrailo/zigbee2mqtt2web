@@ -1,5 +1,5 @@
 """MQTT Spotify control service."""
-import json
+import logging
 import os
 import pathlib
 
@@ -17,7 +17,6 @@ from zzmw_lib.logs import build_logger
 log = build_logger("ZmwSpotify")
 
 # Suppress noisy spotipy logs
-import logging
 logging.getLogger('spotipy.*').setLevel(logging.INFO)
 logging.getLogger('spotipy.oauth2').setLevel(logging.INFO)
 logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
@@ -80,7 +79,7 @@ class ZmwSpotify(ZmwMqttService):
         # Initialize Spotify auth
         try:
             self._refresh_access_tok()
-        except Exception:
+        except (RuntimeError, SpotifyOauthError):
             log.error('Failed to authenticate Spotify, will retry later', exc_info=True)
 
         # Schedule periodic token refresh
@@ -177,13 +176,13 @@ class ZmwSpotify(ZmwMqttService):
         media = state.get('media_info') or {}
         media_html = "<p>No track playing</p>"
         if media:
-            media_html = """
-            <p><strong>Title:</strong> {title}</p>
-            <p><strong>Artist:</strong> {artist}</p>
-            <p><strong>Album:</strong> <a href="{album_link}">{album_name}</a></p>
-            <p><strong>Track:</strong> {current_track} / {track_count}</p>
-            <p><strong>Progress:</strong> {current_time:.0f}s / {duration:.0f}s</p>
-            """.format(**media) if media.get('title') else "<p>No track playing</p>"
+            media_html = f"""
+            <p><strong>Title:</strong> {media['title']}</p>
+            <p><strong>Artist:</strong> {media['artist']}</p>
+            <p><strong>Album:</strong> <a href="{media['album_link']}">{media['album_name']}</a></p>
+            <p><strong>Track:</strong> {media['current_track']} / {media['track_count']}</p>
+            <p><strong>Progress:</strong> {media['current_time']:.0f}s / {media['duration']:.0f}s</p>
+            """ if media.get('title') else "<p>No track playing</p>"
             if media.get('icon'):
                 media_html = f'<p><img src="{media["icon"]}" style="max-width: 200px;"/></p>' + media_html
 
@@ -297,7 +296,7 @@ class ZmwSpotify(ZmwMqttService):
                     'volume': self._with_spotify('get_volume', self._get_volume_pct),
                     'media_info': self._with_spotify('get_media_info', self._get_media_info),
                 }
-            except Exception:
+            except SpotifyException:
                 log.error("Failed to get player state", exc_info=True)
 
         return {

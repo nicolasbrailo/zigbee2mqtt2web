@@ -1,3 +1,4 @@
+"""Build and persist heating schedules with templates."""
 from datetime import datetime
 import json
 import logging
@@ -23,6 +24,7 @@ class ScheduleBuilder:
                 self._now = self._now.replace(hour=0)
                 self._now = self._now.replace(minute=0)
             def now(self):
+                """Return fixed time at midnight."""
                 return self._now
 
         self._template = Schedule(_ignore_template_change_cb, _NoClock())
@@ -46,17 +48,21 @@ class ScheduleBuilder:
                 self.from_json(fp.read())
 
     def active(self):
+        """Return active schedule."""
         return self._active
 
     def get_slot(self, *a, **kv):
+        """Get slot from template."""
         return self._template.get_slot(*a, **kv)
 
     def set_slot(self, hour, minute, allow_on, reason="Scheduled"):
+        """Set template slot and persist."""
         self._template.get_slot(hour, minute).reset()
         self._template.set_slot(hour, minute, allow_on, reason)
         self.save_state()
 
     def tick(self, *a, **kv):
+        """Advance time, apply template and rules."""
         self.active().applying_rules(True)
         slots_changed = self._active.tick(*a, **kv)
         if slots_changed > 1:
@@ -77,12 +83,14 @@ class ScheduleBuilder:
         return slots_changed
 
     def reset_template(self, reset_state):
+        """Reset all template slots to given state."""
         for hr in range(0, 24):
             for mn in range(0, 60, 15):
                 self.set_slot(hr, mn, reset_state, "Scheduled")
         self.save_state()
 
     def apply_template_to_today(self):
+        """Copy template to active schedule."""
         for hr in range(0, 24):
             for mn in range(0, 60, 15):
                 tmpl = self.get_slot(hr, mn)
@@ -90,18 +98,21 @@ class ScheduleBuilder:
         self.save_state()
 
     def save_state(self):
+        """Persist schedules to file."""
         if self._persist_file is None:
             return
         with open(self._persist_file, "w", encoding="utf-8") as fp:
             fp.write(self.as_json())
 
     def as_json(self):
+        """Serialize schedules to JSON string."""
         return json.dumps({
             'active': self._active.as_jsonifyable_dict(),
             'template': self._template.as_jsonifyable_dict(),
         })
 
     def from_json(self, tjson):
+        """Restore schedules from JSON string."""
         try:
             tdict = json.loads(tjson)
         except json.decoder.JSONDecodeError:

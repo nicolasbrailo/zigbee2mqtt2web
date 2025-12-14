@@ -19,6 +19,7 @@ from schedule import ScheduleSlot
 log = build_logger("ZmwHeating")
 
 class ZmwHeating(ZmwMqttServiceNoCommands):
+    """ Service to control an on/off relay that operates a boiler """
     def __init__(self, cfg, www):
         super().__init__(cfg, svc_deps=['ZmwTelegram'])
 
@@ -63,6 +64,7 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
                              cb_is_device_interesting=lambda t: t.name in wanted_things)
 
     def svc_state(self):
+        """Return current service state as dict."""
         tsched = self.schedule.active().as_jsonifyable_dict()
         sensors = {}
         for r in self._rules:
@@ -81,11 +83,11 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
                              {'cmd': 'tengofrio',
                               'descr': 'Heating boost'})
 
-    def on_dep_published_message(self, service_name, msg_topic, msg):
-        log.debug("%s.%s: %s", service_name, msg_topic, msg)
+    def on_dep_published_message(self, svc_name, subtopic, msg):
+        log.debug("%s.%s: %s", service_name, subtopic, msg)
         match service_name:
             case 'ZmwTelegram':
-                if msg_topic.startswith("on_command/tengofrio"):
+                if subtopic.startswith("on_command/tengofrio"):
                     self.schedule.active().boost(1)
 
     def _on_z2m_network_discovery(self, _is_first_discovery, known_things):
@@ -188,7 +190,7 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
 
     def _on_boiler_state_should_change(self, new, old):
         if self._boiler is None:
-            # This is benign and happens at startup, while boiler isn't knowon yet. If the boiler isn't found, a 
+            # This is benign and happens at startup, while boiler isn't knowon yet. If the boiler isn't found, a
             # critical error will be logged later.
             log.debug(
                 "Boiler state changed to %s (reason: %s), but no boiler is known yet",

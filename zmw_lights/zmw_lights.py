@@ -1,3 +1,4 @@
+""" Expose a set of lights form zigbee2mqtt over a rest endpoint """
 import os
 import pathlib
 
@@ -11,6 +12,7 @@ from zz2m.www import Z2Mwebservice
 log = build_logger("ZmwLights")
 
 class ZmwLights(ZmwMqttNullSvc):
+    """ ZmwService for REST lights """
     def __init__(self, cfg, www):
         super().__init__(cfg)
         self._lights = []

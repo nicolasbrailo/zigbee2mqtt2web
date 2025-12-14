@@ -1,3 +1,4 @@
+"""Heating rules for MQTT-based temperature control."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, time
@@ -16,6 +17,7 @@ MAX_REASONABLE_T = 45
 METRIC_TEMP = 'temperature'
 
 def safe_read_sensor(zmw, sensor):
+    """Read sensor temp, return None if unavailable or invalid."""
     if zmw is None:
         log.debug("Attempted to read sensor %s, but z2m not set yet", sensor)
         return None
@@ -56,13 +58,15 @@ def safe_read_sensor(zmw, sensor):
 class MqttHeatingRule(ABC):
     @abstractmethod
     def set_z2m(self, _z2m):
-        pass
+        """Set the zigbee2mqtt reference."""
+
     @abstractmethod
     def apply(self, _sched):
-        pass
+        """Apply this rule to the schedule."""
+
     @abstractmethod
     def get_monitored_sensors(self):
-        pass
+        """Return dict of monitored sensors and their values."""
 
 class DefaultOff(MqttHeatingRule):
     REASON = "No reason to turn on"
@@ -71,7 +75,6 @@ class DefaultOff(MqttHeatingRule):
     def set_z2m(self, _z2m):
         return True
     def apply(self, sched):
-        # XXX too noisy log.info("Apply rule DefaultOff...")
         sched.set_now_from_rule(False, DefaultOff.REASON)
     def get_monitored_sensors(self):
         return {}
@@ -84,7 +87,6 @@ class DefaultOn(MqttHeatingRule):
     def set_z2m(self, _z2m):
         return True
     def apply(self, sched):
-        # XXX too noisy log.info("Apply rule DefaultOn...")
         sched.set_now_from_rule(True, DefaultOff.REASON)
     def get_monitored_sensors(self):
         return {}
@@ -132,7 +134,6 @@ class CheckTempsWithinRange(MqttHeatingRule):
         return found_all
 
     def apply(self, sched):
-        # XXX log.debug("Check rule CheckTempsWithinRange...") # XXX these are too verbose, reduce log level or rm?
         more_than_max = []
         less_than_min = []
         for sensor in self.sensors_to_monitor:
@@ -177,6 +178,7 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
         target_max_temp: int
 
         def is_active(self, t):
+            """Check if schedule is active at given time."""
             if self.start_time <= t.time() <= self.end_time:
                 if self.days == 'all':
                     return True
@@ -190,6 +192,7 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
 
         @staticmethod
         def guess_days(val):
+            """Validate and return days value."""
             supported = ['all', 'week', 'weekend']
             if val in supported:
                 return val
@@ -198,6 +201,7 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
 
         @staticmethod
         def create_from_json_obj(sensor_name, sched):
+            """Parse a single schedule entry from JSON."""
             try:
                 st = ScheduledMinTargetTemp.SensorTimeSchedule(
                     sensor_name=sensor_name,
@@ -233,6 +237,7 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
 
         @staticmethod
         def create_from_json_obj_arr(sensor_name, scheds):
+            """Parse array of schedule entries from JSON."""
             return [ScheduledMinTargetTemp.SensorTimeSchedule.create_from_json_obj(
                 sensor_name, sched) for sched in scheds]
 
@@ -259,7 +264,13 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
 
             self.sensor_schedules[sensor_name] = time_scheds
             log.info("Will use rule ScheduledMinTargetTemp on sensor %s:", sensor_name)
-            log.info("\t TODO print schedule") # XXX TODO
+            for sched in time_scheds:
+                log.info("\t %s-%s (%s): target temp %s-%s",
+                         sched.start_time.strftime("%H:%M"),
+                         sched.end_time.strftime("%H:%M"),
+                         sched.days,
+                         sched.target_min_temp,
+                         sched.target_max_temp)
 
     def get_monitored_sensors(self):
         return {s: safe_read_sensor(self._zmw, s) for s in self.sensor_schedules.keys()}
@@ -279,13 +290,11 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
         return found_all
 
     def apply(self, todaysched):
-        # XXX log.debug("Check rule ScheduledMinTargetTemp...")  # XXX these are too verbose, reduce log level or rm?
         if todaysched.get_now_slot().allow_on != AllowOn.RULE:
             # This specific rule is only for scheduled slots, but we may be running
             # rules during non scheduled slots (eg when getting a user boost, we
             # still want to check other rules like maximum or minimum temps). If we're running this rule during a non-schedule slot,
             # just ignore it
-            # XXX log.debug("Now-schedule is not rule based, ignoring ScheduledMinTargetTemp-rule") # XXX these are too verbose, reduce log level or rm?
             return
 
         # There was no active and applicable rule, check if a new rule applies
@@ -337,6 +346,7 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
 
 
 def create_rules_from_config(rules_cfg):
+    """Instantiate rules from config list."""
     known_rules = [DefaultOff, CheckTempsWithinRange, ScheduledMinTargetTemp]
 
     def _get_rule_class(name):

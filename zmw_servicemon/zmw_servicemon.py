@@ -37,7 +37,7 @@ class ZmwServicemon(ZmwMqttServiceNoCommands):
         www.serve_url('/ls', lambda: json.dumps(dict(sorted(self._services.items())), default=str))
         www.serve_url('/systemd_status', self.systemd_status)
         www.serve_url('/recent_errors', lambda: json.dumps(self._journal_monitor.get_recent_errors(), default=str))
-        www.serve_url('/recent_errors_clear', lambda: self._journal_monitor.clear_recent_errors())
+        www.serve_url('/recent_errors_clear', self._journal_monitor.clear_recent_errors)
         def _log_error():
             log.error("Hola!")
             return ""

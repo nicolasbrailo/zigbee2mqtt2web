@@ -222,7 +222,7 @@ class ZmwMqttService(ZmwMqttBase):
         self.broadcast(f'{self._svc_topic}/{topic}', msg)
 
     @abstractmethod
-    def on_service_received_message(self, subtopic, msg):
+    def on_service_received_message(self, subtopic, payload):
         """ User must implement. This service received a message """
         pass
 
@@ -257,8 +257,8 @@ class ZmwMqttServiceNoCommands(ZmwMqttService):
     def __init__(self, cfg, svc_deps=[]):
         super().__init__(cfg, svc_topic=None, svc_deps=svc_deps)
 
-    def on_service_received_message(self, subtopic, msg):
-        log.error("Unexpected message %s %s", subtopic, msg)
+    def on_service_received_message(self, subtopic, payload):
+        log.error("Unexpected message %s %s", subtopic, payload)
         raise AttributeError(f"Unexpected message {subtopic}")
 
     def on_dep_published_message(self, svc_name, subtopic, msg):
