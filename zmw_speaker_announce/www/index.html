@@ -2,92 +2,28 @@
 <html>
 <head>
 <link rel="icon" href="favicon.ico" type="image/x-icon"/>
-<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon"/>
 <title>Announce</title>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/zmw.css">
-
-<style>
-.announce-container {
-  margin: 0;
-  padding: 0;
-  padding-left: 2.5%;
-  margin-left: 2.5%;
-  width: 95%;
-}
-
-.announce-container input {
-  width: 100%;
-  height: 5lh;
-  padding: 10px;
-  margin-bottom: 10px;
-  font-size: 1.1rem;
-  border-radius: 6px;
-}
-
-.announce-ctrls-div {
-  display: flex;
-  gap: 10px;
-}
-
-.announce-ctrls-div select {
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid #aaa;
-  min-width: 80px;
-}
-
-.announce-ctrls-div button {
-  padding: 10px 16px;
-  border-radius: 6px;
-  border: none;
-  background-color: var(--color-primary);
-  color: var(--font-color);
-  cursor: pointer;
-}
-
-.announce-ctrls-div button:hover {
-  opacity: 0.85;
-}
-
-.announce-speaker-list ul {
-  margin-top: 10px;
-}
-.announce-speaker-list ul {
-  display: inline;
-  margin: 0;
-  padding: 0;
-}
-.announce-speaker-list li {
-  display: inline;
-  margin: 0;
-  padding: 0;
-}
-.announce-speaker-list li:not(:last-child)::after {
-  content: ", ";
-}
-</style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="/zmw.css" />
 </head>
 
 <body class="dark">
   <h1><img src="/favicon.ico" alt="Speaker annoucements"/>Announce</h1>
-
   <div id="global_loading" class="app-loading">
     Loading...
   </div>
-  <div id="global_error_ui" class="no-error">
-    <div id="global_error_msg" class="container"></div>
+  <div id="global_error_ui" class="card warn no-error">
+    <div id="global_error_msg"></div>
     <button id="global_error_ui_ack">OK</button>
   </div>
-  <div class="row container" id="app_root">
+  <div id="app_root">
   </div>
 </body>
 
 <script src='/zmw.js'></script>
 <script src="/app.rel.js"></script>
-<script>
-  z2mStartReactApp('#app_root', TTSAnnounce);
-</script>
+<script>z2mStartReactApp('#app_root', TTSAnnounce)</script>
 </html>

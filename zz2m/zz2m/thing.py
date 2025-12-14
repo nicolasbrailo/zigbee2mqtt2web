@@ -400,6 +400,23 @@ class Zigbee2MqttActionValue:
             self.meta["on_set"](val)
             return
 
+        # TODO: Thing 0x54ef441000c8da1e has an unsuported action: {
+        #       'access': 3,
+        #       'description': 'Feeding schedule',
+        #       'item_type': {
+        #           'access': 3,
+        #           'features': [
+        #               {'access': 3, 'label': 'Days', 'name': 'days', 'property': 'days', 'type': 'enum', 'values': ['everyday', 'workdays', 'weekend', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'mon-wed-fri-sun', 'tue-thu-sat']},
+        #               {'access': 3, 'label': 'Hour', 'name': 'hour', 'property': 'hour', 'type': 'numeric'},
+        #               {'access': 3, 'label': 'Minute', 'name': 'minute', 'property': 'minute', 'type': 'numeric'},
+        #               {'access': 3, 'label': 'Size', 'name': 'size', 'property': 'size', 'type': 'numeric'}],
+        #           'label': 'DayTime',
+        #           'name': 'dayTime',
+        #           'type': 'composite'},
+        #       'label': 'Schedule',
+        #       'name': 'schedule',
+        #       'property': 'schedule',
+        #       'type': 'list'}
         log.error('Thing %s has an unsuported action: %s',
                      self.thing_name, self.meta["type"])
         self._current = val

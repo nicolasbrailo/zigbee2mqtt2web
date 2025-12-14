@@ -21,14 +21,12 @@ function renderScheduleTable(sched, slotGenerator) {
     qr_groupped_sched[hr] = sched.slice(hr*4,(hr+1)*4);
   }
   return (
-    <table className="heating_sched">
+    <table>
     <tbody>
     {Object.keys(qr_groupped_sched).map((hour) => {
       return (<tr key={`table_schedule_${hour}`}>
         {qr_groupped_sched[hour].map((slot) => {
-          const slot_t = `${('0' + slot.hour).slice(-2)}:${('0' + slot.minute).slice(-2)}`;
-          const sched_slot_class = slot.request_on? 'heating_sched_slotBoilerOn' : 'heating_sched_slotBoilerOff';
-          return <td key={`table_schedule_${slot.hour}_${slot.minute}`} className={sched_slot_class}>
+          return <td key={`table_schedule_${slot.hour}_${slot.minute}`} data-state={slot.request_on ? 'on' : 'off'}>
                   {slotGenerator(slot)}
                  </td>;
         })}
@@ -120,25 +118,30 @@ class HeatingControls extends React.Component {
     } else if (this.state.allow_on == 'Rule') {
       policy_state = "Rule controls boiler state";
     }
-    return <div className="card heating_cfg_ctrls">
-        <div>
-          Current status: {policy_state}, boiler reports {this.state.mqtt_thing_reports_on}
-        </div>
-        <button className="modal-button" onClick={this._mkBoost(1)}>Boost 1 hour</button>
-        <button className="modal-button" onClick={this._mkBoost(2)}>Boost 2 hours</button>
-        <button className="modal-button" onClick={this._offNow}>Off now</button>
+    return <div className="card hint">
+        <p><b>Current status: {policy_state}, boiler reports {this.state.mqtt_thing_reports_on}</b></p>
+        <button onClick={this._mkBoost(1)}>Boost 1 hour</button>
+        <button onClick={this._mkBoost(2)}>Boost 2 hours</button>
+        <button onClick={this._offNow}>Off now</button>
       </div>
   }
 
   renderMonitoringSensors() {
     if (!this.state.monitoring_sensors) {
-      return null;
+      return (<div className="card hint">
+              <p>Loading sensors!</p>
+              <p>Please wait...</p>
+              </div>)
     }
-    return <div className="card heating_cfg_ctrls">
+    return (
+      <ul className="not-a-list">
         {Object.entries(this.state.monitoring_sensors).map(([name, value]) => (
-          <span key={name} className="bd-dark modal-button">{name}: {value || '?'}</span>
+          <li key={name} className="infobadge">
+            {name}: {`${value}°C` || '? °C'}
+          </li>
         ))}
-      </div>
+      </ul>
+    );
   }
 
   render() {
@@ -208,19 +211,19 @@ class HeatingScheduleConfig extends React.Component {
   }
 
   renderConfigControls() {
-    return <div className="card heating_cfg_ctrls">
-        <button className="modal-button" onClick={this.props.onToggleConfig}>Config</button>
-        <button className="modal-button" onClick={this._applyTemplate}>Reset today schedule</button>
-        <button className="modal-button" onClick={this._showLogs}>Logs</button>
+    return <div className="card">
+        <button onClick={this.props.onToggleConfig}>Config</button>
+        <button onClick={this._applyTemplate}>Reset today schedule</button>
+        <button onClick={this._showLogs}>Logs</button>
       </div>
   }
 
   renderTemplateControls() {
-    return <div className="card heating_cfg_ctrls">
-        <button className="modal-button" onClick={this.props.onToggleConfig}>Finish Config</button>
-        <button className="modal-button" onClick={this._applyTemplate}>Apply template / reset today schedule</button>
-        <button className="modal-button" onClick={this._resetTemplateAlwaysOff}>Reset template: Always off</button>
-        <button className="modal-button" onClick={this._resetTemplateAlwaysRule}>Reset template: Always rule-based</button>
+    return <div className="card">
+        <button onClick={this.props.onToggleConfig}>Finish Config</button>
+        <button onClick={this._applyTemplate}>Apply template / reset today schedule</button>
+        <button onClick={this._resetTemplateAlwaysOff}>Reset template: Always off</button>
+        <button onClick={this._resetTemplateAlwaysRule}>Reset template: Always rule-based</button>
       </div>
   }
 
@@ -351,7 +354,7 @@ class MqttHeating extends React.Component {
       descr = `Off: Rule ${slot.reason}`
     }
 
-    return <button className="modal-button" onClick={cb}>
+    return <button onClick={cb}>
              {slot_name}<wbr/> {descr}
            </button>
   }

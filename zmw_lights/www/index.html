@@ -1,115 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
+<link rel="icon" href="favicon.ico" type="image/x-icon"/>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon"/>
 <title>Lights</title>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/zmw.css">
-
-<style>
-/* Full width UI */
-#app_root {
-  width: 100% !important;
-  max-width: 100% !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
-/* Remove bullet points from list items */
-#app_root ul {
-  list-style-type: none;
-  padding-left: 0;
-}
-
-/* Config section at bottom */
-.config-section {
-  margin-top: 20px;
-  padding: 10px 0;
-}
-
-.config-toggle {
-  cursor: pointer;
-  padding: 8px 16px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  text-align: center;
-  user-select: none;
-  display: inline-block;
-  width: auto;
-  font-size: 14px;
-}
-
-.config-toggle:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-}
-
-.config-panel {
-  margin-top: 10px;
-  padding: 10px;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.config-panel button {
-  width: auto;
-  flex: 0 0 auto;
-}
-
-/* Mobile-specific styling */
-@media (max-width: 768px) {
-  /* Make buttons larger on mobile */
-  button, .modal-button {
-    min-height: 44px;
-    font-size: 16px;
-    padding: 12px 20px;
-  }
-
-  /* Make checkboxes larger on mobile */
-  input[type="checkbox"] {
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    min-height: 24px;
-  }
-
-  /* Make range sliders larger on mobile */
-  input[type="range"] {
-    height: 32px;
-  }
-
-  /* Make text larger on mobile */
-  .thing_name {
-    font-size: 18px;
-  }
-
-  /* Increase touch targets for light controls */
-  .thing_div {
-    padding: 12px 8px;
-  }
-
-  /* Make reorder links larger */
-  .thing-list-reorder-link {
-    font-size: 24px;
-    padding: 8px;
-  }
-}
-</style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="/zmw.css" />
 </head>
 
 <body class="dark">
+  <h1><img src="/favicon.ico"/>Lights</h1>
   <div id="global_loading" class="app-loading">
     Loading...
   </div>
-  <div id="global_error_ui" class="no-error">
-    <div id="global_error_msg" class="container"></div>
+  <div id="global_error_ui" class="card warn no-error">
+    <div id="global_error_msg"></div>
     <button id="global_error_ui_ack">OK</button>
   </div>
-  <div class="container" id="app_root">
+  <div id="app_root">
   </div>
 </body>
 

@@ -8,9 +8,7 @@ rebuild_ui:
 		../baticasa_buttons/www/app.js \
 		../zmw_contactmon/www/app.js \
 		../zmw_heating/www/app.js \
-		../zmw_lights/www/debouncedRange.js \
-		../zmw_lights/www/light.js \
-		../zmw_lights/www/mqtt_lights.js \
+		../zmw_lights/www/app.js \
 		../zmw_reolink_doorbell/www/app.js \
 		../zmw_sensormon/www/app.js \
 		../zmw_speaker_announce/www/app.js \

@@ -71,9 +71,8 @@ class ServiceMonitor extends React.Component {
       statusSummary += `, ${unhealthy} service${unhealthy > 1 ? 's' : ''} unhealthy`;
     }
 
-    return (
-      <div>
-        <h1>ZMW Services</h1>
+    return <section id="zmw_services" className="card">
+      <h3>ZMW Services</h3>
         <p>{statusSummary}</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '10px', marginBottom: '20px' }}>
         {services.map((srv) => (
@@ -108,8 +107,7 @@ class ServiceMonitor extends React.Component {
           </div>
         ))}
         </div>
-      </div>
-    );
+      </section>
   }
 
   renderSystemdStatus() {
@@ -125,17 +123,17 @@ class ServiceMonitor extends React.Component {
       }
     }
 
-    return <div>
-      <h1>Systemd services status</h1>
+    return <section id="systemd_status" className="card">
+      <h3>Systemd services status</h3>
       {!this.state.systemdServicesStdout ? (
-        <div>Loading systemd...</div>
+        <div className="app-loading">Loading systemd status...</div>
       ):(
         <div>
           <p>{statusSummary}</p>
           <pre dangerouslySetInnerHTML={{__html: this.state.systemdServicesStdout}}></pre>
         </div>
       )}
-    </div>
+    </section>
   }
 
   clearRecentErrors() {
@@ -165,15 +163,18 @@ class ServiceMonitor extends React.Component {
       </div>;
     }
 
-    return <div style={{ margin: '20px' }}>
-      <h1>Recent Errors ({errors.length}) <button onClick={() => this.clearRecentErrors()}>Clear</button> <button onClick={() => this.simulateError()}>Simulate error</button></h1>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    return (
+      <section id="journal_errors" className="card">
+      <h3>Recent Errors ({errors.length})</h3>
+      <button onClick={() => this.clearRecentErrors()}>Clear</button>
+      <button onClick={() => this.simulateError()}>Simulate error</button>
+      <table>
         <thead>
-          <tr style={{ backgroundColor: '#333', color: 'white' }}>
-            <th style={{ padding: '10px', textAlign: 'left' }}>Time</th>
-            <th style={{ padding: '10px', textAlign: 'left' }}>Service</th>
-            <th style={{ padding: '10px', textAlign: 'left' }}>Level</th>
-            <th style={{ padding: '10px', textAlign: 'left' }}>Message</th>
+          <tr>
+            <th>Time</th>
+            <th>Service</th>
+            <th>Level</th>
+            <th>Message</th>
           </tr>
         </thead>
         <tbody>
@@ -186,33 +187,22 @@ class ServiceMonitor extends React.Component {
               'WARNING': '#ffcc00'
             };
             return (
-              <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
-                <td style={{ padding: '8px', fontSize: '12px' }}>
-                  {new Date(err.timestamp).toLocaleString()}
-                </td>
-                <td style={{ padding: '8px', fontWeight: 'bold' }}>{err.service}</td>
-                <td style={{
-                  padding: '8px',
-                  color: priorityColors[err.priority_name] || '#999',
-                  fontWeight: 'bold'
-                }}>
-                  {err.priority_name}
-                </td>
-                <td style={{ padding: '8px', fontFamily: 'monospace', fontSize: '12px' }}>
-                  {err.message}
-                </td>
+              <tr key={idx}>
+                <td>{new Date(err.timestamp).toLocaleString()}</td>
+                <td>{err.service}</td>
+                <td style={{ color: priorityColors[err.priority_name] || '#999' }}>{err.priority_name}</td>
+                <td className="journal-entry">{err.message}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
-    </div>;
+    </section>);
   }
 
   render() {
     return (
       <div id="ServiceMonitorContainer">
-        <h1><img src="/favicon.ico" alt="Service mon"/> Service Monitor</h1>
         {this.renderServices()}
         {this.renderSystemdStatus()}
         {this.renderRecentErrors()}
@@ -220,5 +210,3 @@ class ServiceMonitor extends React.Component {
     );
   }
 };
-
-z2mStartReactApp('#app_root', ServiceMonitor);

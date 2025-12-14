@@ -42,13 +42,7 @@ function NVRViewer(props) {
       const day = parseInt(dateStr.substring(6, 8));
       const hr = parseInt(hour.substring(0, 2));
       const minute = parseInt(hour.substring(2, 4));
-
-      const monthNames = [
-        "January", "February", "March", "April",
-        "May", "June", "July", "August",
-        "September", "October", "November", "December"
-      ];
-
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const monthName = monthNames[month - 1] || `Month ${month}`;
       return `${monthName} - ${day.toString().padStart(2, '0')} - ${hr.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
     } catch (e) {
@@ -57,18 +51,16 @@ function NVRViewer(props) {
   };
 
   if (isLoading && cameras.length === 0) {
-    return (
-      <div className="nvr-container">
-        <div className="loading-message">Loading cameras...</div>
-      </div>
-    );
+    return (<div className="card hint">
+            <p>Loading cameras!</p>
+            <p>Please wait...</p>
+            </div>)
   }
 
   return (
-    <div className="nvr-container">
-      <h1><img src="/favicon.ico" alt="NVR"/>NVR - Recordings</h1>
-
-      <div className="nvr-controls">
+    <section id="zmw_reolink_nvr">
+      <details open>
+      <summary>Config</summary>
         {cameras.length > 1 && (
           <select
             value={selectedCam || ''}
@@ -91,29 +83,28 @@ function NVRViewer(props) {
           <option value="0">All recordings</option>
         </select>
 
-        <a href="/" className="back-link">← Back to Camera</a>
-      </div>
+        <button onClick={() => window.location.href = '/'}>← Back to Camera</button>
+      </details>
 
       {isLoading ? (
-        <div className="loading-message">Loading recordings...</div>
+        <p>Loading recordings...</p>
       ) : recordings.length === 0 ? (
-        <div className="empty-message">No recordings found for the selected period</div>
+        <p>No recordings found for the selected period</p>
       ) : (
-        <div className="gallery-container">
+        <div className="gallery">
           {recordings.map((rec, idx) => (
-            <div key={idx} className="gallery-item">
+            <figure key={idx}>
               <a href={rec.video_url} target="_blank">
                 <img src={rec.thumbnail_url} alt={rec.filename}/>
-                <div className="gallery-item-info">
-                  <div className="gallery-item-name">{formatFilename(rec.filename)}</div>
-                  <div className="gallery-item-size">{rec.size}</div>
-                </div>
+                <figcaption>
+                  {formatFilename(rec.filename)} ({rec.size})
+                </figcaption>
               </a>
-            </div>
+            </figure>
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -121,5 +112,3 @@ NVRViewer.buildProps = (api_base_path = '') => ({
   key: 'nvr_viewer',
   api_base_path: api_base_path,
 });
-
-z2mStartReactApp('#app_root', NVRViewer);

@@ -1,0 +1,13 @@
+input[type=checkbox] {
+  appearance: none;
+  background-color: transparent;
+  margin: 0;
+
+  transition: background 250ms;
+  background: var(--cbg);
+  border: 1px solid var(--clink);
+  border-radius: 0.5rem;
+}
+input[type=checkbox]:checked {
+  background: var(--cemph);
+}

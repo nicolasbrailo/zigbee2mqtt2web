@@ -1,0 +1,100 @@
+
+/* Style for room/group summary (Cocina, TVRoom, etc.) - not the nested .light_details summary */
+#zmw_lights > details > summary {
+  color: var(--cfg);
+  clear: both;
+  font: var(--font-h);
+  font-size: 1.2em;
+  font-weight: bold;
+  line-height: 1.2em;
+  margin-top: .5em;
+  padding-bottom: .5em;
+}
+
+/* Style for a list of lights: li's are shown plain and with a separator between elements */
+#zmw_lights details ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+#zmw_lights details li {
+  border-bottom: 1px solid var(--cmed);
+  padding: 0.5rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+#zmw_lights details li:last-child {
+  border-bottom: none;
+}
+
+/* Style for details (eg color config) inside a lights panel */
+#zmw_lights .light_details {
+  display: contents;
+}
+#zmw_lights .light_details summary:hover {
+  color: var(--cemph);
+  border-color: var(--cemph);
+}
+#zmw_lights .light_details summary {
+  background-color: var(--clight);
+  border: 1.5px solid var(--clink);
+  border-radius: 4px;
+  box-shadow: none;
+  color: var(--clink);
+  display: inline-block;
+  flex: 0 0 auto;
+  font: var(--font-p);
+  font-size: 85%;
+  font-weight: bold;
+  letter-spacing: .1em;
+  padding: .4em 1em;
+  /* The button to close the detail floats towards the right when open */
+  float: right !important;
+}
+#zmw_lights .light_details:not([open]) summary {
+  /* When collapsed, float-right the button to expand */
+  order: 999;
+  margin-left: auto;
+}
+#zmw_lights .light_details[open] {
+  display: block;
+  width: 90%;
+  margin: 4px auto;
+}
+/* When the lights details element is collapsed, use grid for precise row control */
+#zmw_lights details li:has(.light_details:not([open])) {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+#zmw_lights details li:has(.light_details:not([open])) > input[type="checkbox"] {
+  grid-row: 1;
+}
+#zmw_lights details li:has(.light_details:not([open])) > label {
+  grid-row: 1;
+  grid-column: 2 / -1;
+}
+#zmw_lights details li:has(.light_details:not([open])) > input[type="range"] {
+  grid-row: 2;
+  grid-column: 1 / span 2;
+}
+#zmw_lights details li:has(.light_details:not([open])) .light_details summary {
+  grid-row: 2;
+  grid-column: 3;
+  justify-self: end;
+}
+
+/* Styling for light name */
+#zmw_lights label {
+  box-shadow: none;
+  color: var(--clink);
+  display: inline-block;
+  flex: 0 0 auto;
+  font: var(--font-h);
+  font-weight: bold;
+  letter-spacing: .01em;
+}
+

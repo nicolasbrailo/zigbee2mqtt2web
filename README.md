@@ -43,3 +43,22 @@ Who should use this? If you:
 * Don't mind some hacking
 
 You may find this project useful.
+
+## Architecture and Creating a new service
+
+ZMW is pretty simple:
+
+* zzmw_lib/www has all of the web helpers, including css and base app js helpers. An app needs to be started by its html.
+* zzmw_lib/zzmw_lib/*mqtt* has different ZMW service base classes. Pick one for your new service.
+* zzmw_lib/zzmw_lib/service_runner is what launches the service. It will start a flask server and your app in parallel, and handle things like journal logs and basic www styles
+* zz2m is the proxy to zigbee2mqtt
+
+Start a new service by copying an existing one. Then:
+
+* The main app entry point should be the same name as your service directory. For example, if the service directory is called "zmw_foo", the main entry point for systemd will be "zmw_foo/zmw_foo.py". If your names don't match, the app will work but install and monitoring scripts will break.
+* Build your impl in your py file, update the www entry point in www/index.html and www/app.js
+* Update any deps in your rebuild_deps makefile target
+* Build with `make rebuild_deps`, then `make rebuild_ui`
+* Try it out with `make devrun`
+* When ready, `make install_svc`
+

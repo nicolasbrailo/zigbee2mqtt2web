@@ -12,6 +12,58 @@ function buildUrlForPeriod(period, prefix = '/history') {
   return `${prefix}/${unit}/${time}`;
 }
 
+// Return sensor data as a list of values
+function renderSensorValues(sensorData, metrics) {
+  function getUnit(metric) {
+    const units = {
+      temperature: '°C',
+      device_temperature: '°C',
+      humidity: '%',
+      voltage: 'V',
+      voltage_volts: 'V',
+      battery: '%',
+      pm25: 'µg/m³',
+      active_power_watts: 'W',
+      current_amps: 'A',
+      lifetime_energy_use_watt_hour: 'Wh',
+      last_minute_energy_use_watt_hour: 'Wh',
+    };
+    return units[metric] || '';
+  }
+
+  function formatValue(value, metric) {
+    if (typeof value !== 'number') {
+      return '?';
+    }
+    const unit = getUnit(metric);
+    return unit ? `${value}${unit}` : value;
+  }
+
+  if (sensorData === undefined) {
+    return '...';
+  }
+  if (sensorData === null) {
+    return '?';
+  }
+
+  // Check if all values are unknown
+  const hasAnyValue = metrics.some(m => typeof sensorData[m] === 'number');
+  if (!hasAnyValue) {
+    return 'No data yet';
+  }
+
+  if (metrics.length === 1) {
+    // Single metric: just show the value
+    return formatValue(sensorData[metrics[0]], metrics[0]);
+  } else {
+    // Multiple metrics: show key=value pairs
+    return metrics
+      .map(m => `${m}=${formatValue(sensorData[m], m)}`)
+      .join(', ');
+  }
+}
+
+
 function simple_dygraph_plot(html_elm_id, url) {
   let dygraph_opts = {
                       fillGraph: false,
@@ -95,7 +147,7 @@ class SensorsHistoryPane extends React.Component {
         });
     });
     if (this.sensorsListRef.current) {
-      this.sensorsListRef.current.refresh();
+      this.sensorsListRef.current.loadSensors();
     }
   }
 
@@ -125,10 +177,6 @@ class SensorsHistoryPane extends React.Component {
     return (
       <div id="SensorsHistoryPane">
         <div class="SensorsHistoryConfig">
-          <h1>
-            <img src="/favicon.ico" alt="Sensor history" />
-            Sensor history
-          </h1>
           <label htmlFor="SensorsHistoryConfig_period">Period:</label>
           <select
             value={this.state.period}
@@ -311,10 +359,6 @@ class SensorsList extends React.Component {
     }
   }
 
-  refresh() {
-    this.loadSensors();
-  }
-
   loadSensors() {
     const metrics = this.props.metrics;
     if (!metrics || metrics.length === 0) {
@@ -364,69 +408,19 @@ class SensorsList extends React.Component {
     });
   }
 
-  getUnit(metric) {
-    const units = {
-      temperature: '°C',
-      device_temperature: '°C',
-      humidity: '%',
-      voltage: 'V',
-      voltage_volts: 'V',
-      battery: '%',
-      pm25: 'µg/m³',
-      active_power_watts: 'W',
-      current_amps: 'A',
-      lifetime_energy_use_watt_hour: 'Wh',
-      last_minute_energy_use_watt_hour: 'Wh',
-    };
-    return units[metric] || '';
-  }
-
-  formatValue(value, metric) {
-    if (typeof value !== 'number') {
-      return '?';
-    }
-    const unit = this.getUnit(metric);
-    return unit ? `${value}${unit}` : value;
-  }
-
-  renderSensorValues(sensor) {
-    const data = this.state.sensorData[sensor];
-    const metrics = this.props.metrics;
-
-    if (data === undefined) {
-      return '...';
-    }
-    if (data === null) {
-      return '?';
-    }
-
-    // Check if all values are unknown
-    const hasAnyValue = metrics.some(m => typeof data[m] === 'number');
-    if (!hasAnyValue) {
-      return 'No data yet';
-    }
-
-    if (metrics.length === 1) {
-      // Single metric: just show the value
-      return this.formatValue(data[metrics[0]], metrics[0]);
-    } else {
-      // Multiple metrics: show key=value pairs
-      return metrics
-        .map(m => `${m}=${this.formatValue(data[m], m)}`)
-        .join(', ');
-    }
-  }
-
   render() {
     if (this.state.sensors === null) {
-      return <div className="sensors-list">Loading sensors...</div>;
+      return (<div className="card hint">
+              <p>Loading sensors!</p>
+              <p>Please wait...</p>
+              </div>)
     }
 
     return (
-      <ul className="sensors-list keyval-list">
+      <ul className="not-a-list">
         {this.state.sensors.map(sensor => (
-          <li key={sensor} className="bd-dark modal-button">
-            <strong><a href={`?sensor=${sensor}`}>{sensor}</a>:</strong> {this.renderSensorValues(sensor)}
+          <li key={sensor} className="infobadge">
+            <a href={`?sensor=${sensor}`}>{sensor}</a>: {renderSensorValues(this.state.sensorData[sensor], this.props.metrics)}
           </li>
         ))}
       </ul>

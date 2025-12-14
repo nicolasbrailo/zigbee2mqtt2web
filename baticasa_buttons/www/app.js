@@ -37,10 +37,10 @@ class ScenesList extends React.Component {
 
     return (
       <div>
-        <ul className="keyval-list">
+        <ul className="not-a-list">
           {this.state.scenes.map((scene, idx) => (
-            <li key={idx} className="modal-button primary">
-              <a href="#" onClick={(e) => { e.preventDefault(); this.applyScene(scene); }}>{scene.replace(/_/g, ' ')}</a>
+            <li key={idx}>
+              <button type="button" onClick={() => this.applyScene(scene)}>{scene.replace(/_/g, ' ')}</button>
             </li>
           ))}
         </ul>
@@ -189,124 +189,94 @@ class BaticasaButtonsMonitor extends React.Component {
     }
   }
 
+  renderButton(buttonName, idx) {
+  }
+
+  renderWarningUnboundActions(unboundButtons) {
+    return (unboundButtons.length > 0 && (
+        <div className="card warn">
+          <h4>⚠ Error: Unbound Actions ({unboundButtons.length})</h4>
+          <p>
+            The following callbacks could not be bound to Z2M things. Check if devices are missing or callback names are incorrect:
+            <ul className="compact-list">
+              {unboundButtons.map((buttonName, idx) => (
+                <li key={idx}><code>{buttonName}</code></li>
+              ))}
+            </ul>
+          </p>
+        </div>
+      ));
+  }
+
+  renderBoundActions(boundButtons) {
+    if (boundButtons.length === 0) {
+      return (<div className="card warn">No button callbacks found</div>);
+    }
+    return (
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Actions</th>
+            <th>Test</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        { boundButtons.map((buttonName, idx) => {
+            const status = this.state.triggerStatus[buttonName];
+            const actionInput = this.state.actionInputs[buttonName] || '';
+            const discoveredActions = this.state.discoveredActions[buttonName] || [];
+            const showCustomInput = this.state.showCustomInput[buttonName] || false;
+            const hasDiscoveredActions = discoveredActions.length > 0;
+            return (
+              <tr key={idx}>
+                <td>{buttonName}</td>
+                <td>
+                    {hasDiscoveredActions && !showCustomInput ? (
+                      <select value={actionInput} onChange={(e) => this.handleDropdownChange(buttonName, e.target.value)}>
+                        <option value="">-- Select an action --</option>
+                        {discoveredActions.map((action, actionIdx) => (
+                          <option key={actionIdx} value={action}>{action}</option>
+                        ))}
+                        <option value="__other__">Other</option>
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="MQTT Action (eg: on, toggle...)"
+                        value={actionInput}
+                        onChange={(e) => this.handleActionInputChange(buttonName, e.target.value)}
+                      />
+                    )}
+                </td>
+                <td>
+                  <button type="button" onClick={() => this.triggerAction(buttonName)}>Do it</button>
+                </td>
+                <td>
+                  { status && (<blockquote className={status.success ? "info" : "warn"}>{status.message}</blockquote>) }
+                </td>
+              </tr>
+            );
+        })}
+        </tbody>
+      </table>
+    );
+  }
+
   render() {
     if (!this.state.boundButtons || !this.state.unboundButtons) {
       return ( <div className="app-loading">Loading...</div> );
     }
 
-    const boundButtons = this.state.boundButtons;
-    const unboundButtons = this.state.unboundButtons;
-
     return (
       <div id="BaticasaButtonsContainer">
-        <h3>
-          <img src="/favicon.ico" alt="Baticasa buttons"/>
-          Baticasa Buttons
-        </h3>
-
-        {unboundButtons.length > 0 && (
-          <div className="bd-error card text-error">
-            <h4>⚠ Error: Unbound Actions ({unboundButtons.length})</h4>
-            <p>The following callbacks could not be bound to Z2M things. Check if devices are missing or callback names are incorrect:</p>
-            <ul>
-              {unboundButtons.map((buttonName, idx) => (
-                <li key={idx}><code>{buttonName}</code></li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {boundButtons.length > 0 && (
-          <div>
-            <h4>✓ Buttons bound to actions: ({boundButtons.length})</h4>
-            <ul>
-              {boundButtons.map((buttonName, idx) => this.renderButton(buttonName, idx))}
-            </ul>
-
-            Use this panel to trigger actions in the service. You'll need to provide the name
-            of the MQTT action that would be sent by zigbee2mqtt.
-          </div>
-        )}
-
-        {boundButtons.length === 0 && unboundButtons.length === 0 && (
-          <div>
-            No button callbacks found
-          </div>
-        )}
+        { this.renderWarningUnboundActions(this.state.unboundButtons) }
+        { this.renderBoundActions(this.state.boundButtons) }
 
         <h4>Scenes</h4>
         <ScenesList api_base_path={this.props.api_base_path} />
       </div>
     )
-  }
-
-  renderButton(buttonName, idx) {
-    const status = this.state.triggerStatus[buttonName];
-    const actionInput = this.state.actionInputs[buttonName] || '';
-    const discoveredActions = this.state.discoveredActions[buttonName] || [];
-    const showCustomInput = this.state.showCustomInput[buttonName] || false;
-
-    const hasDiscoveredActions = discoveredActions.length > 0;
-
-    return (
-      <li key={idx}>
-        <strong style={{
-          display: 'inline-block',
-          width: '250px',
-          marginRight: '10px'
-        }}>{buttonName}</strong>
-
-          {hasDiscoveredActions && !showCustomInput ? (
-            <select
-              value={actionInput}
-              onChange={(e) => this.handleDropdownChange(buttonName, e.target.value)}
-              style={{
-                marginRight: '10px',
-                padding: '5px',
-                width: '300px',
-                backgroundColor: '#2a2a2a',
-                color: '#fff',
-                border: '1px solid #444',
-                display: 'inline-block',
-              }}
-            >
-              <option value="">-- Select an action --</option>
-              {discoveredActions.map((action, actionIdx) => (
-                <option key={actionIdx} value={action}>{action}</option>
-              ))}
-              <option value="__other__">Other</option>
-            </select>
-          ) : (
-            <input
-              type="text"
-              placeholder="MQTT Action (eg: on, toggle...)"
-              value={actionInput}
-              onChange={(e) => this.handleActionInputChange(buttonName, e.target.value)}
-              style={{
-                marginRight: '10px',
-                padding: '5px',
-                width: '300px',
-                backgroundColor: '#2a2a2a',
-                color: '#fff',
-                border: '1px solid #444',
-                display: 'inline-block',
-              }}
-            />
-          )}
-
-          <button
-            type="button"
-            onClick={() => this.triggerAction(buttonName)}
-            style={{ padding: '5px 15px' }}
-          >
-            Trigger
-          </button>
-          {status && (
-            <span className={ status.success ? "bg-success" : "bg-error" }>
-              {status.message}
-            </span>
-          )}
-      </li>
-    );
   }
 }

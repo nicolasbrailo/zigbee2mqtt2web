@@ -142,37 +142,34 @@ class TTSAnnounce extends React.Component {
   render() {
     if (this.state.isRecording) {
       return (
-        <ul className="player-announce-methods">
+        <ul>
           <li>
-            <button className="player-button" onClick={this.onMicRecSend}>Send</button>
+            <button onClick={this.onMicRecSend}>Send</button>
           </li>
           <li>
-            <button className="player-button" onClick={this.onCancel}>Cancel</button>
+            <button onClick={this.onCancel}>Cancel</button>
           </li>
         </ul>
       );
     }
 
     return (
-      <div className="announce-container">
-        <div className="announce-input-div">
-          <input
-            type="text"
-            placeholder="Text to announce"
-            value={this.state.ttsPhrase}
-            onChange={e => this.setState({ ttsPhrase: e.target.value })}
-          />
-        </div>
+      <div>
+        <input
+          type="text"
+          placeholder="Text to announce"
+          value={this.state.ttsPhrase}
+          onChange={e => this.setState({ ttsPhrase: e.target.value })}
+        />
 
-        <div className="announce-ctrls-div">
+        <div>
           <button onClick={this.onTTSRequested}>
             Announce!
           </button>
 
           <select
             value={this.state.ttsLang}
-            onChange={e => this.setState({ ttsLang: e.target.value })}
-          >
+            onChange={e => this.setState({ ttsLang: e.target.value })}>
             { /* https://developers.google.com/assistant/console/languages-locales */ }
             <option value="es-ES">ES</option>
             <option value="es-419">es 419</option>
@@ -187,47 +184,42 @@ class TTSAnnounce extends React.Component {
         </div>
 
         {this.state.speakerList && (
-          <div className="announce-speaker-list">
-            Will announce in: <ul>
+          <small>
+            Will announce in: <ul className="compact-list">
               {this.state.speakerList.map(x => <li key={x}>{x}</li>) }
             </ul>
-          </div>
+          </small>
         )}
 
-        <div className="announce-history-section">
-          <small
-            onClick={() => this.setState({ historyExpanded: !this.state.historyExpanded })}
-            style={{ cursor: 'pointer', userSelect: 'none' }}
-          >
-            {this.state.historyExpanded ? '▼' : '▶'} Announcement History ({this.state.announcementHistory.length})
-          </small>
-
-          {this.state.historyExpanded && (
-            <div className="announce-history-list card">
-              {this.state.announcementHistory.length === 0 ? (
-                <p>No announcements yet</p>
-              ) : (
-                <ul>
-                  {this.state.announcementHistory.slice().reverse().map((item, idx) => (
-                    <li key={idx}>
-                      <div className="history-item">
-                        <span className="history-timestamp">
-                          {new Date(item.timestamp).toLocaleString()}
-                        </span>
-                        <span className="history-phrase">
-                          "{item.phrase}"
-                        </span>
-                        <span className="history-details">
-                          (Lang: {item.lang}, vol: {item.volume}, <a href={item.uri}>link</a>)
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+        <details className="light_details">
+          <summary><small>Announcement History ({this.state.announcementHistory.length})</small></summary>
+          {this.state.announcementHistory.length === 0 ? (
+            <p>No announcements yet</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Phrase</th>
+                  <th>Lang</th>
+                  <th>Vol</th>
+                  <th>Link</th>
+                </tr>
+              </thead>
+              <tbody>
+                {this.state.announcementHistory.slice().reverse().map((item, idx) => (
+                  <tr key={idx}>
+                    <td>{new Date(item.timestamp).toLocaleString()}</td>
+                    <td>{item.phrase}</td>
+                    <td>{item.lang || "default"}</td>
+                    <td>{item.volume}</td>
+                    <td><a href={item.uri}>🔊</a></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
-        </div>
+        </details>
       </div>
     );
   }
