@@ -24,10 +24,6 @@ class BaticasaButtons(ButtonActionService):
         self.boton_emma_click_num = 0
         self.boton_emma_click_off_num = 0
 
-    def _scene_Ttest(self):
-        self._z2m.get_thing('CocinaMesa').toggle()
-        self._z2m.broadcast_things(['CocinaMesa'])
-
     def _scene_TV_scene(self):
         self._z2m.get_thing('CocinaCeiling').turn_off()
         self._z2m.get_thing('CocinaCountertop').turn_off()

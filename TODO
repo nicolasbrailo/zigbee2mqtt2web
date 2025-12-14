@@ -1,9 +1,8 @@
+* Move baticasa_buttons out of generic zmw project
+* Add volume control on announcements
 * RGB get prop from z2m is broken, always null
 * Temp sensors -> Apply "windchill" factor
 * Monitor arbitrary svc with servicemon
-* When running restart_and_logs from a dir that's not the svc dir, it will look for logs.sh in cwd
-* Move baticasa_buttons out of generic zmw project
-* Make dashboard load faster - load lights first, deferr other requests?
 * dashboard svc -> How do I install authbind automatically
 * all svcs -> Run tests as part of systemd service start?
 * all svcs -> lint and check test coverage
