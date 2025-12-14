@@ -13,6 +13,7 @@ class TTSAnnounce extends React.Component {
     this.state = {
       ttsPhrase: "",
       ttsLang: "es-ES",
+      ttsVolume: 50,
       isRecording: false,
       speakerList: null,
       announcementHistory: [],
@@ -51,7 +52,7 @@ class TTSAnnounce extends React.Component {
       timestamp: new Date().toISOString(),
       phrase: phrase,
       lang: this.state.ttsLang,
-      volume: 'default',
+      volume: this.state.ttsVolume,
       uri: `${this.props.api_base_path}/tts/${phrase}_${this.state.ttsLang}.mp3`
     };
 
@@ -59,10 +60,9 @@ class TTSAnnounce extends React.Component {
       announcementHistory: [...prev.announcementHistory, newEntry].slice(-10)
     }));
 
-    console.log("BCAST ");
-    console.log(`${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}`)
+    console.log(`${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}&vol=${this.state.ttsVolume}`)
     mAjax({
-      url: `${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}`,
+      url: `${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}&vol=${this.state.ttsVolume}`,
       type: 'get',
       success: () => {
         console.log("Sent TTS request");
@@ -162,7 +162,7 @@ class TTSAnnounce extends React.Component {
           onChange={e => this.setState({ ttsPhrase: e.target.value })}
         />
 
-        <div>
+        <div className="ctrl-box-with-range">
           <button onClick={this.onTTSRequested}>
             Announce!
           </button>
@@ -175,6 +175,16 @@ class TTSAnnounce extends React.Component {
             <option value="es-419">es 419</option>
             <option value="en-GB">EN GB</option>
           </select>
+
+          <label>Vol</label>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={this.state.ttsVolume}
+            onChange={e => this.setState({ ttsVolume: parseInt(e.target.value, 10) })}
+            title={`Volume: ${this.state.ttsVolume}%`}
+          />
 
           {this.canRecordMic && (
             <button onClick={this.onMicRecRequested}>

@@ -157,10 +157,11 @@ class ServiceMonitor extends React.Component {
 
     const errors = this.state.recentErrors;
     if (errors.length === 0) {
-      return <div>
-        <h1>Recent Errors <button onClick={() => this.simulateError()}>Simulate error</button></h1>
+      return <section id="journal_errors" className="card">
+        <h3>Recent Errors ({errors.length})</h3>
+        <button onClick={() => this.simulateError()}>Simulate error</button>
         <p>No errors detected! All services running cleanly.</p>
-      </div>;
+      </section>;
     }
 
     return (

@@ -107,16 +107,26 @@ function ReolinkDoorbellSection(props) {
 }
 
 function ConfigSection(props) {
-  return <section id="config-section">
-      <img className="section-badge" src="/config/favicon.ico"/>
-      <button alt="This fixes things if something is out of sync">Clear cache</button>
-      <label for="configTheme">Theme</label>
-      <select id="configTheme" onChange={() => {
-        const theme = document.getElementById("configTheme").value;
-        document.documentElement.setAttribute('data-theme', theme);
-        const store = new LocalStorageManager();
-        store.cacheSave("ZmwDashboardConfig", {"theme": theme});
-      }}>
+  const store = React.useMemo(() => new LocalStorageManager(), []);
+  const savedTheme = store.cacheGet("ZmwDashboardConfig")?.theme || "no-theme";
+
+  const handleThemeChange = (e) => {
+    const theme = e.target.value;
+    document.documentElement.setAttribute('data-theme', theme);
+    store.cacheSave("ZmwDashboardConfig", { theme });
+  };
+
+  const handleClearCache = () => {
+    localStorage.clear();
+    location.reload();
+  };
+
+  return (
+    <section id="config-section">
+      <img className="section-badge" src="/settings.ico"/>
+      <button alt="This fixes things if something is out of sync" onClick={handleClearCache}>Clear cache</button>
+      <label htmlFor="configTheme">Theme</label>
+      <select id="configTheme" defaultValue={savedTheme} onChange={handleThemeChange}>
         <option value="no-theme">no theme</option>
         <option value="dark">dark</option>
         <option value="light">light</option>
@@ -130,6 +140,7 @@ function ConfigSection(props) {
         <option value="tufte">tufte</option>
       </select>
     </section>
+  );
 }
 
 
@@ -159,15 +170,17 @@ function Dashboard(props) {
           </button>
   }
 
-  const renderSvcBtn = (sectionName, serviceName) => {
+  const renderIcoBtn = (sectionName, icoUrl) => {
     return <button
               data-selected={expandedSection === sectionName}
               onClick={() => toggleSection(sectionName)}
            >
-              <img src={`/${serviceName}/favicon.ico`} alt=""/>
+              <img src={icoUrl} alt=""/>
               {sectionName}
            </button>
   }
+  const renderSvcBtn =
+    (sectionName, serviceName) => renderIcoBtn(sectionName, `/${serviceName}/favicon.ico`);
 
   return (
     <main>
@@ -180,9 +193,9 @@ function Dashboard(props) {
         { renderSvcBtn('Contact', 'ZmwContactmon') }
         { renderSvcBtn('Heating', 'ZmwHeating') }
         { renderSvcBtn('Door', 'ZmwReolinkDoorbell') }
-        { renderSvcBtn('⚙', 'ZmwDashboardConfig') }
+        { renderIcoBtn('⚙', '/settings.ico') }
         { /* TODO move these to a config */}
-        { renderBtn("Baticasa Services", "http://10.0.0.10:4200/index.html", "http://10.0.0.10:4200/favicon.ico") }
+        { renderBtn("Servicemon", "http://10.0.0.10:4200/index.html", "http://10.0.0.10:4200/favicon.ico") }
         { renderBtn("Z2M", "http://10.0.0.10:4100", "/z2m.ico") }
         { renderBtn("", "http://bati.casa:5000/client_ls_txt", "/wwwslider.ico") }
         { renderBtn("", "http://bati.casa:2222/photos", "/immich.ico") }

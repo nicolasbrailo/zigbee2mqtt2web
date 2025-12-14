@@ -1,5 +1,14 @@
 /* Modern slider style with circular thumb */
 
+.ctrl-box-with-range {
+  /* Ranges don't play nicely with other styles, it can be hard to get them to show inline with a button
+   * eg on this: <div><button/><input type="range"></div> the range would show in a line of its own.
+   * This class applied to the diff will make the button and the range appear on the same line */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 input[type=range] {
   width: 100%;
   margin: 10px 0;

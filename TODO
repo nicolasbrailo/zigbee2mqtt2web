@@ -1,3 +1,5 @@
+* Check logs, exc_info isn't working?
+* Truncate logs in servicemon and offer a way to see complete line
 * Move baticasa_buttons out of generic zmw project
 * Add volume control on announcements
 * RGB get prop from z2m is broken, always null

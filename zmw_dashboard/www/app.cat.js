@@ -1946,6 +1946,7 @@ class TTSAnnounce extends React.Component {
     this.state = {
       ttsPhrase: "",
       ttsLang: "es-ES",
+      ttsVolume: 50,
       isRecording: false,
       speakerList: null,
       announcementHistory: [],
@@ -1984,7 +1985,7 @@ class TTSAnnounce extends React.Component {
       timestamp: new Date().toISOString(),
       phrase: phrase,
       lang: this.state.ttsLang,
-      volume: 'default',
+      volume: this.state.ttsVolume,
       uri: `${this.props.api_base_path}/tts/${phrase}_${this.state.ttsLang}.mp3`
     };
 
@@ -1992,10 +1993,9 @@ class TTSAnnounce extends React.Component {
       announcementHistory: [...prev.announcementHistory, newEntry].slice(-10)
     }));
 
-    console.log("BCAST ");
-    console.log(`${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}`)
+    console.log(`${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}&vol=${this.state.ttsVolume}`)
     mAjax({
-      url: `${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}`,
+      url: `${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}&vol=${this.state.ttsVolume}`,
       type: 'get',
       success: () => {
         console.log("Sent TTS request");
@@ -2095,7 +2095,7 @@ class TTSAnnounce extends React.Component {
           onChange={e => this.setState({ ttsPhrase: e.target.value })}
         />
 
-        <div>
+        <div className="ctrl-box-with-range">
           <button onClick={this.onTTSRequested}>
             Announce!
           </button>
@@ -2108,6 +2108,16 @@ class TTSAnnounce extends React.Component {
             <option value="es-419">es 419</option>
             <option value="en-GB">EN GB</option>
           </select>
+
+          <label>Vol</label>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={this.state.ttsVolume}
+            onChange={e => this.setState({ ttsVolume: parseInt(e.target.value, 10) })}
+            title={`Volume: ${this.state.ttsVolume}%`}
+          />
 
           {this.canRecordMic && (
             <button onClick={this.onMicRecRequested}>
@@ -2266,16 +2276,26 @@ function ReolinkDoorbellSection(props) {
 }
 
 function ConfigSection(props) {
-  return <section id="config-section">
-      <img className="section-badge" src="/config/favicon.ico"/>
-      <button alt="This fixes things if something is out of sync">Clear cache</button>
-      <label for="configTheme">Theme</label>
-      <select id="configTheme" onChange={() => {
-        const theme = document.getElementById("configTheme").value;
-        document.documentElement.setAttribute('data-theme', theme);
-        const store = new LocalStorageManager();
-        store.cacheSave("ZmwDashboardConfig", {"theme": theme});
-      }}>
+  const store = React.useMemo(() => new LocalStorageManager(), []);
+  const savedTheme = store.cacheGet("ZmwDashboardConfig")?.theme || "no-theme";
+
+  const handleThemeChange = (e) => {
+    const theme = e.target.value;
+    document.documentElement.setAttribute('data-theme', theme);
+    store.cacheSave("ZmwDashboardConfig", { theme });
+  };
+
+  const handleClearCache = () => {
+    localStorage.clear();
+    location.reload();
+  };
+
+  return (
+    <section id="config-section">
+      <img className="section-badge" src="/settings.ico"/>
+      <button alt="This fixes things if something is out of sync" onClick={handleClearCache}>Clear cache</button>
+      <label htmlFor="configTheme">Theme</label>
+      <select id="configTheme" defaultValue={savedTheme} onChange={handleThemeChange}>
         <option value="no-theme">no theme</option>
         <option value="dark">dark</option>
         <option value="light">light</option>
@@ -2289,6 +2309,7 @@ function ConfigSection(props) {
         <option value="tufte">tufte</option>
       </select>
     </section>
+  );
 }
 
 
@@ -2318,15 +2339,17 @@ function Dashboard(props) {
           </button>
   }
 
-  const renderSvcBtn = (sectionName, serviceName) => {
+  const renderIcoBtn = (sectionName, icoUrl) => {
     return <button
               data-selected={expandedSection === sectionName}
               onClick={() => toggleSection(sectionName)}
            >
-              <img src={`/${serviceName}/favicon.ico`} alt=""/>
+              <img src={icoUrl} alt=""/>
               {sectionName}
            </button>
   }
+  const renderSvcBtn =
+    (sectionName, serviceName) => renderIcoBtn(sectionName, `/${serviceName}/favicon.ico`);
 
   return (
     <main>
@@ -2339,9 +2362,9 @@ function Dashboard(props) {
         { renderSvcBtn('Contact', 'ZmwContactmon') }
         { renderSvcBtn('Heating', 'ZmwHeating') }
         { renderSvcBtn('Door', 'ZmwReolinkDoorbell') }
-        { renderSvcBtn('⚙', 'ZmwDashboardConfig') }
+        { renderIcoBtn('⚙', '/settings.ico') }
         { /* TODO move these to a config */}
-        { renderBtn("Baticasa Services", "http://10.0.0.10:4200/index.html", "http://10.0.0.10:4200/favicon.ico") }
+        { renderBtn("Servicemon", "http://10.0.0.10:4200/index.html", "http://10.0.0.10:4200/favicon.ico") }
         { renderBtn("Z2M", "http://10.0.0.10:4100", "/z2m.ico") }
         { renderBtn("", "http://bati.casa:5000/client_ls_txt", "/wwwslider.ico") }
         { renderBtn("", "http://bati.casa:2222/photos", "/immich.ico") }
