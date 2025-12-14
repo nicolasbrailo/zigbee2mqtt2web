@@ -2203,7 +2203,7 @@ function SceneListSection(props) {
 
 function SensorsListSection(props) {
   return (
-    <section id="sensors-list-section" className="not-a-list">
+    <section id="sensors-list-section">
       <a className="section-badge" href={ProxiedServices.get('ZmwSensormon')}><img src="/ZmwSensormon/favicon.ico"/></a>
       {React.createElement(
         SensorsList,
@@ -2212,10 +2212,10 @@ function SensorsListSection(props) {
   );
 }
 
-function SpeakersSection(props) {
+function TTSAnnounceSection(props) {
   return (
-    <section id="speakers-section">
-      <a href={ProxiedServices.get('ZmwSpeakerAnnounce')}><img src="/ZmwSpeakerAnnounce/favicon.ico"/></a>
+    <section id="ttsannounce-section">
+      <a className="section-badge" href={ProxiedServices.get('ZmwSpeakerAnnounce')}><img src="/ZmwSpeakerAnnounce/favicon.ico"/></a>
       {React.createElement(
         TTSAnnounce,
         TTSAnnounce.buildProps('/ZmwSpeakerAnnounce'))}
@@ -2226,7 +2226,7 @@ function SpeakersSection(props) {
 function ContactMonSection(props) {
   return (
     <section id="contactmon-section">
-      <a href={ProxiedServices.get('ZmwContactmon')}><img src="/ZmwContactmon/favicon.ico"/></a>
+      <a className="section-badge" href={ProxiedServices.get('ZmwContactmon')}><img src="/ZmwContactmon/favicon.ico"/></a>
       {React.createElement(
         ContactMonitor,
         ContactMonitor.buildProps('/ZmwContactmon'))}
@@ -2237,7 +2237,7 @@ function ContactMonSection(props) {
 function MqttHeatingSection(props) {
   return (
     <section id="heating-section">
-      <h2><a href={ProxiedServices.get('ZmwHeating')}><img src="/ZmwHeating/favicon.ico"/></a>Heating</h2>
+      <a className="section-badge" href={ProxiedServices.get('ZmwHeating')}><img src="/ZmwHeating/favicon.ico"/></a>
       {React.createElement(
         HeatingControls,
         HeatingControls.buildProps('/ZmwHeating'))}
@@ -2248,7 +2248,7 @@ function MqttHeatingSection(props) {
 function ReolinkDoorbellSection(props) {
   return (
     <section id="reolink-doorbell-section">
-      <a href={ProxiedServices.get('ZmwReolinkDoorbell')}><img src="/ZmwReolinkDoorbell/favicon.ico"/></a>
+      <a className="section-badge" href={ProxiedServices.get('ZmwReolinkDoorbell')}><img src="/ZmwReolinkDoorbell/favicon.ico"/></a>
       {React.createElement(
         CamViewer,
         CamViewer.buildProps('/ZmwReolinkDoorbell', ProxiedServices.get('ZmwReolinkDoorbell')))}
@@ -2314,7 +2314,7 @@ function Dashboard(props) {
       </section>
 
       <div ref={contentRef}>
-        {expandedSection === 'Announce' && <SpeakersSection />}
+        {expandedSection === 'Announce' && <TTSAnnounceSection />}
         {expandedSection === 'Contact' && <ContactMonSection />}
         {expandedSection === 'Heating' && <MqttHeatingSection />}
         {expandedSection === 'Door' && <ReolinkDoorbellSection />}

@@ -1,0 +1,23 @@
+/* Styles that apply only to main dashboard. If something breaks in other page, this may be why */
+main section {
+  /* position relative is needed for section-badge to work */
+  position: relative;
+  width: 100%;
+  padding-bottom: 1rem;
+}
+.section-badge {
+  /* Takes an image and makes it float in the top right of the parent element */
+  position: absolute;
+  top: 0;
+  right: 0;
+  max-width: 2rem;
+}
+main section::after {
+  /* Show a line after each section (but only section elements directly under <main>) */
+  content: "";
+  display: block;
+  width: 75%;
+  height: 2px;
+  margin: 1rem auto 0;
+  background: linear-gradient(to right, transparent, var(--cmed) 30%, var(--cmed) 70%, transparent);
+}
