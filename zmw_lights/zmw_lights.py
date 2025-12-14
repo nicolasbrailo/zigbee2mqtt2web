@@ -26,10 +26,20 @@ class ZmwLights(ZmwMqttNullSvc):
         self._z2mw = Z2Mwebservice(www, self._z2m)
 
 
-    def _on_z2m_network_discovery(self, _is_first_discovery, known_things):
+    def _on_z2m_network_discovery(self, is_first_discovery, known_things):
         log.info("Z2M network discovered, there are %d lights", len(known_things))
+        old_light_names = {light.name for light in self._lights}
         self._lights = self._z2m.get_all_registered_things()
-        # TODO get delta between old and new lights, if it changed announce the changes
+        new_light_names = {light.name for light in self._lights}
+
+        if not is_first_discovery and old_light_names != new_light_names:
+            added = new_light_names - old_light_names
+            removed = old_light_names - new_light_names
+            if added:
+                log.warning("New lights discovered: %s", ', '.join(added))
+            if removed:
+                log.warning("Lights no longer available: %s", ', '.join(removed))
+
         for light in self._lights:
             log.info("Discovered light %s", light.name)
 
