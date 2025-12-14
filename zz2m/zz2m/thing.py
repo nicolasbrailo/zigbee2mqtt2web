@@ -395,7 +395,7 @@ class Zigbee2MqttActionValue:
                 # on the value.
                 # pylint: disable=protected-access
                 if not key in self.meta['composite_actions']:
-                    log.warn(f'{self.thing_name} ignore received value {key} = {val[key]}, but {key} is not declared in the schema - {self.debug_str()}. Will ignore this message.')
+                    log.warning(f'{self.thing_name} ignore received value {key} = {val[key]}, but {key} is not declared in the schema - {self.debug_str()}. Will ignore this message.')
                     self.meta['composite_actions'][key] = IgnoredAction(key)
                     return
                 if isinstance(self.meta['composite_actions'][key], IgnoredAction):
