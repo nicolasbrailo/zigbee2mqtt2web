@@ -53,7 +53,7 @@ function SceneListSection(props) {
 
 function SensorsListSection(props) {
   return (
-    <section id="sensors-list-section" className="not-a-list">
+    <section id="sensors-list-section">
       <a className="section-badge" href={ProxiedServices.get('ZmwSensormon')}><img src="/ZmwSensormon/favicon.ico"/></a>
       {React.createElement(
         SensorsList,
@@ -65,7 +65,7 @@ function SensorsListSection(props) {
 function SpeakersSection(props) {
   return (
     <section id="speakers-section">
-      <a href={ProxiedServices.get('ZmwSpeakerAnnounce')}><img src="/ZmwSpeakerAnnounce/favicon.ico"/></a>
+      <a className="section-badge" href={ProxiedServices.get('ZmwSpeakerAnnounce')}><img src="/ZmwSpeakerAnnounce/favicon.ico"/></a>
       {React.createElement(
         TTSAnnounce,
         TTSAnnounce.buildProps('/ZmwSpeakerAnnounce'))}
