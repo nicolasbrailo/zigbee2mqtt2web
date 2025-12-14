@@ -1,4 +1,3 @@
-* Finish old css cleanup, apply new themes
 * RGB get prop from z2m is broken, always null
 * Temp sensors -> Apply "windchill" factor
 * Monitor arbitrary svc with servicemon

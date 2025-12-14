@@ -414,8 +414,17 @@ class MqttLights extends React.Component {
             </ul>
           </details>
         ))}
-        <button onClick={() => this.clearCache()}>Clear cache</button>
+        { this.props.runningStandaloneApp && (
+          <button onClick={() => this.clearCache()}>Clear cache</button>)}
       </div>
     );
+  }
+}
+
+class StandaloneMqttLights extends MqttLights {
+  static buildProps(api_base_path = '') {
+    const p = super.buildProps();
+    p.runningStandaloneApp = true;
+    return p;
   }
 }

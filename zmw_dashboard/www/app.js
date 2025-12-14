@@ -106,6 +106,32 @@ function ReolinkDoorbellSection(props) {
   );
 }
 
+function ConfigSection(props) {
+  return <section id="config-section">
+      <img className="section-badge" src="/config/favicon.ico"/>
+      <button alt="This fixes things if something is out of sync">Clear cache</button>
+      <label for="configTheme">Theme</label>
+      <select id="configTheme" onChange={() => {
+        const theme = document.getElementById("configTheme").value;
+        document.documentElement.setAttribute('data-theme', theme);
+        const store = new LocalStorageManager();
+        store.cacheSave("ZmwDashboardConfig", {"theme": theme});
+      }}>
+        <option value="no-theme">no theme</option>
+        <option value="dark">dark</option>
+        <option value="light">light</option>
+        <option value="sepia">sepia</option>
+        <option value="milligram">milligram</option>
+        <option value="pure">pure</option>
+        <option value="sakura">sakura</option>
+        <option value="skeleton">skeleton</option>
+        <option value="bootstrap">bootstrap</option>
+        <option value="medium">medium</option>
+        <option value="tufte">tufte</option>
+      </select>
+    </section>
+}
+
 
 // Main Dashboard Component
 function Dashboard(props) {
@@ -154,6 +180,7 @@ function Dashboard(props) {
         { renderSvcBtn('Contact', 'ZmwContactmon') }
         { renderSvcBtn('Heating', 'ZmwHeating') }
         { renderSvcBtn('Door', 'ZmwReolinkDoorbell') }
+        { renderSvcBtn('⚙', 'ZmwDashboardConfig') }
         { /* TODO move these to a config */}
         { renderBtn("Baticasa Services", "http://10.0.0.10:4200/index.html", "http://10.0.0.10:4200/favicon.ico") }
         { renderBtn("Z2M", "http://10.0.0.10:4100", "/z2m.ico") }
@@ -168,6 +195,7 @@ function Dashboard(props) {
         {expandedSection === 'Contact' && <ContactMonSection />}
         {expandedSection === 'Heating' && <MqttHeatingSection />}
         {expandedSection === 'Door' && <ReolinkDoorbellSection />}
+        {expandedSection === '⚙' && <ConfigSection />}
       </div>
     </main>
   );
@@ -177,4 +205,7 @@ Dashboard.buildProps = () => ({ key: 'dashboard' });
 
 ProxiedServices.init(() => {
   z2mStartReactApp('#app_root', Dashboard);
+  const store = new LocalStorageManager();
+  const opts = store.cacheGet("ZmwDashboardConfig", null);
+  document.documentElement.setAttribute('data-theme', opts?.theme);
 });
