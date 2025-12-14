@@ -1,5 +1,7 @@
 """Doorbell event handler and notification service."""
 import time
+import os
+import pathlib
 
 from zzmw_lib.service_runner import service_runner_with_www
 from zzmw_lib.zmw_mqtt_service import ZmwMqttServiceNoCommands
@@ -29,6 +31,10 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
         self._telegram_cmd_door_snap = 'door_snap'
 
         self._door_open_scene = DoorOpenScene(cfg, self)
+
+        www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
+        self._public_url_base = www.register_www_dir(www_path)
+
 
     def on_service_came_up(self, service_name):
         if service_name == "ZmwTelegram":
@@ -107,10 +113,11 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
 
     def on_doorbell_button_pressed(self, msg):
         """Handle doorbell button press event."""
-        log.info("Doorbell reports button pressed, announce over speakers")
+        url = self._public_url_base + self._cfg["doorbell_announce_sound"]
+        log.info("Doorbell reports button pressed, announce '%s' over speakers", url)
         self.message_svc("ZmwSpeakerAnnounce", "play_asset", {
                             'vol': self._cfg.get("doorbell_announce_volume", "default"),
-                            'local_path': self._cfg["doorbell_announce_sound"]})
+                            'public_www': url})
 
         if not 'snap_path' in msg:
             log.warning("Doorbell button pressed but no snap available")
