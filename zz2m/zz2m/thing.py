@@ -257,7 +257,7 @@ class Zigbee2MqttActionValue:
         """ Meta data on this thing's method's current value """
         return {
             "thing_name": self.thing_name,
-            "meta": self.meta, # TODO here
+            "meta": self.meta,
             "_current": self._current,
             "_needs_mqtt_propagation": self._needs_mqtt_propagation,
         }
@@ -283,6 +283,13 @@ class Zigbee2MqttActionValue:
                         for action in self.meta['composite_actions']]
             sub_dbgs = ';'.join(sub_dbgs)
             return f'{self._current} {{Composite: {sub_dbgs}}}'
+        if self.meta['type'] == 'list':
+            item_type = self.meta.get('item_type', {}).get('type', 'unknown')
+            length_info = ''
+            if self.meta.get('length_min') is not None or self.meta.get('length_max') is not None:
+                length_info = f'[{self.meta.get("length_min", 0)}:{self.meta.get("length_max", "∞")}]'
+            current_len = len(self._current) if self._current else 0
+            return f'{current_len} items {{List{length_info} of {item_type}}}'
         if self.meta['type'] == 'user_defined':
             return f'User defined function {self.meta["on_get"]()}'
 
@@ -400,23 +407,18 @@ class Zigbee2MqttActionValue:
             self.meta["on_set"](val)
             return
 
-        # TODO: Thing 0x54ef441000c8da1e has an unsuported action: {
-        #       'access': 3,
-        #       'description': 'Feeding schedule',
-        #       'item_type': {
-        #           'access': 3,
-        #           'features': [
-        #               {'access': 3, 'label': 'Days', 'name': 'days', 'property': 'days', 'type': 'enum', 'values': ['everyday', 'workdays', 'weekend', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'mon-wed-fri-sun', 'tue-thu-sat']},
-        #               {'access': 3, 'label': 'Hour', 'name': 'hour', 'property': 'hour', 'type': 'numeric'},
-        #               {'access': 3, 'label': 'Minute', 'name': 'minute', 'property': 'minute', 'type': 'numeric'},
-        #               {'access': 3, 'label': 'Size', 'name': 'size', 'property': 'size', 'type': 'numeric'}],
-        #           'label': 'DayTime',
-        #           'name': 'dayTime',
-        #           'type': 'composite'},
-        #       'label': 'Schedule',
-        #       'name': 'schedule',
-        #       'property': 'schedule',
-        #       'type': 'list'}
+        if self.meta['type'] == 'list':
+            if not isinstance(val, list):
+                log_bad_set()
+            # Validate length constraints if specified
+            if self.meta.get('length_min') is not None and len(val) < self.meta['length_min']:
+                log_bad_set()
+            if self.meta.get('length_max') is not None and len(val) > self.meta['length_max']:
+                log_bad_set()
+            # Store the list directly - zigbee2mqtt will validate item contents
+            self._current = val
+            return
+
         log.error('Thing %s has an unsuported action: %s',
                      self.thing_name, self.meta["type"])
         self._current = val
@@ -627,7 +629,19 @@ def _get_action_metadata(thing_name, action):
             )
             sub_acts[sub_act.name] = sub_act
         meta['composite_actions'] = sub_acts
-        meta['property'] = action['property']
+        # property may not exist when parsing item_type of a list
+        meta['property'] = action.get('property')
+        return meta
+
+    if meta['type'] == 'list':
+        meta['item_type'] = action.get('item_type', {})
+        meta['length_min'] = action.get('length_min')
+        meta['length_max'] = action.get('length_max')
+        # property may not exist when parsing item_type recursively
+        meta['property'] = action.get('property')
+        # Parse the item_type schema recursively for validation/debug purposes
+        if meta['item_type']:
+            meta['item_type_meta'] = _get_action_metadata(thing_name, meta['item_type'])
         return meta
 
     log.error('Thing %s has an unsuported action: %s', thing_name, action)
