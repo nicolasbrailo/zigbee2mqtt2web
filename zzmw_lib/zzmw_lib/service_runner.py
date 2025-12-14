@@ -263,9 +263,9 @@ def service_runner_with_www(AppClass):
         flaskapp.serve_url(f'{prefix}<path:filename>', srv)
         return flaskapp.public_url_base
 
+    www_thread = threading.Thread(target=wwwserver.serve_forever)
     def _www_serve_bg():
-        t = threading.Thread(target=wwwserver.serve_forever)
-        t.start()
+        www_thread.start()
 
     flaskapp.serve_url = serve_url
     flaskapp.url_cb_ret_none = url_cb_ret_none
@@ -313,4 +313,4 @@ def service_runner_with_www(AppClass):
         # User may override this when the app is instanciated
         flaskapp.setup_complete()
     app.loop_forever()
-    t.join()
+    www_thread.join()
