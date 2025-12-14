@@ -72,8 +72,13 @@ User=$USER
 WantedBy=multi-user.target
 EOF
 
+read -r -d '' RESTART_AND_LOGS_TMPL <<EOF || true
+  SCRIPT_DIR="\$(cd -- "\$(dirname -- "\${BASH_SOURCE[0]}")" && pwd)"
+  sudo systemctl restart '$TGT_SVC_NAME' && "\$SCRIPT_DIR/logs.sh"
+EOF
+
 echo "$SVC_TMPL" > "$TGT_SVC_RUN/$TGT_SVC_NAME.service"
-echo "sudo systemctl restart '$TGT_SVC_NAME' && ./logs.sh" > "$TGT_SVC_RUN/restart_and_logs.sh"
+echo "$RESTART_AND_LOGS_TMPL" > "$TGT_SVC_RUN/restart_and_logs.sh"
 chmod +x "$TGT_SVC_RUN/restart_and_logs.sh"
 echo "sudo systemctl stop '$TGT_SVC_NAME'" > "$TGT_SVC_RUN/stop.sh"
 chmod +x "$TGT_SVC_RUN/stop.sh"
