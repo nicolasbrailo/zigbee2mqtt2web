@@ -403,7 +403,7 @@ class MqttLights extends React.Component {
     }
 
     return (
-        <section id="zmw_lights">
+      <div id="zmw_lights">
         {Object.entries(this.state.groups).map(([prefix, lights]) => (
           <details key={prefix}>
             <summary>{prefix}</summary>
@@ -415,7 +415,7 @@ class MqttLights extends React.Component {
           </details>
         ))}
         <button onClick={() => this.clearCache()}>Clear cache</button>
-      </section>
+      </div>
     );
   }
 }

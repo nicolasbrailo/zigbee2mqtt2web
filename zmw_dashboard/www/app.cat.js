@@ -36,16 +36,15 @@ class ScenesList extends React.Component {
     }
 
     return (
-      <div>
         <ul className="not-a-list">
           {this.state.scenes.map((scene, idx) => (
             <li key={idx}>
               <button type="button" onClick={() => this.applyScene(scene)}>{scene.replace(/_/g, ' ')}</button>
             </li>
           ))}
+          {this.state.sceneStatus && 
+            <li><blockquote className="hint">{this.state.sceneStatus}</blockquote></li>}
         </ul>
-        {this.state.sceneStatus && <p>{this.state.sceneStatus}</p>}
-      </div>
     );
   }
 }
@@ -254,7 +253,7 @@ class BaticasaButtonsMonitor extends React.Component {
                   <button type="button" onClick={() => this.triggerAction(buttonName)}>Do it</button>
                 </td>
                 <td>
-                  { status && (<blockquote className={status.success ? "info" : "warn"}>{status.message}</blockquote>) }
+                  { status && (<blockquote className={status.success ? "hint" : "warn"}>{status.message}</blockquote>) }
                 </td>
               </tr>
             );
@@ -1366,7 +1365,7 @@ class MqttLights extends React.Component {
     }
 
     return (
-        <section id="zmw_lights">
+      <div id="zmw_lights">
         {Object.entries(this.state.groups).map(([prefix, lights]) => (
           <details key={prefix}>
             <summary>{prefix}</summary>
@@ -1378,7 +1377,7 @@ class MqttLights extends React.Component {
           </details>
         ))}
         <button onClick={() => this.clearCache()}>Clear cache</button>
-      </section>
+      </div>
     );
   }
 }
@@ -2182,84 +2181,81 @@ const ProxiedServices = {
 
 function LightsSection(props) {
   return (
-    <div className="dashboard-section" id="lights-section">
+    <section id="lights-section">
+      <a className="section-badge" href={ProxiedServices.get('ZmwLights')}><img src="/ZmwLights/favicon.ico"/></a>
       {React.createElement(
         MqttLights,
         MqttLights.buildProps('/ZmwLights'))}
-      <a href={ProxiedServices.get('ZmwLights')}><img src="/ZmwLights/favicon.ico"/></a>
-    </div>
-  );
-}
-
-function SpeakersSection(props) {
-  return (
-    <div className="dashboard-section" id="speakers-section">
-      <a href={ProxiedServices.get('ZmwSpeakerAnnounce')}><img src="/ZmwSpeakerAnnounce/favicon.ico"/></a>
-      {React.createElement(
-        TTSAnnounce,
-        TTSAnnounce.buildProps('/ZmwSpeakerAnnounce'))}
-    </div>
-  );
-}
-
-function ContactMonSection(props) {
-  return (
-    <div className="dashboard-section" id="contactmon-section">
-      <a href={ProxiedServices.get('ZmwContactmon')}><img src="/ZmwContactmon/favicon.ico"/></a>
-      {React.createElement(
-        ContactMonitor,
-        ContactMonitor.buildProps('/ZmwContactmon'))}
-    </div>
-  );
-}
-
-function MqttHeatingSection(props) {
-  return (
-    <div className="dashboard-section" id="heating-section">
-      <h2><a href={ProxiedServices.get('ZmwHeating')}><img src="/ZmwHeating/favicon.ico"/></a>Heating</h2>
-      {React.createElement(
-        HeatingControls,
-        HeatingControls.buildProps('/ZmwHeating'))}
-    </div>
-  );
-}
-
-function ReolinkDoorbellSection(props) {
-  return (
-    <div className="dashboard-section" id="reolink-doorbell-section">
-      <a href={ProxiedServices.get('ZmwReolinkDoorbell')}><img src="/ZmwReolinkDoorbell/favicon.ico"/></a>
-      {React.createElement(
-        CamViewer,
-        CamViewer.buildProps('/ZmwReolinkDoorbell', ProxiedServices.get('ZmwReolinkDoorbell')))}
-    </div>
-  );
-}
-
-function SensorsListSection(props) {
-  return (
-    <div className="dashboard-section" id="sensors-list-section" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <a href={ProxiedServices.get('ZmwSensormon')}>
-        <img src="/ZmwSensormon/favicon.ico"/>
-      </a>
-      {React.createElement(
-        SensorsList,
-        { metrics: ['temperature'], api_base_path: '/ZmwSensormon' })}
-    </div>
+    </section>
   );
 }
 
 function SceneListSection(props) {
   return (
-    <div className="dashboard-section" id="scene-list-section" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <a href={ProxiedServices.get('BaticasaButtons')}>
-        <img src="/BaticasaButtons/favicon.ico"/>
-      </a>
+    <section id="scene-list-section">
+      <a className="section-badge" href={ProxiedServices.get('BaticasaButtons')}><img src="/BaticasaButtons/favicon.ico"/></a>
       {React.createElement(
         ScenesList,
         { api_base_path: '/BaticasaButtons' })}
-    </div>
+    </section>
   );
 }
+
+function SensorsListSection(props) {
+  return (
+    <section id="sensors-list-section" className="not-a-list">
+      <a className="section-badge" href={ProxiedServices.get('ZmwSensormon')}><img src="/ZmwSensormon/favicon.ico"/></a>
+      {React.createElement(
+        SensorsList,
+        { metrics: ['temperature'], api_base_path: '/ZmwSensormon' })}
+    </section>
+  );
+}
+
+function SpeakersSection(props) {
+  return (
+    <section id="speakers-section">
+      <a href={ProxiedServices.get('ZmwSpeakerAnnounce')}><img src="/ZmwSpeakerAnnounce/favicon.ico"/></a>
+      {React.createElement(
+        TTSAnnounce,
+        TTSAnnounce.buildProps('/ZmwSpeakerAnnounce'))}
+    </section>
+  );
+}
+
+function ContactMonSection(props) {
+  return (
+    <section id="contactmon-section">
+      <a href={ProxiedServices.get('ZmwContactmon')}><img src="/ZmwContactmon/favicon.ico"/></a>
+      {React.createElement(
+        ContactMonitor,
+        ContactMonitor.buildProps('/ZmwContactmon'))}
+    </section>
+  );
+}
+
+function MqttHeatingSection(props) {
+  return (
+    <section id="heating-section">
+      <h2><a href={ProxiedServices.get('ZmwHeating')}><img src="/ZmwHeating/favicon.ico"/></a>Heating</h2>
+      {React.createElement(
+        HeatingControls,
+        HeatingControls.buildProps('/ZmwHeating'))}
+    </section>
+  );
+}
+
+function ReolinkDoorbellSection(props) {
+  return (
+    <section id="reolink-doorbell-section">
+      <a href={ProxiedServices.get('ZmwReolinkDoorbell')}><img src="/ZmwReolinkDoorbell/favicon.ico"/></a>
+      {React.createElement(
+        CamViewer,
+        CamViewer.buildProps('/ZmwReolinkDoorbell', ProxiedServices.get('ZmwReolinkDoorbell')))}
+    </section>
+  );
+}
+
 
 // Main Dashboard Component
 function Dashboard(props) {
@@ -2281,56 +2277,49 @@ function Dashboard(props) {
   };
 
   const renderBtn = (btnLbl, btnUrl, btnIco) => {
-    return <button
-            className="modal-button primary"
-            onClick={() => window.open(btnUrl, '_blank')}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <img src={btnIco} alt="" style={{ width: '20px', height: '20px' }} />
+    return <button onClick={() => window.open(btnUrl, '_blank')}>
+            <img src={btnIco} alt=""/>
             {btnLbl}
           </button>
   }
 
   const renderSvcBtn = (sectionName, serviceName) => {
     return <button
-              className={expandedSection === sectionName ? 'modal-button primary bg-dark' : 'modal-button'}
+              data-selected={expandedSection === sectionName}
               onClick={() => toggleSection(sectionName)}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
            >
-              <img src={`/${serviceName}/favicon.ico`} alt="" style={{ width: '20px', height: '20px' }} />
+              <img src={`/${serviceName}/favicon.ico`} alt=""/>
               {sectionName}
            </button>
   }
 
   return (
-    <div>
-      <div className="dashboard-sections">
-        <LightsSection />
-        <SceneListSection />
-        <SensorsListSection />
+    <main>
+      <LightsSection />
+      <SceneListSection />
+      <SensorsListSection />
 
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-          { renderSvcBtn('Announce', 'ZmwSpeakerAnnounce') }
-          { renderSvcBtn('Contact', 'ZmwContactmon') }
-          { renderSvcBtn('Heating', 'ZmwHeating') }
-          { renderSvcBtn('Door', 'ZmwReolinkDoorbell') }
-          { /* TODO move these to a config */}
-          { renderBtn("Baticasa Services", "http://10.0.0.10:4200/index.html", "http://10.0.0.10:4200/favicon.ico") }
-          { renderBtn("Z2M", "http://10.0.0.10:4100", "/z2m.ico") }
-          { renderBtn("", "http://bati.casa:5000/client_ls_txt", "/wwwslider.ico") }
-          { renderBtn("", "http://bati.casa:2222/photos", "/immich.ico") }
-          { renderBtn("", "https://bati.casa:8443/", "/unifi.png") }
-          { renderBtn("", "http://bati.casa:8444/admin/login.php", "/pihole.svg") }
-        </div>
+      <section id="zmw_other_services">
+        { renderSvcBtn('Announce', 'ZmwSpeakerAnnounce') }
+        { renderSvcBtn('Contact', 'ZmwContactmon') }
+        { renderSvcBtn('Heating', 'ZmwHeating') }
+        { renderSvcBtn('Door', 'ZmwReolinkDoorbell') }
+        { /* TODO move these to a config */}
+        { renderBtn("Baticasa Services", "http://10.0.0.10:4200/index.html", "http://10.0.0.10:4200/favicon.ico") }
+        { renderBtn("Z2M", "http://10.0.0.10:4100", "/z2m.ico") }
+        { renderBtn("", "http://bati.casa:5000/client_ls_txt", "/wwwslider.ico") }
+        { renderBtn("", "http://bati.casa:2222/photos", "/immich.ico") }
+        { renderBtn("", "https://bati.casa:8443/", "/unifi.png") }
+        { renderBtn("", "http://bati.casa:8444/admin/login.php", "/pihole.svg") }
+      </section>
 
-        <div ref={contentRef}>
-          {expandedSection === 'Announce' && <SpeakersSection />}
-          {expandedSection === 'Contact' && <ContactMonSection />}
-          {expandedSection === 'Heating' && <MqttHeatingSection />}
-          {expandedSection === 'Door' && <ReolinkDoorbellSection />}
-        </div>
+      <div ref={contentRef}>
+        {expandedSection === 'Announce' && <SpeakersSection />}
+        {expandedSection === 'Contact' && <ContactMonSection />}
+        {expandedSection === 'Heating' && <MqttHeatingSection />}
+        {expandedSection === 'Door' && <ReolinkDoorbellSection />}
       </div>
-    </div>
+    </main>
   );
 }
 

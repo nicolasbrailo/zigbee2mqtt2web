@@ -1,128 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
+<link rel="icon" href="favicon.ico" type="image/x-icon"/>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon"/>
 <title>Baticasa</title>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/zmw.css">
+
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="/zmw.css" />
 
 <style>
-/* Dashboard layout */
-.dashboard-container {
-  width: 100%;
-  max-width: 100%;
-  margin: 0 auto;
-  padding: 10px;
+/* TODO: find a classless-compatible way to show selected state */
+button[data-selected="true"] {
+  background-color: var(--cemph);
+  color: var(--cbg);
 }
 
-.dashboard-sections {
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
+
+
+#lights-section { position: relative; width: 100%; }
+#scene-list-section { position: relative; width: 100%; }
+#sensors-list-section { position: relative; width: 100%; }
+.section-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  max-width: 2rem;
 }
-
-/* Lights section specific styles */
-#lights-section ul {
-  list-style-type: none;
-  padding-left: 0;
+section {
+  padding-bottom: 1rem;
 }
-
-/* Speakers section specific styles */
-.announce-container {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-}
-
-.announce-container input {
-  width: 100%;
-  height: 5lh;
-  padding: 10px;
-  margin-bottom: 10px;
-  font-size: 1.1rem;
-  border-radius: 6px;
-}
-
-.announce-ctrls-div {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.announce-ctrls-div select {
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid #aaa;
-  min-width: 80px;
-}
-
-.announce-ctrls-div button {
-  padding: 10px 16px;
-  border-radius: 6px;
-  border: none;
-  background-color: #2d77ff;
-  color: white;
-  cursor: pointer;
-}
-
-.announce-ctrls-div button:hover {
-  background-color: #1e5cd8;
-}
-
-.announce-speaker-list ul {
-  display: inline;
-  margin: 0;
-  padding: 0;
-}
-
-.announce-speaker-list li {
-  display: inline;
-  margin: 0;
-  padding: 0;
-}
-
-.announce-speaker-list li:not(:last-child)::after {
-  content: ", ";
-}
-
-/* Mobile-specific styling */
-@media (max-width: 768px) {
-  button, .modal-button {
-    min-height: 44px;
-    font-size: 16px;
-    padding: 12px 20px;
-  }
-
-  input[type="checkbox"] {
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    min-height: 24px;
-  }
-
-  input[type="range"] {
-    height: 32px;
-  }
-
-  .thing_name {
-    font-size: 18px;
-  }
-
-  .thing_div {
-    padding: 12px 8px;
-  }
-}
-
-/* Desktop layout - side by side */
-@media (min-width: 1200px) {
-  .dashboard-sections {
-    flex-direction: row;
-  }
-
-  .dashboard-section {
-    flex: 1;
-  }
+section::after {
+  content: "";
+  display: block;
+  width: 75%;
+  height: 2px;
+  margin: 1rem auto 0;
+  background: linear-gradient(to right, transparent, var(--cmed) 30%, var(--cmed) 70%, transparent);
 }
 </style>
 </head>
@@ -131,11 +46,11 @@
   <div id="global_loading" class="app-loading">
     Loading...
   </div>
-  <div id="global_error_ui" class="no-error">
-    <div id="global_error_msg" class="container"></div>
+  <div id="global_error_ui" class="card warn no-error">
+    <div id="global_error_msg"></div>
     <button id="global_error_ui_ack">OK</button>
   </div>
-  <div class="dashboard-container" id="app_root">
+  <div id="app_root">
   </div>
 </body>
 

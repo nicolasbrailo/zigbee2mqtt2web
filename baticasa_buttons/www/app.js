@@ -36,16 +36,15 @@ class ScenesList extends React.Component {
     }
 
     return (
-      <div>
         <ul className="not-a-list">
           {this.state.scenes.map((scene, idx) => (
             <li key={idx}>
               <button type="button" onClick={() => this.applyScene(scene)}>{scene.replace(/_/g, ' ')}</button>
             </li>
           ))}
+          {this.state.sceneStatus && 
+            <li><blockquote className="hint">{this.state.sceneStatus}</blockquote></li>}
         </ul>
-        {this.state.sceneStatus && <p>{this.state.sceneStatus}</p>}
-      </div>
     );
   }
 }
@@ -254,7 +253,7 @@ class BaticasaButtonsMonitor extends React.Component {
                   <button type="button" onClick={() => this.triggerAction(buttonName)}>Do it</button>
                 </td>
                 <td>
-                  { status && (<blockquote className={status.success ? "info" : "warn"}>{status.message}</blockquote>) }
+                  { status && (<blockquote className={status.success ? "hint" : "warn"}>{status.message}</blockquote>) }
                 </td>
               </tr>
             );

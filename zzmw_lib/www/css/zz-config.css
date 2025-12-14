@@ -7,7 +7,7 @@
   --font-h: ...;        /* font shorthand for headings and captions */
   --font-c: ...;        /* font shorthand for code */
   --border: ...;        /* border shorthand */
-  --ornament: "‹‹ ››";  /* ornament content after sections */
+  --ornament: "";  /* ornament content after sections */
 
   --cfg:   #433;        /* foreground color for text  */
   --cbg:   #fff;        /* background color for html  */
@@ -36,6 +36,13 @@ pre {
   margin: 10px;
   padding: 10px;
   font-family: Consolas,Monaco,Lucida Console,Liberation Mono,monospace;
+}
+
+/* If an image is embedded in a button, shrink it to button size (don't expand button to image size) */
+button img {
+  height: 1em;
+  width: auto;
+  vertical-align: middle;
 }
 
 /* List of things in a card */
