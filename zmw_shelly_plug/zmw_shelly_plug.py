@@ -1,17 +1,19 @@
+"""MQTT service for monitoring Shelly smart plugs."""
 import os
 import pathlib
 import threading
-import json
-
-from shelly import ShellyPlug
 
 from zzmw_lib.service_runner import service_runner_with_www
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 from zzmw_lib.logs import build_logger
 
+from shelly import ShellyPlug
+
 log = build_logger("ZmwShellyPlug")
 
 class ZmwShellyPlug(ZmwMqttService):
+    """Service that monitors Shelly plugs and broadcasts stats via MQTT."""
+
     def __init__(self, cfg, www):
         super().__init__(cfg, svc_topic="zmw_shelly_plug")
         # Set up www directory and endpoints
@@ -34,17 +36,18 @@ class ZmwShellyPlug(ZmwMqttService):
             self.publish_own_svc_message(f'{stats["device_name"]}/stats', stats)
 
     def stop(self):
+        """Stop the broadcast timer and clean up."""
         if self._timer:
             self._timer.cancel()
             self._timer = None
         super().stop()
 
-    def on_service_received_message(self, subtopic, msg):
-        # Ignore: we'll receive an echo of our own messages here
-        pass
+    def on_service_received_message(self, subtopic, msg):  # pylint: disable=unused-argument
+        """Handle incoming service messages (ignored)."""
 
-    def on_dep_published_message(self, svc_name, subtopic, msg):
-        log.error("Unexpected dep message %s %s", subtopic, msg)
+    def on_dep_published_message(self, svc_name, subtopic, payload):  # pylint: disable=unused-argument
+        """Handle messages from dependencies (unexpected)."""
+        log.error("Unexpected dep message %s %s", subtopic, payload)
 
 
 service_runner_with_www(ZmwShellyPlug)

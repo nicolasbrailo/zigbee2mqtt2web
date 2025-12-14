@@ -1,25 +1,33 @@
+"""Shelly Gen2 device API client."""
+import json
+from json.decoder import JSONDecodeError
+
 from requests import post
 from requests.exceptions import RequestException
 from requests.auth import HTTPDigestAuth
-from json.decoder import JSONDecodeError
 
 # Docs https://shelly-api-docs.shelly.cloud/gen2/0.14/Devices/ShellyPlusPlugUK/
 # Some code stolen from https://github.com/Jan200101/ShellyPy
 
 
 class ShellyGen2:
-    def __init__(self, host, port = "80", login={}, timeout=5):
+    """Base client for Shelly Gen2 devices."""
+
+    def __init__(self, host, port="80", login=None, timeout=5):
         self._host = host
         self._port = port
         self._timeout = timeout
+        if login is None:
+            login = {}
         self._credentials = (login.get("username", ""), login.get("password", ""))
         self._payload_id = 1
 
         self._last_status = None
         self._last_cfg = None
 
-    def post(self, endpoint, values = None):
-        url = "http://{}:{}/rpc".format(self._host, self._port)
+    def post(self, endpoint, values=None):
+        """Send RPC request to device."""
+        url = f"http://{self._host}:{self._port}/rpc"
 
         self._payload_id += 1
         payload_id = self._payload_id
@@ -34,20 +42,20 @@ class ShellyGen2:
 
         credentials = None
         try:
-            credentials = auth=HTTPDigestAuth('admin', self._credentials[1])
+            credentials = HTTPDigestAuth('admin', self._credentials[1])
         except IndexError:
             pass
 
         response = post(url, auth=credentials, json=payload, timeout=self._timeout)
         if response.status_code == 401:
             raise PermissionError()
-        elif response.status_code == 404:
-            raise LookupError("{endpoint} not found")
+        if response.status_code == 404:
+            raise LookupError(f"{endpoint} not found")
 
         try:
             response_data = response.json()
-        except JSONDecodeError:
-            raise ValueError("Unexpected response: can't decode JSON")
+        except JSONDecodeError as exc:
+            raise ValueError("Unexpected response: can't decode JSON") from exc
 
         if "error" in response_data:
             error_code = response_data["error"].get("code", None)
@@ -55,10 +63,9 @@ class ShellyGen2:
 
             if error_code == 401:
                 raise PermissionError(error_message)
-            elif error_code == 404:
+            if error_code == 404:
                 raise LookupError(error_message)
-            else:
-                raise ValueError("{}: {}".format(error_code, error_message))
+            raise ValueError(f"{error_code}: {error_message}")
 
         if response_data["id"] != payload_id:
             raise KeyError("invalid payload id was returned")
@@ -66,10 +73,13 @@ class ShellyGen2:
         return response_data.get("result", {})
 
     def test_invoke(self, method):
+        """Invoke method and return JSON response for testing."""
         res = self.post(method)
         return json.dumps(res, indent=2)
 
 class ShellyPlug(ShellyGen2):
+    """Client for Shelly smart plug devices."""
+
     def __init__(self, host, *args, **kwargs):
         super().__init__(host, *args, **kwargs)
         self._host = host
@@ -78,6 +88,7 @@ class ShellyPlug(ShellyGen2):
         self.update_device_config()
 
     def update_device_config(self):
+        """Fetch and cache device configuration."""
         try:
             self._device_cfg = self.post("Switch.GetConfig", {"id": 0})
         except (RequestException, PermissionError, LookupError, ValueError, KeyError):
@@ -86,9 +97,11 @@ class ShellyPlug(ShellyGen2):
             self._device_cfg["name"] = self._host
 
     def get_name(self):
+        """Return device name."""
         return self._device_cfg["name"]
 
     def get_stats(self):
+        """Return current device statistics."""
         stats = self.post("Shelly.GetStatus")
         switch = stats.get("switch:0", {})
         sys_stats = stats.get("sys", {})
