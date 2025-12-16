@@ -5,7 +5,6 @@ devrun:
 
 rebuild_ui:
 	cat \
-		../baticasa_buttons/www/app.js \
 		../zmw_contactmon/www/app.js \
 		../zmw_heating/www/app.js \
 		../zmw_lights/www/app.js \

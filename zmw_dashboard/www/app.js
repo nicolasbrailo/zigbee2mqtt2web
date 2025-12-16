@@ -29,6 +29,60 @@ const ProxiedServices = {
   },
 };
 
+/* The scenes service is exposed by a user service, so we don't depend directly on the user app. Instead
+ * we depend on a couple of endpoints like /ls_scenes to retrieve the right content. */
+class ScenesList extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      scenes: [],
+      sceneStatus: null,
+    };
+    this.fetchScenes = this.fetchScenes.bind(this);
+    this.applyScene = this.applyScene.bind(this);
+  }
+
+  componentDidMount() {
+    this.fetchScenes();
+  }
+
+  fetchScenes() {
+    mJsonGet(this.props.api_base_path + '/ls_scenes', (res) => {
+      this.setState({ scenes: res || [] });
+    });
+  }
+
+  applyScene(scene) {
+    mJsonGet(this.props.api_base_path + '/apply_scene?scene=' + encodeURIComponent(scene), (res) => {
+      if (res && res.success) {
+        this.setState({ sceneStatus: 'Scene applied' });
+        setTimeout(() => {
+          this.setState({ sceneStatus: null });
+        }, 3000);
+      }
+    });
+  }
+
+  render() {
+    if (this.state.scenes.length === 0) {
+      return null;
+    }
+
+    return (
+        <ul className="not-a-list">
+          {this.state.scenes.map((scene, idx) => (
+            <li key={idx}>
+              <button type="button" onClick={() => this.applyScene(scene)}>{scene.replace(/_/g, ' ')}</button>
+            </li>
+          ))}
+          {this.state.sceneStatus && 
+            <li><blockquote className="hint">{this.state.sceneStatus}</blockquote></li>}
+        </ul>
+    );
+  }
+}
+
+
 function LightsSection(props) {
   return (
     <section id="lights-section">
@@ -109,6 +163,13 @@ function ReolinkDoorbellSection(props) {
 function ConfigSection(props) {
   const store = React.useMemo(() => new LocalStorageManager(), []);
   const savedTheme = store.cacheGet("ZmwDashboardConfig")?.theme || "no-theme";
+  const [userLinks, setUserLinks] = React.useState([]);
+
+  React.useEffect(() => {
+    mJsonGet('/get_user_defined_links', (links) => {
+      setUserLinks(links || []);
+    });
+  }, []);
 
   const handleThemeChange = (e) => {
     const theme = e.target.value;
@@ -124,21 +185,37 @@ function ConfigSection(props) {
   return (
     <section id="config-section">
       <img className="section-badge" src="/settings.ico"/>
-      <button alt="This fixes things if something is out of sync" onClick={handleClearCache}>Clear cache</button>
-      <label htmlFor="configTheme">Theme</label>
-      <select id="configTheme" defaultValue={savedTheme} onChange={handleThemeChange}>
-        <option value="no-theme">no theme</option>
-        <option value="dark">dark</option>
-        <option value="light">light</option>
-        <option value="sepia">sepia</option>
-        <option value="milligram">milligram</option>
-        <option value="pure">pure</option>
-        <option value="sakura">sakura</option>
-        <option value="skeleton">skeleton</option>
-        <option value="bootstrap">bootstrap</option>
-        <option value="medium">medium</option>
-        <option value="tufte">tufte</option>
-      </select>
+      <div style={{display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.5rem', alignItems: 'center'}}>
+        <label>Fix things:</label>
+        <div><button alt="This fixes things if something is out of sync" onClick={handleClearCache}>Clear cache</button></div>
+
+        <label htmlFor="configTheme">Theme:</label>
+        <div>
+          <select id="configTheme" defaultValue={savedTheme} onChange={handleThemeChange}>
+            <option value="no-theme">no theme</option>
+            <option value="dark">dark</option>
+            <option value="light">light</option>
+            <option value="sepia">sepia</option>
+            <option value="milligram">milligram</option>
+            <option value="pure">pure</option>
+            <option value="sakura">sakura</option>
+            <option value="skeleton">skeleton</option>
+            <option value="bootstrap">bootstrap</option>
+            <option value="medium">medium</option>
+            <option value="tufte">tufte</option>
+          </select>
+        </div>
+
+        <label>More services:</label>
+        <div>
+          {userLinks.map((link, idx) => (
+            <button key={idx} onClick={() => window.open(link.url, '_blank')}>
+              <img src={link.icon} alt=""/>
+              {link.label}
+            </button>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
@@ -162,13 +239,6 @@ function Dashboard(props) {
       }, 50);
     }
   };
-
-  const renderBtn = (btnLbl, btnUrl, btnIco) => {
-    return <button onClick={() => window.open(btnUrl, '_blank')}>
-            <img src={btnIco} alt=""/>
-            {btnLbl}
-          </button>
-  }
 
   const renderIcoBtn = (sectionName, icoUrl) => {
     return <button
@@ -194,13 +264,6 @@ function Dashboard(props) {
         { renderSvcBtn('Heating', 'ZmwHeating') }
         { renderSvcBtn('Door', 'ZmwReolinkDoorbell') }
         { renderIcoBtn('⚙', '/settings.ico') }
-        { /* TODO move these to a config */}
-        { renderBtn("Servicemon", "http://10.0.0.10:4200/index.html", "http://10.0.0.10:4200/favicon.ico") }
-        { renderBtn("Z2M", "http://10.0.0.10:4100", "/z2m.ico") }
-        { renderBtn("", "http://bati.casa:5000/client_ls_txt", "/wwwslider.ico") }
-        { renderBtn("", "http://bati.casa:2222/photos", "/immich.ico") }
-        { renderBtn("", "https://bati.casa:8443/", "/unifi.png") }
-        { renderBtn("", "http://bati.casa:8444/admin/login.php", "/pihole.svg") }
       </section>
 
       <div ref={contentRef}>

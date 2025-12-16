@@ -11,6 +11,19 @@ from service_magic_proxy import ServiceMagicProxy
 log = build_logger("ZmwDashboard")
 
 
+def _validate_user_defined_links(links):
+    """Validate that user_defined_links has the correct format."""
+    if not isinstance(links, list):
+        raise ValueError("user_defined_links must be a list")
+    for i, link in enumerate(links):
+        if not isinstance(link, dict):
+            raise ValueError(f"user_defined_links[{i}] must be a dict")
+        required_keys = {"label", "url", "icon"}
+        missing = required_keys - set(link.keys())
+        if missing:
+            raise ValueError(f"user_defined_links[{i}] missing keys: {missing}")
+
+
 class ZmwDashboard(ZmwMqttServiceMonitor):
     """Dashboard service that aggregates other services with generic proxying."""
     def __init__(self, cfg, www):
@@ -20,7 +33,9 @@ class ZmwDashboard(ZmwMqttServiceMonitor):
                     "ZmwSensormon"]
         super().__init__(cfg, svc_deps=min_deps)
 
-        self._scenes_svc = 'Baticasa' # TODO
+        self._scenes_svc = cfg["scenes_service_name"]
+        self._user_defined_links = cfg.get("user_defined_links", [])
+        _validate_user_defined_links(self._user_defined_links)
         self._svc_proxy = None
         self._www = www
 
@@ -50,7 +65,11 @@ class ZmwDashboard(ZmwMqttServiceMonitor):
         self._svc_proxy = ServiceMagicProxy(proxies, self._www)
         log.info("Proxy routes registered, starting dashboard www")
         self._www.serve_url('/get_proxied_services', self._svc_proxy.get_proxied_services)
+        self._www.serve_url('/get_user_defined_links', self._get_user_defined_links)
         self._www.setup_complete()
+
+    def _get_user_defined_links(self):
+        return self._user_defined_links
 
     def on_startup_fail_missing_deps(self, deps):
         log.critical("Some dependencies are missing, functionality may be broken in the dashboard: %s", deps)
