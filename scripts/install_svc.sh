@@ -27,13 +27,6 @@ ensure_file "$TGT_SVC_NAME.py"
 ensure_file Pipfile.lock
 ensure_file Pipfile
 
-if [ -f "$TGT_SVC_RUN/config.json" ]; then
-  echo "$TGT_SVC_SRC already has a config.json file, will not create new one"
-elif [ ! -f "$TGT_SVC_SRC/config.json" ]; then
-  echo "$TGT_SVC_SRC doesn't have a config.json file, create one from the template"
-  exit 1
-fi
-
 # Check if this service already exists
 if [ -f "$TGT_SVC_RUN/stop.sh" ]; then
   echo "Service $TGT_SVC_NAME already exists, stopping old service first..."
@@ -42,13 +35,21 @@ fi
 
 # Create target run dir and its virtual env
 mkdir -p "$TGT_SVC_RUN"
+
+if [ -f "$TGT_SVC_RUN/config.json" ]; then
+  echo "$TGT_SVC_SRC already has a config.json file, will not create new one"
+elif [ ! -f "$TGT_SVC_SRC/config.json" ] && [ -f "$TGT_SVC_SRC/config.template.json" ]; then
+  echo "$TGT_SVC_SRC doesn't have a config.json file, create one from the template"
+  exit 1
+elif [ ! -f "$TGT_SVC_SRC/config.json" ] && [ ! -f "$TGT_SVC_SRC/config.template.json" ]; then
+  echo "$TGT_SVC_SRC doesn't have configs, assuming it doesn't need one"
+else
+  mv "$TGT_SVC_SRC/config.json" "$TGT_SVC_RUN/config.json"
+fi
+
 pushd "$TGT_SVC_RUN"
 cp "$TGT_SVC_SRC/Pipfile" .
 cp "$TGT_SVC_SRC/Pipfile.lock" .
-
-if [ ! -f "$TGT_SVC_RUN/config.json" ]; then
-  mv "$TGT_SVC_SRC/config.json" config.json
-fi
 
 PIPENV_VENV_IN_PROJECT=1 pipenv sync
 popd

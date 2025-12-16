@@ -2212,10 +2212,10 @@ function LightsSection(props) {
 function SceneListSection(props) {
   return (
     <section id="scene-list-section">
-      <a className="section-badge" href={ProxiedServices.get('BaticasaButtons')}><img src="/BaticasaButtons/favicon.ico"/></a>
+      <a className="section-badge" href={ProxiedServices.get('Scenes')}><img src="/Scenes/favicon.ico"/></a>
       {React.createElement(
         ScenesList,
-        { api_base_path: '/BaticasaButtons' })}
+        { api_base_path: '/Scenes' })}
     </section>
   );
 }

@@ -20,6 +20,7 @@ class ZmwDashboard(ZmwMqttServiceMonitor):
                     "ZmwSensormon"]
         super().__init__(cfg, svc_deps=min_deps)
 
+        self._scenes_svc = 'Baticasa' # TODO
         self._svc_proxy = None
         self._www = www
 
@@ -43,6 +44,9 @@ class ZmwDashboard(ZmwMqttServiceMonitor):
                 log.error("Service %s doesn't have a www service, can't proxy", svc_name)
                 continue
             proxies[svc_name] = svc_meta["www"]
+            if svc_name == self._scenes_svc:
+                # This is a service with an alias, expose it in two endpoints
+                proxies['Scenes'] = svc_meta["www"]
         self._svc_proxy = ServiceMagicProxy(proxies, self._www)
         log.info("Proxy routes registered, starting dashboard www")
         self._www.serve_url('/get_proxied_services', self._svc_proxy.get_proxied_services)
