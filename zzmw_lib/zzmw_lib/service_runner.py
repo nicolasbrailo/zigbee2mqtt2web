@@ -88,6 +88,25 @@ def _get_port(cfg, host):
     log.warning("No free port found in range 4201-4299, falling back to OS-assigned port")
     return 0
 
+def _get_systemd_name(cls):
+    # Assume that systemd name is going to be FooBar -> foo_bar
+    # TODO: Check also path to src, and verify it exists in journald so error is printed here instead when trying to monitor
+    return ''.join(f'_{c.lower()}' if c.isupper() and i > 0 else c.lower() for i, c in enumerate(cls.__name__))
+
+def _monkeypatch_service_meta(cls, wwwurl):
+    # Add get_service_meta to the class before instantiation (in case it's abstract)
+    if getattr(getattr(cls, 'get_service_meta', None), '__isabstractmethod__', False):
+        def _get_service_meta(self):
+            return {
+                "name": cls.__name__,
+                "systemd_name": _get_systemd_name(cls),
+                "mqtt_topic": self.get_service_mqtt_topic(),
+                "www": wwwurl,
+            }
+        cls.get_service_meta = _get_service_meta
+        # Clear from abstract methods set so ABC allows instantiation
+        cls.__abstractmethods__ = cls.__abstractmethods__ - {'get_service_meta'}
+
 
 def _get_config():
     """ Will open config.json for this service. If the config file doesn't exist, returns an empty map. Will kill the
@@ -284,21 +303,7 @@ def service_runner_with_www(AppClass):
     if not issubclass(AppClass, ZmwMqttBase):
         raise ValueError("Don't know how to run app '%s', this runner is meant to be used with ZmwMqttServices", AppClass.__name__)
 
-    # Add get_service_meta to the class before instantiation (in case it's abstract)
-    if getattr(getattr(AppClass, 'get_service_meta', None), '__isabstractmethod__', False):
-        def _get_service_meta(self):
-            # Assume that systemd name is going to be FooBar -> foo_bar
-            systemd_name = ''.join(f'_{c.lower()}' if c.isupper() and i > 0 else c.lower() for i, c in enumerate(self.__class__.__name__))
-            return {
-                "name": self.__class__.__name__,
-                "systemd_name": systemd_name,
-                "mqtt_topic": self.get_service_mqtt_topic(),
-                "www": flaskapp.public_url_base,
-            }
-        AppClass.get_service_meta = _get_service_meta
-        # Clear from abstract methods set so ABC allows instantiation
-        AppClass.__abstractmethods__ = AppClass.__abstractmethods__ - {'get_service_meta'}
-
+    _monkeypatch_service_meta(AppClass, flaskapp.public_url_base)
     app = AppClass(cfg, flaskapp)
 
     def signal_handler(sig, frame):

@@ -86,6 +86,9 @@ class JournalMonitor:
         #     # Skip monitoring our own service to prevent error loops
         #     return
 
+        if service_name is None:
+            raise ValueError("Requested to monitor service with no systemd name (not a systemd service?)")
+
         if service_name in self._monitored_services:
             # Already monitoring
             return

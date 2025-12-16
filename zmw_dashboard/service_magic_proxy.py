@@ -23,8 +23,14 @@ class ServiceMagicProxy:
 
     def on_service_announced_meta(self, svc_name, www_url):
         """Handle service announcement and restart if the www URL changed."""
+        if www_url is None:
+            # Service has no www, nothing to proxy so we can ignore
+            return
         if svc_name not in self._service_map:
-            # We don't care about this service
+            # We don't care about this service, but let the user know that a new service is up, and we won't proxy it.
+            # We could restart here to start proxying, but we'd get a lot of unnecessary restarts if a service is
+            # discovered, becomes unstable, and its url changes (eg due to new port assignment)
+            log.warning("New service '%s' discovered, but proxy already started. Ignoring service.", svc_name)
             return
         if self._service_map[svc_name] != www_url:
             log.error("Service '%s' changed its www path from '%s' to '%s', proxying will break. ",

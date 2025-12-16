@@ -22,7 +22,10 @@ class ZmwMqttService(ZmwMqttBase):
         if self._svc_topic is not None:
             self.subscribe_with_cb(self._svc_topic, self.on_service_received_message)
 
+        if not all(isinstance(d, str) for d in svc_deps):
+            raise TypeError("Unknown service dependency format '%s'", str(svc_deps))
         self._svc_deps = svc_deps
+
         self._known_services = {}
         self._first_start_ran = False
         self._all_deps_alive = False
