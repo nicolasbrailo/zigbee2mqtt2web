@@ -257,11 +257,11 @@ class ZmwSpotify(ZmwMqttService):
             raise
 
     def _get_media_info(self, sp):
-        def pick_album_cover(track):
+        def pick_album_cover(playback):
             imgs = []
             try:
                 imgs = sorted([(img['height'] * img['width'], img['url'])
-                               for img in track['item']['album']['images']])
+                               for img in playback['item']['album']['images']])
             except KeyError:
                 pass
             selected_img = None
@@ -271,19 +271,29 @@ class ZmwSpotify(ZmwMqttService):
                     break
             return selected_img
 
-        track = sp.current_user_playing_track()
-        if track is None or track['item'] is None:
+        def get_context(playback):
+            if playback is None or playback.get('context') is None:
+                return None
+            ctx = playback['context']
+            return {
+                'type': ctx.get('type'),  # "playlist", "album", "artist", "show"
+                'uri': ctx.get('uri'),    # e.g., "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M"
+            }
+
+        playback = sp.current_playback()
+        if playback is None or playback.get('item') is None:
             return {}
         return {
-            'icon': pick_album_cover(track),
-            'title': track['item']['name'],
-            'duration': track['item']['duration_ms'] / 1000,
-            'current_time': track['progress_ms'] / 1000,
-            'artist': ', '.join([x['name'] for x in track['item']['album']['artists']]),
-            'album_link': track['item']['album']['external_urls']['spotify'],
-            'album_name': track['item']['album']['name'],
-            'track_count': track['item']['album']['total_tracks'],
-            'current_track': track['item']['track_number'],
+            'icon': pick_album_cover(playback),
+            'title': playback['item']['name'],
+            'duration': playback['item']['duration_ms'] / 1000,
+            'current_time': playback['progress_ms'] / 1000,
+            'artist': ', '.join([x['name'] for x in playback['item']['album']['artists']]),
+            'album_link': playback['item']['album']['external_urls']['spotify'],
+            'album_name': playback['item']['album']['name'],
+            'track_count': playback['item']['album']['total_tracks'],
+            'current_track': playback['item']['track_number'],
+            'context': get_context(playback),
         }
 
     def _get_full_state(self):
