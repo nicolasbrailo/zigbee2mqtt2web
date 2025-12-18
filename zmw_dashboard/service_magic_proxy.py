@@ -2,6 +2,7 @@
 import aiohttp
 import os
 import signal
+import ssl
 import time
 
 from flask import abort, request, Response
@@ -84,7 +85,13 @@ class ServiceMagicProxy:
         log.debug("Proxying %s %s -> %s", request.method, request.path, target_url)
 
         try:
-            async with aiohttp.ClientSession() as session:
+            # Create SSL context that accepts self-signed certificates
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
+            async with aiohttp.ClientSession(connector=connector) as session:
                 # Prepare request kwargs
                 kwargs = {
                     'timeout': aiohttp.ClientTimeout(total=5),
