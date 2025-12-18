@@ -40,7 +40,7 @@ class ZmwServicemon(ZmwMqttServiceMonitor):
             log.error("Hola!")
             try:
                 raise ValueError(42)
-            except:
+            except ValueError:
                 log.error("Exception", exc_info=True)
             return ""
         www.serve_url('/recent_errors_test_new', _log_error)

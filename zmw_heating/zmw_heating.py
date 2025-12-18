@@ -84,8 +84,8 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
                               'descr': 'Heating boost'})
 
     def on_dep_published_message(self, svc_name, subtopic, msg):
-        log.debug("%s.%s: %s", service_name, subtopic, msg)
-        match service_name:
+        log.debug("%s.%s: %s", svc_name, subtopic, msg)
+        match svc_name:
             case 'ZmwTelegram':
                 if subtopic.startswith("on_command/tengofrio"):
                     self.schedule.active().boost(1)
@@ -225,7 +225,7 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
             log.debug("Boiler state hasn't actually changed (state is %s, reason %s), will skip Telegram notification",
                       new.request_on, new.reason)
             return
-        elif is_first_set:
+        if is_first_set:
             log.debug("Skip Telegram notifications for service startup")
             return
 

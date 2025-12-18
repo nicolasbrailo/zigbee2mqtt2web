@@ -35,8 +35,8 @@ def save_audio_as_mp3(audio_file, output_dir):
     except subprocess.TimeoutExpired:
         log.error("ffmpeg conversion timed out for '%s'", ogg_path)
         return None
-    except subprocess.CalledProcessError as e:
-        log.error("ffmpeg conversion failed for '%s': %s", ogg_path, e)
+    except subprocess.CalledProcessError:
+        log.error("ffmpeg conversion failed for '%s'", ogg_path, exc_info=True)
         return None
     except OSError as e:
         log.error("Failed to save/convert audio: %s", e)
@@ -62,7 +62,7 @@ class ZmwSpeakerAnnounce(ZmwMqttService):
         www.register_www_dir(cfg['tts_assets_cache_path'], '/tts/')
 
         # Create a second HTTP-only server for Sonos (can't use HTTPS with self-signed certs)
-        self._http_asset_server = HttpAssetServer(self._tts_assets_cache_path, http_host=cfg.get('http_host'))
+        self._http_asset_server = HttpAssetServer(self._tts_assets_cache_path, cfg)
         self._http_asset_server.start()
         self._public_tts_base = self._http_asset_server.public_tts_base
         log.info("Sonos will fetch TTS assets from HTTP server: %s", self._public_tts_base)

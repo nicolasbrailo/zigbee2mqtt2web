@@ -11,7 +11,7 @@ from flask import Flask, send_from_directory, abort
 from werkzeug.serving import make_server, WSGIRequestHandler
 
 from zzmw_lib.logs import build_logger
-from zzmw_lib.network_helpers import get_lan_ip, find_available_port, is_safe_path
+from zzmw_lib.network_helpers import get_lan_ip, get_cached_port, is_safe_path
 
 log = build_logger("HttpAssetServer")
 
@@ -19,7 +19,7 @@ log = build_logger("HttpAssetServer")
 class HttpAssetServer:
     """HTTP-only server for serving TTS assets to Sonos speakers."""
 
-    def __init__(self, tts_assets_path, http_host=None):
+    def __init__(self, tts_assets_path, cfg):
         """
         Initialize the HTTP asset server.
 
@@ -28,10 +28,11 @@ class HttpAssetServer:
             http_host: Host to bind to (auto-detected if None)
         """
         self._tts_assets_path = tts_assets_path
-        self._host = http_host or get_lan_ip() or '0.0.0.0'
+        self._host = get_lan_ip()
         self._server = None
         self._thread = None
         self._public_url_base = None
+        self._cfg = cfg
 
     def start(self):
         """Start the HTTP asset server in a background thread."""
@@ -40,7 +41,6 @@ class HttpAssetServer:
                 pass  # Suppress request logging
 
         app = Flask("HttpAssetServer")
-        port = find_available_port(self._host, 4301, 4399)
 
         # Register the TTS assets route
         @app.route('/tts/<path:filename>')
@@ -59,7 +59,7 @@ class HttpAssetServer:
         # Create HTTP-only server (no ssl_context)
         self._server = make_server(
             self._host,
-            port,
+            get_cached_port(self._cfg, "http_asset_server_port", self._host),
             app,
             request_handler=_QuietRequestHandler,
             ssl_context=None

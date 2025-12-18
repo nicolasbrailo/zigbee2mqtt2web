@@ -21,7 +21,7 @@ class JournalMonitor:
     """Monitors systemd journal for warnings and errors from specified services"""
 
     def __init__(self, max_errors, on_error_logged, own_service_name,
-                 rate_limit_window_mins=5, on_rate_limit=None):
+                 rate_limit_window_mins=5):
         """
         Initialize the journal monitor.
 
@@ -31,7 +31,6 @@ class JournalMonitor:
             own_service_name: Name of this service to exclude from monitoring (prevents error loops).
             rate_limit_window_mins: If oldest error in FIFO is younger than this, enter rate limiting for
                                     rate_limit_window_mins.
-            on_rate_limit: callback when rate limiting is triggered.
         """
         self._recent_errors = []
         self._recent_errors_lock = threading.RLock()  # Protects _recent_errors from concurrent access
@@ -46,7 +45,6 @@ class JournalMonitor:
         # Rate limiting
         self._rate_limit_window_mins = rate_limit_window_mins
         self._rate_limit_pause_mins = rate_limit_window_mins
-        self._on_rate_limit_callback = on_rate_limit
         self._rate_limiting_active = False
         self._rate_limit_resume_timer = None
 
@@ -290,11 +288,6 @@ class JournalMonitor:
         self._rate_limit_resume_timer.daemon = True
         self._rate_limit_resume_timer.start()
 
-        if self._on_rate_limit_callback:
-            try:
-                self._on_rate_limit_callback(service_error_counts)
-            except BaseException: # pylint: disable=broad-exception-caught
-                log.error("Error in rate limit callback", exc_info=True)
         return True
 
 

@@ -17,30 +17,9 @@ from systemd.journal import JournalHandler
 
 from .zmw_mqtt_base import ZmwMqttBase
 from .logs import build_logger
-from .network_helpers import get_lan_ip, is_port_available, is_safe_path
+from .network_helpers import get_lan_ip, get_cached_port, is_safe_path
 
 log = build_logger("ServiceRunner")
-
-CACHE_FILE = "run_state_cache.json"
-
-
-def _get_cached_port():
-    """ Try to reuse the port from a previous run, for stable service URLs. """
-    try:
-        with open(CACHE_FILE) as f:
-            return json.load(f).get("port")
-    except (FileNotFoundError, json.JSONDecodeError):
-        return None
-
-
-def _save_cached_port(port):
-    """ Save port so next startup can try the same one first. Not structly needed but stable ports makes life easier
-    for caches and creates less log noise. """
-    with open(CACHE_FILE, "w") as f:
-        json.dump({
-            "COMMENT": "This file is a cache to persist service run state between restarts, it can be safely deleted",
-            "port": port
-        }, f)
 
 
 def _get_http_host(cfg):
@@ -64,35 +43,6 @@ def _get_http_host(cfg):
     log.error("Could not determine LAN IP, falling back to 0.0.0.0. Service discovery will break.")
     return '0.0.0.0'
 
-
-def _get_port(cfg, host):
-    """
-    Get a port for the HTTP server.
-
-    If cfg['http_port'] exists and is not None, use it.
-    Otherwise, try cached port from previous run, then range 4201-4299.
-    If no port in range is available, fall back to OS-assigned port.
-
-    Returns:
-        int: The port number to use
-    """
-    if cfg.get('http_port') is not None:
-        return cfg['http_port']
-
-    # Try cached port from previous run first
-    cached = _get_cached_port()
-    if cached and is_port_available(host, cached):
-        return cached
-
-    # Try to find a free port in the preferred range
-    for port in range(4201, 4300):
-        if is_port_available(host, port):
-            _save_cached_port(port)
-            return port
-
-    # Fall back to OS-assigned port
-    log.warning("No free port found in range 4201-4299, falling back to OS-assigned port")
-    return 0
 
 def _get_systemd_name(cls):
     # Assume that systemd name is going to be FooBar -> foo_bar
@@ -156,7 +106,7 @@ def _create_www_server(AppClass, cfg):
     http_host = _get_http_host(cfg)
     ssl_context = _get_ssl_context()
     wwwserver = make_server(http_host,
-                            _get_port(cfg, http_host),
+                            get_cached_port(cfg, "http_port", http_host),
                             flaskapp,
                             request_handler=_QuietRequestHandler,
                             ssl_context=ssl_context)

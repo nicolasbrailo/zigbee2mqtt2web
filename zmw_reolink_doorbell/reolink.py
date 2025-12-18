@@ -48,7 +48,7 @@ async def _connect_to_cam(cam_host, cam_user, cam_pass, webhook_url, rtsp_cbs,
         try:
             await cam.subscribe(webhook_url)
         except ReolinkError:
-            log.error("Failed to subscribe to cam %s events: %s", cam_host, exc_info=True)
+            log.error("Failed to subscribe to cam %s events", cam_host, exc_info=True)
             # subscribe failure is critical, re-raising
             raise
 
@@ -143,11 +143,11 @@ class ReolinkDoorbell(ABC):
             try:
                 await self._cam.unsubscribe()
             except ReolinkError:
-                log.warning("Failed to unsubscribe during disconnect from %s: %s", self._cam_host, e)
+                log.warning("Failed to unsubscribe during disconnect from %s", self._cam_host, exc_info=True)
             try:
                 await self._cam.logout()
             except ReolinkError:
-                log.warning("Failed to logout during disconnect from %s: %s", self._cam_host, e)
+                log.warning("Failed to logout during disconnect from %s", self._cam_host, exc_info=True)
         self._should_be_connected = False
         self._cam_subscription_watchdog.remove()
         self._runner.run_until_complete(_async_deinit())
@@ -360,10 +360,10 @@ class ReolinkDoorbell(ABC):
             with open(fpath, 'wb') as fp:
                 fp.write(snapshot_data)
         except ReolinkError:
-            log.error("Failed to get snapshot from cam %s: %s", self._cam_host, exc_info=True)
+            log.error("Failed to get snapshot from cam %s", self._cam_host, exc_info=True)
             return None
         except IOError:
-            log.error("Failed to write snapshot to %s: %s", fpath, exc_info=True)
+            log.error("Failed to write snapshot to %s", fpath, exc_info=True)
             return None
 
         self._last_snap = fpath

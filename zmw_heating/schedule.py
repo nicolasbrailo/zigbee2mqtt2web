@@ -8,6 +8,7 @@ from zzmw_lib.logs import build_logger
 log = build_logger("HeatingSchedule")
 
 class AllowOn(str, Enum):
+    """ Determines if the boler can turn on based on rules, or unconditionally on/off """
     ALWAYS = 'Always'
     NEVER = 'Never'
     RULE = 'Rule'
@@ -25,14 +26,13 @@ class AllowOn(str, Enum):
             if allow_on.lower() in ['rule']:
                 return AllowOn.RULE
         if isinstance(allow_on, bool):
-            if allow_on:
-                return AllowOn.ALWAYS
-            return AllowOn.NEVER
+            return AllowOn.ALWAYS if allow_on else AllowOn.NEVER
 
         return AllowOn.NEVER
 
 @dataclass(frozen=False)
 class ScheduleSlot:
+    """ Describes a slot of the day """
     hour: int
     minute: int
     allow_on: AllowOn = AllowOn.NEVER

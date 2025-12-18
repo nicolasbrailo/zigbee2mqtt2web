@@ -214,22 +214,17 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
                 if (st.target_max_temp > MAX_REASONABLE_T or
                         st.target_max_temp < MIN_REASONABLE_T):
                     raise ValueError(
-                        "target_max_temp max temperature for sensor %s set to %s, "
-                        "which looks out or range for temperature (%s < t < %s)" %
-                        (sensor_name, st.target_max_temp,
-                         MIN_REASONABLE_T, MAX_REASONABLE_T))
+                        f"target_max_temp max temperature for sensor {sensor_name} set to {st.target_max_temp}, "
+                        "which looks out or range for temperature ({MIN_REASONABLE_T} < t < {MAX_REASONABLE_T})")
                 if (st.target_min_temp > MAX_REASONABLE_T or
                         st.target_min_temp < MIN_REASONABLE_T):
                     raise ValueError(
-                        "target_min_temp for sensor %s set to %s, "
-                        "which looks out or range for temperature (%s < t < %s)" %
-                        (sensor_name, st.target_min_temp,
-                         MIN_REASONABLE_T, MAX_REASONABLE_T))
+                        f"target_min_temp for sensor {sensor_name} set to {st.target_min_temp}, "
+                        "which looks out or range for temperature ({MIN_REASONABLE_T} < t < {MAX_REASONABLE_T})")
                 if st.target_min_temp > st.target_max_temp:
                     raise ValueError(
-                        "target_min_temp is higher than max temp for sensor %s "
-                        "(%s < %s)" %
-                        (sensor_name, st.target_min_temp, st.target_max_temp))
+                        f"target_min_temp is higher than max temp for sensor {sensor_name} "
+                        "({st.target_min_temp} < {st.target_max_temp})")
                 return st
             except (ValueError, TypeError, KeyError):
                 log.error("Failed to parse SensorTimeSchedule for sensor %s", sensor_name, exc_info=True)

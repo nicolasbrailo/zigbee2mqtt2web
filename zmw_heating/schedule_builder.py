@@ -14,6 +14,7 @@ def _ignore_template_change_cb(new, old):
     pass
 
 class ScheduleBuilder:
+    """ Create a schedule from a template """
     def __init__(self, state_change_cb, persist_file, rules, clock=None):
         self._active = Schedule(state_change_cb, clock)
         self._persist_file = persist_file
@@ -75,7 +76,7 @@ class ScheduleBuilder:
         for rule in self._rules:
             try:
                 rule.apply(self._active)
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 log.error("Error applying rule %s", str(rule), exc_info=True)
         self.active().applying_rules(False)
 

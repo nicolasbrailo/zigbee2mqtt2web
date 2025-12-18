@@ -174,6 +174,12 @@ class TTSAnnounce extends React.Component {
             <option value="en-GB">EN GB</option>
           </select>
 
+          {this.canRecordMic && (
+            <button onClick={this.onMicRecRequested}>
+              Record
+            </button>
+          )}
+
           <label>Vol</label>
           <input
             type="range"
@@ -183,12 +189,6 @@ class TTSAnnounce extends React.Component {
             onChange={e => this.setState({ ttsVolume: parseInt(e.target.value, 10) })}
             title={`Volume: ${this.state.ttsVolume}%`}
           />
-
-          {this.canRecordMic && (
-            <button onClick={this.onMicRecRequested}>
-              Record
-            </button>
-          )}
         </div>
 
         {this.state.speakerList && (

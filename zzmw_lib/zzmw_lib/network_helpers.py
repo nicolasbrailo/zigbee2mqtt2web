@@ -1,6 +1,47 @@
 """Network utility functions shared across services."""
 import os
+import json
 import socket
+
+CACHE_FILE = "run_state_cache.json"
+CACHE_COMMENT = "This file is a cache to persist service run state between restarts, it can be safely deleted"
+
+def runtime_state_cache_get(key):
+    """
+    Get a value from the runtime state cache.
+
+    Args:
+        key: The key to retrieve from the cache
+
+    Returns:
+        The cached value, or None if the key doesn't exist or the file is missing/corrupt
+    """
+    try:
+        with open(CACHE_FILE) as f:
+            return json.load(f).get(key)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+def runtime_state_cache_set(key, value):
+    """
+    Set a value in the runtime state cache.
+
+    Reads the existing cache file (or creates an empty one with a comment),
+    then saves the new key-value pair.
+
+    Args:
+        key: The key to set
+        value: The value to store
+    """
+    try:
+        with open(CACHE_FILE) as f:
+            cache = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        cache = {"COMMENT": CACHE_COMMENT}
+
+    cache[key] = value
+    with open(CACHE_FILE, "w") as f:
+        json.dump(cache, f)
 
 
 def get_lan_ip():
@@ -18,7 +59,7 @@ def get_lan_ip():
             s.connect(("8.8.8.8", 80))
             return s.getsockname()[0]
     except OSError:
-        return None
+        return "0.0.0.0"
 
 
 def is_port_available(host, port):
@@ -55,6 +96,27 @@ def find_available_port(host, start_port, end_port):
     for port in range(start_port, end_port + 1):
         if is_port_available(host, port):
             return port
+    return 0
+
+def get_cached_port(cfg, key, host):
+    """
+    Get a port for the service. If it exists in a config, use that. If it doesn't, try to retrieve it
+    from a cache in CWD for this service. If it also doesn't, try to get a free port from 4201 to 4299.
+    If all fails, returns 0 (which will assign a random free port)
+    """
+    if cfg.get(key) is not None:
+        return cfg[key]
+
+    cached = runtime_state_cache_get(key)
+    if cached and is_port_available(host, cached):
+        return cached
+
+    for port in range(4201, 4300):
+        if is_port_available(host, port):
+            runtime_state_cache_set(key, port)
+            return port
+
+    log.warning("No free port found in range 4201-4299, falling back to OS-assigned port")
     return 0
 
 
