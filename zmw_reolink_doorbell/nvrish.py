@@ -5,6 +5,8 @@ from flask import send_from_directory, jsonify, redirect, request
 from ffmpeg_helper import gen_thumbnail_from_video
 
 def _get_cams(base_path):
+    if not os.path.exists(base_path) or not os.path.isdir(base_path):
+        return []
     cams = []
     for entry in os.listdir(base_path):
         full_path = os.path.join(base_path, entry)
@@ -77,13 +79,17 @@ class Nvr:
         for (fname, fpath, fsize, _) in recs:
             # Generate thumbnail
             img_path = gen_thumbnail_from_video(fpath)
-            img_fname = os.path.basename(img_path)
+            if img_path is None:
+                thumbnail_url = None
+            else:
+                img_fname = os.path.basename(img_path)
+                thumbnail_url = f'/nvr/{cam}/get_recording/{img_fname}'
 
             recordings.append({
                 'filename': fname,
                 'size': fsize,
                 'video_url': f'/nvr/{cam}/get_recording/{fname}',
-                'thumbnail_url': f'/nvr/{cam}/get_recording/{img_fname}'
+                'thumbnail_url': thumbnail_url
             })
 
         return jsonify({'recordings': recordings})

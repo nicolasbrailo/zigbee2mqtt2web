@@ -9,7 +9,14 @@ log = build_logger("FFmpegHelper")
 def _run_cmd(cmd):
     stdout = tempfile.TemporaryFile(mode='w+')
     stderr = tempfile.TemporaryFile(mode='w+')
-    proc = subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
+    try:
+        proc = subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
+    except OSError as e:
+        # OSError covers FileNotFoundError, PermissionError, and other OS-level failures
+        log.error("Failed to run command %s: %s", cmd[0] if cmd else "<empty>", e)
+        stdout.close()
+        stderr.close()
+        return None, None, None
     return proc, stdout, stderr
 
 
@@ -48,10 +55,12 @@ def gen_thumbnail_from_video(fpath):
     if os.path.exists(fout):
         return fout
 
-    _run_cmd(['ffmpeg',
-              '-i', fpath,
-              '-vf', 'select=eq(n,42)',
-              '-vf', 'scale=192:168',
-              '-vframes', '1',
-              fout])
+    proc, _, _ = _run_cmd(['ffmpeg',
+                           '-i', fpath,
+                           '-vf', 'select=eq(n,42)',
+                           '-vf', 'scale=192:168',
+                           '-vframes', '1',
+                           fout])
+    if proc is None:
+        return None
     return fout

@@ -14,7 +14,7 @@ from rtsp import Rtsp
 
 from zzmw_lib.logs import build_logger
 from reolink_aio.api import Host as ReolinkDoorbellHost
-from reolink_aio.exceptions import SubscriptionError
+from reolink_aio.exceptions import ReolinkError, SubscriptionError
 from reolink_aio.helpers import parse_reolink_onvif_event
 
 log = build_logger("Reolink")
@@ -31,16 +31,26 @@ async def _connect_to_cam(cam_host, cam_user, cam_pass, webhook_url, rtsp_cbs,
     log.info("Connecting to doorbell at %s...", cam_host)
     cam = ReolinkDoorbellHost(cam_host, cam_user, cam_pass, use_https=True)
 
-    # Fetch all cam state
+    # Fetch all cam state, or throw on failure
     await cam.get_host_data()
     await cam.get_states()
     cam.construct_capabilities()
 
     # Cleanup old subscriptions, if there were any
     if webhook_url is not None:
-        await cam.unsubscribe()
-        # Assumes we're the only client to subscribe to this cam
-        await cam.subscribe(webhook_url)
+        try:
+            # Assumes we're the only client to subscribe to this cam
+            await cam.unsubscribe()
+        except ReolinkError as e:
+            # unsubscribe failure is non-critical, proceeding anyway
+            log.warning("Failed to cleanup old subscriptions for cam %s (continuing): %s", cam_host, e)
+
+        try:
+            await cam.subscribe(webhook_url)
+        except ReolinkError:
+            log.error("Failed to subscribe to cam %s events: %s", cam_host, exc_info=True)
+            # subscribe failure is critical, re-raising
+            raise
 
     log.info("Connected to doorbell %s %s model %s - firmware %s",
              cam_host,
@@ -51,13 +61,13 @@ async def _connect_to_cam(cam_host, cam_user, cam_pass, webhook_url, rtsp_cbs,
     if not cam.is_doorbell(0):
         log.error("Something is wrong, %s reports it isn't a doorbell!", cam_host)
 
-    rtsp = None
-    rtspurl = await cam.get_rtsp_stream_source(0, "main")
-    if rtspurl is None:
-        log.error("Cam %s has no RTSP, recording will break", cam_host)
-    else:
+    # RTSP failure is non-critical, recording will be disabled
+    try:
+        rtspurl = await cam.get_rtsp_stream_source(0, "main")
         log.info("Cam %s offers RTSP at %s", cam_host, rtspurl)
         rtsp = Rtsp(cam_host, rtsp_cbs, rtspurl, rec_path, rec_retention_days, rec_default_duration_secs)
+    except ReolinkError:
+        log.error("Failed to get RTSP URL from cam %s (recording disabled)", cam_host, exc_info=True)
 
     return cam, rtsp
 
@@ -68,6 +78,7 @@ class ReolinkDoorbell(ABC):
     def __init__(self, cfg, webhook_url):
         super().__init__()
         # __del__ will run if the ctor fails, so mark "we've been here" somehow
+        self._should_be_connected = False
         self._cam = None
         self._cam_host = cfg['cam_host']
         self._cam_user = cfg['cam_user']
@@ -109,9 +120,13 @@ class ReolinkDoorbell(ABC):
     def connect(self):
         """ Logs in and subscribes to camera events """
         log.info('Expect doorbell to announce back to "%s"', self._webhook_url)
-        camtask = _connect_to_cam(self._cam_host, self._cam_user, self._cam_pass, self._webhook_url, self,
-                                  self._rec_path, self._rec_retention_days, self._rec_default_duration_secs)
-        self._cam, self.rtsp = self._runner.run_until_complete(camtask)
+        self._should_be_connected = True
+        try:
+            camtask = _connect_to_cam(self._cam_host, self._cam_user, self._cam_pass, self._webhook_url, self,
+                                      self._rec_path, self._rec_retention_days, self._rec_default_duration_secs)
+            self._cam, self.rtsp = self._runner.run_until_complete(camtask)
+        except ReolinkError:
+            log.error("Failed to reconnect to cam %s, will retry later", self._cam_host, exc_info=True)
         self._scheduler.start()
 
     def __del__(self):
@@ -119,88 +134,83 @@ class ReolinkDoorbell(ABC):
 
     def disconnect(self):
         """ Logs out and tries to cleanup subscriptions to events in the camera """
-        if self._cam is None:
+        if not self._should_be_connected:
             # Constructor failed or already disconnected
             return
 
         async def _async_deinit():
             log.info("Disconnecting from doorbell at %s...", self._cam_host)
-            await self._cam.unsubscribe()
-            await self._cam.logout()
+            try:
+                await self._cam.unsubscribe()
+            except ReolinkError:
+                log.warning("Failed to unsubscribe during disconnect from %s: %s", self._cam_host, e)
+            try:
+                await self._cam.logout()
+            except ReolinkError:
+                log.warning("Failed to logout during disconnect from %s: %s", self._cam_host, e)
+        self._should_be_connected = False
         self._cam_subscription_watchdog.remove()
         self._runner.run_until_complete(_async_deinit())
         self._runner.close()
         self._cam = None
 
     def _check_cam_subscription(self):
-        if self._cam is None or self._webhook_url is None:
+        if not self._should_be_connected:
             # Not init'd yet or subscription not required
             return
 
+        def _reconnect():
+            try:
+                camtask = _connect_to_cam(self._cam_host, self._cam_user, self._cam_pass, self._webhook_url, self,
+                                          self._rec_path, self._rec_retention_days, self._rec_default_duration_secs)
+                self._cam, self.rtsp = self._runner.run_until_complete(camtask)
+            except ReolinkError:
+                log.error("Failed to reconnect to cam %s, will retry later", self._cam_host, exc_info=True)
+
         async def _renew_async():
+            if not self._cam:
+                _reconnect()
+                return
+
             try:
                 await self._cam.renew()
                 return
+            # On renew exception, fallthrough and try to resubscribe
             except SubscriptionError:
-                log.error(
-                    "Cam %s subscription error",
-                    self._cam_host,
-                    exc_info=True)
+                log.error("Cam %s subscription error", self._cam_host, exc_info=True)
             except RuntimeError:
-                log.error(
-                    "Runtime error renewing cam %s subscription",
-                    self._cam_host,
-                    exc_info=True)
+                log.error("Runtime error renewing cam %s subscription", self._cam_host, exc_info=True)
 
             try:
                 await self._cam.unsubscribe()
                 await self._cam.subscribe(self._webhook_url)
-                log.info(
-                    "Set up new subscription %s for cam %s...",
-                    self._webhook_url,
-                    self._cam_host)
+                log.info("Set up new subscription %s for cam %s...", self._webhook_url, self._cam_host)
                 return
+            # If this fails too, try to disconnect and reconnect
             except SubscriptionError:
-                log.error(
-                    "Error creating new cam %s subscription",
-                    self._cam_host,
-                    exc_info=True)
+                log.error("Error creating new cam %s subscription", self._cam_host, exc_info=True)
             except RuntimeError:
-                log.error(
-                    "Runtime error creating new cam %s subscription",
-                    self._cam_host,
-                    exc_info=True)
+                log.error("Runtime error creating new cam %s subscription", self._cam_host, exc_info=True)
 
-            log.error(
-                "All recovery attempts failed, start new connection to cam %s",
-                self._cam_host)
+            log.error("All recovery attempts failed, start new connection to cam %s", self._cam_host)
             try:
-                # Try to cleanup (but likely to fail, if we got here everything
-                # may be broken)
+                # Try to cleanup (but likely to fail, if we got here everything may be broken)
                 await self._cam.unsubscribe()
                 await self._cam.logout()
             except Exception:  # pylint: disable=broad-except
                 pass
 
-            camtask = _connect_to_cam(self._cam_host, self._cam_user, self._cam_pass, self._webhook_url, self,
-                                      self._rec_path, self._rec_retention_days, self._rec_default_duration_secs)
-            self._cam, self.rtsp = self._runner.run_until_complete(camtask)
+            _reconnect()
 
         must_renew = False
         try:
-            t = self._cam.renewtimer()
+            t = self._cam.renewtimer() if self._cam else 0
             if t <= 100:
-                log.debug(
-                    "Subscription to cam %s has %s seconds remaining, renewing",
-                    self._cam_host,
-                    t)
+                log.debug("Subscription to cam %s has %s seconds remaining, renewing", self._cam_host, t)
                 must_renew = True
         except Exception:  # pylint: disable=broad-except
             must_renew = True
-            log.error(
-                "Error checking for cam %s subscription",
-                self._cam_host,
-                exc_info=True)
+            log.error("Error checking for cam %s subscription, will force renew", self._cam_host, exc_info=True)
 
         if must_renew:
             self._runner.run_until_complete(_renew_async())
@@ -212,10 +222,7 @@ class ReolinkDoorbell(ABC):
             msg = None # If prints None == flask failed
             msg = FlaskRequest.data
             msg = parse_reolink_onvif_event(msg)
-            log.debug(
-                "Received event from camera %s: %s",
-                self._cam_host,
-                str(msg))
+            log.debug("Received event from camera %s: %s", self._cam_host, str(msg))
             # Flatten the message: we don't care about channels
             flatmsg = {}
             for k, v in msg.items():
@@ -260,7 +267,8 @@ class ReolinkDoorbell(ABC):
         # Ignore debounce rules for rtsp pet rules
         for key in ['Visitor', 'Motion', 'MotionAlarm', 'PeopleDetect']:
             if key in msg and msg[key]:
-                self.rtsp.pet_timer()
+                if self.rtsp is not None:
+                    self.rtsp.pet_timer()
                 break
 
         if msg['PeopleDetect'] and not msg['Motion'] and not msg['MotionAlarm']:
@@ -297,8 +305,12 @@ class ReolinkDoorbell(ABC):
             self.on_motion_cleared(self._cam_host, msg)
 
     def _motion_check_active(self):
-        state_updated = self._runner.run_until_complete(
-            self._cam.get_ai_state_all_ch())
+        try:
+            state_updated = self._runner.run_until_complete(self._cam.get_ai_state_all_ch())
+        except ReolinkError as e:
+            log.warning("Failed to poll AI state for cam %s: %s", self._cam_host, e)
+            state_updated = False
+
         if state_updated and self._cam.motion_detected(0):
             log.info("Doorbell cam %s motion timeout, but motion still active. Waiting more.", self._cam_host)
             self._motion_evt_job = self._scheduler.add_job(
@@ -340,8 +352,19 @@ class ReolinkDoorbell(ABC):
             return None
 
         log.info("Cam %s will save snapshot to %s", self._cam_host, fpath)
-        with open(fpath, 'wb') as fp:
-            fp.write(self._runner.run_until_complete(self._cam.get_snapshot(0)))
+        try:
+            snapshot_data = self._runner.run_until_complete(self._cam.get_snapshot(0))
+            if snapshot_data is None:
+                log.error("Cam %s returned empty snapshot", self._cam_host)
+                return None
+            with open(fpath, 'wb') as fp:
+                fp.write(snapshot_data)
+        except ReolinkError:
+            log.error("Failed to get snapshot from cam %s: %s", self._cam_host, exc_info=True)
+            return None
+        except IOError:
+            log.error("Failed to write snapshot to %s: %s", fpath, exc_info=True)
+            return None
 
         self._last_snap = fpath
         return fpath

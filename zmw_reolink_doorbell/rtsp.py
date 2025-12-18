@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from threading import Lock
 import os
 import signal
+import subprocess
 
 from ffmpeg_helper import rtsp_to_local_file, reencode_to_telegram_vid
 from zzmw_lib.logs import build_logger
@@ -16,11 +17,16 @@ def _stop_cmd(log_prefix, timeout, force_log_out, proc, stdout, stderr, expect_r
         expect_retcodes = [0, 255]
 
     proc.send_signal(signal.SIGINT)
-    proc.wait(timeout)
-
-    if proc.poll() is None:
+    try:
+        proc.wait(timeout)
+    except subprocess.TimeoutExpired:
         log.error("%s: failed to stop in time, killing...", log_prefix)
         proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            log.error("%s: failed to terminate, killing forcefully...", log_prefix)
+            proc.kill()
 
     if proc.returncode not in expect_retcodes:
         log.error("%s failed, ret=%s", log_prefix, proc.returncode)
@@ -141,6 +147,11 @@ class Rtsp:
         self._recording_cmd, \
                 self.recording_cmd_stdout, \
                 self.recording_cmd_stderr = rtsp_to_local_file(self._rtsp_url, self._recording_outfile)
+        if self._recording_cmd is None:
+            log.error("Cam %s: Failed to start RTSP recording (ffmpeg error)", self._cam_host)
+            self._event_cb.on_recording_failed(self._cam_host, self._recording_outfile)
+            self._recording_outfile = None
+            return
 
         self._recording_job = self._scheduler.add_job(
             func=self._on_recording_complete,
@@ -227,6 +238,10 @@ class Rtsp:
             return
 
         cmd, stdout, stderr = reencode_to_telegram_vid(fpath, reencode_out_file)
+        if cmd is None:
+            log.error("Cam %s: Failed to start reencoding (ffmpeg error)", self._cam_host)
+            self._event_cb.on_reencoding_failed(self._cam_host, fpath)
+            return
 
         def _on_reencoding_timeout():
             _stop_cmd(f"RTSP {fpath} reencode:", self._process_stop_timeout_secs, False, cmd, stdout, stderr)

@@ -91,8 +91,8 @@ class ZmwReolinkDoorbell(ZmwMqttService):
 
         # Register Flask routes
         www.serve_url('/doorbell', self.cam.on_cam_webhook, methods=['GET', 'POST'])
-        www.serve_url('/snap', lambda: send_file(self.cam.get_snapshot(), mimetype='image/jpeg'))
-        www.serve_url('/lastsnap', lambda: send_file(self.cam.get_last_snapshot_path(), mimetype='image/jpeg'))
+        www.serve_url('/snap', self._get_snap)
+        www.serve_url('/lastsnap', self._get_last_snap)
         www.serve_url('/record', self._record)
 
         # Register www directory
@@ -101,6 +101,20 @@ class ZmwReolinkDoorbell(ZmwMqttService):
 
         # Connect to camera (starts background tasks)
         self.cam.connect()
+
+    def _get_snap(self):
+        """Get a new snapshot from camera"""
+        snap_path = self.cam.get_snapshot()
+        if snap_path is None:
+            return jsonify({'error': 'Failed to get snapshot from camera'}), 500
+        return send_file(snap_path, mimetype='image/jpeg')
+
+    def _get_last_snap(self):
+        """Get the last saved snapshot"""
+        snap_path = self.cam.get_last_snapshot_path()
+        if snap_path is None:
+            return jsonify({'error': 'No snapshot available'}), 404
+        return send_file(snap_path, mimetype='image/jpeg')
 
     def _record(self):
         """Start video recording with duration validation"""

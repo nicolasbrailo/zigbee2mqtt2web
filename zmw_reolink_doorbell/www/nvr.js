@@ -95,7 +95,7 @@ function NVRViewer(props) {
           {recordings.map((rec, idx) => (
             <figure key={idx}>
               <a href={rec.video_url} target="_blank">
-                <img src={rec.thumbnail_url} alt={rec.filename}/>
+                <img src={rec.thumbnail_url || 'thumbnail-gen-failed'} alt={rec.filename}/>
                 <figcaption>
                   {formatFilename(rec.filename)} ({rec.size})
                 </figcaption>
