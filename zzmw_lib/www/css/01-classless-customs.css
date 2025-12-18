@@ -43,12 +43,13 @@ button img {
 }
 
 /* Style for journal monitoring */
-#journal_errors .table {
-  font-size: 60%;
+#journal_errors {
+  overflow-x: auto; /* Allow horizontal scroll on mobile */
+}
+#journal_errors table {
+  font-size: 80%;
   width: 100%;
-  table-layout: fixed;
-  min-width: 100%;
-  background-color:red;
+  min-width: 600px; /* Ensure table doesn't shrink too much, allows scroll */
 }
 
 /* Utility classes */
@@ -113,7 +114,6 @@ button img {
   text-align: left;
   white-space: pre-wrap;
   word-break: break-word;
-  max-width: 600px;
 }
 
 .img-always-on-screen {
