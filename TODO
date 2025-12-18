@@ -1,3 +1,4 @@
+* Rename build dir to www.artifacts so it's not in gitignore
 * Replace custom mAjax with fetch()?
 * Check logs, exc_info isn't working? (ONly for flask handlers, others are fine)
 * Truncate logs in servicemon and offer a way to see complete line

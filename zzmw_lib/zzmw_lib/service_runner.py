@@ -1,3 +1,4 @@
+import inspect
 import json
 import logging
 import os
@@ -46,16 +47,31 @@ def _get_http_host(cfg):
 
 def _get_systemd_name(cls):
     # Assume that systemd name is going to be FooBar -> foo_bar
-    # TODO: Check also path to src, and verify it exists in journald so error is printed here instead when trying to monitor
-    return ''.join(f'_{c.lower()}' if c.isupper() and i > 0 else c.lower() for i, c in enumerate(cls.__name__))
+    systemd_name = ''.join(f'_{c.lower()}' if c.isupper() and i > 0 else c.lower() for i, c in enumerate(cls.__name__))
+
+    # Also assume it may be the basename of the dir that contains cls
+    class_file = os.path.abspath(inspect.getsourcefile(cls))
+    dir_name = os.path.basename(os.path.dirname(class_file))
+
+    result = subprocess.run(['systemctl', 'list-unit-files', f'{systemd_name}.service'],
+                            capture_output=True, text=True, check=False)
+    if systemd_name in result.stdout:
+        return systemd_name
+    if dir_name in result.stdout:
+        return dir_name
+
+    # Assume it's one of the two, this is likely a dev-service.
+    log.warning("Service '%s' will declare '%s' as its systemd/journal name, but it doesn't exist. Things may break", cls.__name__, systemd_name)
+    return systemd_name
 
 def _monkeypatch_service_meta(cls, wwwurl):
     # Add get_service_meta to the class before instantiation (in case it's abstract)
     if getattr(getattr(cls, 'get_service_meta', None), '__isabstractmethod__', False):
+        systemd_name = _get_systemd_name(cls)
         def _get_service_meta(self):
             return {
                 "name": cls.__name__,
-                "systemd_name": _get_systemd_name(cls),
+                "systemd_name": systemd_name,
                 "mqtt_topic": self.get_service_mqtt_topic(),
                 "www": wwwurl,
             }
