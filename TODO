@@ -1,4 +1,3 @@
-* Store running state -> try to bind to last known port on service startup
 * Check logs, exc_info isn't working?
 * Truncate logs in servicemon and offer a way to see complete line
 * RGB get prop from z2m is broken, always null

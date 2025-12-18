@@ -20,6 +20,27 @@ from .logs import build_logger
 
 log = build_logger("ServiceRunner")
 
+CACHE_FILE = "run_state_cache.json"
+
+
+def _get_cached_port():
+    """ Try to reuse the port from a previous run, for stable service URLs. """
+    try:
+        with open(CACHE_FILE) as f:
+            return json.load(f).get("port")
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def _save_cached_port(port):
+    """ Save port so next startup can try the same one first. Not structly needed but stable ports makes life easier
+    for caches and creates less log noise. """
+    with open(CACHE_FILE, "w") as f:
+        json.dump({
+            "COMMENT": "This file is a cache to persist service run state between restarts, it can be safely deleted",
+            "port": port
+        }, f)
+
 
 def _get_lan_ip():
     """
@@ -66,7 +87,7 @@ def _get_port(cfg, host):
     Get a port for the HTTP server.
 
     If cfg['http_port'] exists and is not None, use it.
-    Otherwise, try to find a free port in range 4201-4299.
+    Otherwise, try cached port from previous run, then range 4201-4299.
     If no port in range is available, fall back to OS-assigned port.
 
     Returns:
@@ -75,14 +96,24 @@ def _get_port(cfg, host):
     if cfg.get('http_port') is not None:
         return cfg['http_port']
 
-    # Try to find a free port in the preferred range
-    for port in range(4201, 4300):
+    def try_port(port):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.bind((host, port))
-                return port
+                return True
         except OSError:
-            continue
+            return False
+
+    # Try cached port from previous run first
+    cached = _get_cached_port()
+    if cached and try_port(cached):
+        return cached
+
+    # Try to find a free port in the preferred range
+    for port in range(4201, 4300):
+        if try_port(port):
+            _save_cached_port(port)
+            return port
 
     # Fall back to OS-assigned port
     log.warning("No free port found in range 4201-4299, falling back to OS-assigned port")
