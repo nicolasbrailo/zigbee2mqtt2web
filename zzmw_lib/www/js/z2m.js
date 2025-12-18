@@ -47,7 +47,7 @@ function mAjax(cfg) {
     req.send(cfg.data);
   } else {
     if (cfg.data) {
-      console.warning("Request.data is not null for non-PUT method, not sure if valid", cfg);
+      console.error("Request.data is not null for non-PUT method, not sure if valid", cfg);
     }
     req.send();
   }

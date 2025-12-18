@@ -17,6 +17,7 @@ from systemd.journal import JournalHandler
 
 from .zmw_mqtt_base import ZmwMqttBase
 from .logs import build_logger
+from .network_helpers import get_lan_ip, is_port_available, is_safe_path
 
 log = build_logger("ServiceRunner")
 
@@ -42,24 +43,6 @@ def _save_cached_port(port):
         }, f)
 
 
-def _get_lan_ip():
-    """
-    Get LAN IP by checking which interface would route to an external host.
-
-    This creates a UDP socket and "connects" to an external IP (no data is sent),
-    then checks which local IP was selected for the connection.
-
-    Returns:
-        str: The LAN IP address, or None if it cannot be determined
-    """
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect(("8.8.8.8", 80))
-            return s.getsockname()[0]
-    except OSError:
-        return None
-
-
 def _get_http_host(cfg):
     """
     Get the HTTP host to bind to.
@@ -74,7 +57,7 @@ def _get_http_host(cfg):
     if cfg.get('http_host') is not None:
         return cfg['http_host']
 
-    lan_ip = _get_lan_ip()
+    lan_ip = get_lan_ip()
     if lan_ip is not None:
         return lan_ip
 
@@ -96,22 +79,14 @@ def _get_port(cfg, host):
     if cfg.get('http_port') is not None:
         return cfg['http_port']
 
-    def try_port(port):
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind((host, port))
-                return True
-        except OSError:
-            return False
-
     # Try cached port from previous run first
     cached = _get_cached_port()
-    if cached and try_port(cached):
+    if cached and is_port_available(host, cached):
         return cached
 
     # Try to find a free port in the preferred range
     for port in range(4201, 4300):
-        if try_port(port):
+        if is_port_available(host, port):
             _save_cached_port(port)
             return port
 
@@ -221,38 +196,6 @@ def _get_config():
     cfg_checker = threading.Thread(target=_reload_on_cfg_change, daemon=True)
     cfg_checker.start()
     return cfg
-
-
-def is_safe_path(basedir, path, follow_symlinks=False):
-    """
-    Validates that a file path is safe and within the allowed base directory.
-
-    Prevents path traversal attacks by resolving the full path and verifying
-    it stays within the base directory.
-
-    Args:
-        basedir: The allowed base directory (must be absolute)
-        path: The requested file path (relative to basedir)
-        follow_symlinks: False means that symlinks outside of the basedir are allowed, use with caution
-
-    Returns:
-        The safe absolute path if valid
-
-    Raises:
-        ValueError: If the path escapes the base directory
-    """
-    if follow_symlinks:
-        basedir = os.path.realpath(basedir)
-        matchpath = os.path.realpath(os.path.join(basedir, path))
-    else:
-        basedir = os.path.abspath(basedir)
-        matchpath = os.path.abspath(os.path.join(basedir, path))
-
-    # Check if the resolved path is within the base directory
-    if not matchpath.startswith(basedir + os.sep) and matchpath != basedir:
-        raise ValueError(f"Path traversal attempt detected: {path}")
-
-    return matchpath
 
 
 def get_this_service_logs():

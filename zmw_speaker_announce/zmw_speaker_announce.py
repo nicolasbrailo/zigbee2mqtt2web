@@ -3,6 +3,7 @@ import json
 import shutil
 import os
 import pathlib
+import subprocess
 from collections import deque
 from datetime import datetime
 
@@ -12,6 +13,7 @@ from zzmw_lib.logs import build_logger
 from zzmw_lib.service_runner import service_runner_with_www
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 
+from http_asset_server import HttpAssetServer
 from sonos_helpers import get_sonos_by_name, config_soco_logger
 from sonos_announce import sonos_announce
 from tts import get_local_path_tts
@@ -19,12 +21,35 @@ from tts import get_local_path_tts
 log = build_logger("ZmwSpeakerAnnounce")
 config_soco_logger(False)
 
+
+def save_audio_as_mp3(audio_file, output_dir):
+    """Save audio file as ogg, convert to mp3, return mp3 path. Returns None on error."""
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    base_filename = f"user_recording_{timestamp}"
+    ogg_path = os.path.join(output_dir, f"{base_filename}.ogg")
+    mp3_path = os.path.join(output_dir, f"{base_filename}.mp3")
+
+    try:
+        audio_file.save(ogg_path)
+        subprocess.run(['ffmpeg', '-i', ogg_path, '-y', mp3_path], check=True, timeout=5)
+    except subprocess.TimeoutExpired:
+        log.error("ffmpeg conversion timed out for '%s'", ogg_path)
+        return None
+    except subprocess.CalledProcessError as e:
+        log.error("ffmpeg conversion failed for '%s': %s", ogg_path, e)
+        return None
+    except OSError as e:
+        log.error("Failed to save/convert audio: %s", e)
+        return None
+
+    return mp3_path
+
+
 class ZmwSpeakerAnnounce(ZmwMqttService):
     """MQTT proxy for Sonos speaker announcements."""
     def __init__(self, cfg, www):
         super().__init__(cfg, "zmw_speaker_announce")
         self._cfg = cfg
-        self._public_tts_base = f"{www.public_url_base}/tts"
         self._announce_vol = cfg['announce_volume']
         self._announcement_history = deque(maxlen=10)
 
@@ -32,10 +57,19 @@ class ZmwSpeakerAnnounce(ZmwMqttService):
         self._tts_assets_cache_path = cfg['tts_assets_cache_path']
         if not os.path.isdir(self._tts_assets_cache_path):
             raise FileNotFoundError(f"Invalid cache path '{self._tts_assets_cache_path}'")
+
+        # Register TTS assets on main www server (works over HTTP or HTTPS)
         www.register_www_dir(cfg['tts_assets_cache_path'], '/tts/')
+
+        # Create a second HTTP-only server for Sonos (can't use HTTPS with self-signed certs)
+        self._http_asset_server = HttpAssetServer(self._tts_assets_cache_path, http_host=cfg.get('http_host'))
+        self._http_asset_server.start()
+        self._public_tts_base = self._http_asset_server.public_tts_base
+        log.info("Sonos will fetch TTS assets from HTTP server: %s", self._public_tts_base)
 
         # Register all other endpoints
         www.register_www_dir(os.path.join(pathlib.Path(__file__).parent.resolve(), 'www'), '/')
+        www.serve_url('/announce_user_recording', self._announce_user_recording, methods=['PUT', 'POST'])
         www.serve_url('/announce_tts', self._www_announce_tts)
         www.serve_url('/ls_speakers', lambda: json.dumps(sorted(list(get_sonos_by_name()))))
         www.serve_url('/announcement_history', lambda: json.dumps(list(self._announcement_history)))
@@ -63,6 +97,26 @@ class ZmwSpeakerAnnounce(ZmwMqttService):
         remote_path = f"{self._public_tts_base}/{local_path}"
         self._record_announcement(txt, lang, vol, remote_path)
         sonos_announce(remote_path, volume=vol, ws_api_cfg=self._cfg)
+        return "OK"
+
+    def _announce_user_recording(self):
+        """Handle user-recorded audio announcement."""
+        if 'audio_data' not in request.files:
+            return abort(400, "No audio_data in request")
+
+        audio_file = request.files['audio_data']
+        mp3_path = save_audio_as_mp3(audio_file, self._tts_assets_cache_path)
+        if mp3_path is None:
+            return abort(500, "Failed to convert audio")
+
+        filename = os.path.basename(mp3_path)
+        remote_path = f"{self._public_tts_base}/{filename}"
+
+        vol = self._get_payload_vol(request.args)
+        log.info("Saved recording to '%s' -> '%s'. Will announce at vol=%s", mp3_path, remote_path, vol)
+        self._record_announcement('<user recording>', '', vol, remote_path)
+        sonos_announce(remote_path, volume=vol, ws_api_cfg=self._cfg)
+
         return "OK"
 
     def on_service_received_message(self, subtopic, payload):

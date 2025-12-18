@@ -111,16 +111,14 @@ class TTSAnnounce extends React.Component {
       const form = new FormData();
       form.append("audio_data", blob, "mic_cap.ogg");
 
-      mAjax({
-        url: `${this.props.api_base_path}/announce_user_recording`,
-        data: form,
-        cache: false,
-        contentType: false,
-        processData: false,
-        method: "POST",
-        success: () => console.log("Sent user recording"),
-        error: showGlobalError
-      });
+      fetch(`${this.props.api_base_path}/announce_user_recording`, {
+        method: 'POST',
+        body: form
+      }).then(resp => {
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          console.log("Sent user recording");
+      })
+      .catch(showGlobalError);
 
       rec.stream.getTracks().forEach(t => t.stop());
       this.recorderRef.current = null;
