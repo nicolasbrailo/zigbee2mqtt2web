@@ -112,7 +112,7 @@ class ZmwSpeakerAnnounce(ZmwMqttService):
         filename = os.path.basename(mp3_path)
         remote_path = f"{self._public_tts_base}/{filename}"
 
-        vol = self._get_payload_vol(request.args)
+        vol = self._get_payload_vol(request.form)
         log.info("Saved recording to '%s' -> '%s'. Will announce at vol=%s", mp3_path, remote_path, vol)
         self._record_announcement('<user recording>', '', vol, remote_path)
         sonos_announce(remote_path, volume=vol, ws_api_cfg=self._cfg)

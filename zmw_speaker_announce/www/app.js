@@ -110,6 +110,7 @@ class TTSAnnounce extends React.Component {
 
       const form = new FormData();
       form.append("audio_data", blob, "mic_cap.ogg");
+      form.append("vol", this.state.ttsVolume);
 
       fetch(`${this.props.api_base_path}/announce_user_recording`, {
         method: 'POST',
@@ -138,19 +139,6 @@ class TTSAnnounce extends React.Component {
   }
 
   render() {
-    if (this.state.isRecording) {
-      return (
-        <ul>
-          <li>
-            <button onClick={this.onMicRecSend}>Send</button>
-          </li>
-          <li>
-            <button onClick={this.onCancel}>Cancel</button>
-          </li>
-        </ul>
-      );
-    }
-
     return (
       <div>
         <input
@@ -175,9 +163,17 @@ class TTSAnnounce extends React.Component {
           </select>
 
           {this.canRecordMic && (
-            <button onClick={this.onMicRecRequested}>
-              Record
-            </button>
+            this.state.isRecording ? (
+              <>
+              <div className="card warn" style={{flex: "0 0 25%"}}>
+                <p>Recording in progress!</p>
+                <button onClick={this.onMicRecSend}>Send</button>
+                <button onClick={this.onCancel}>Cancel</button>
+              </div>
+              </>
+            ) : (
+              <button onClick={this.onMicRecRequested}>Record</button>
+            )
           )}
 
           <label>Vol</label>
