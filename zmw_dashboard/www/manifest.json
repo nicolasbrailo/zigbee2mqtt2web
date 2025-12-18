@@ -1,0 +1,12 @@
+{
+  "name": "Baticasa",
+  "short_name": "Baticasa",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "display": "standalone"
+}
