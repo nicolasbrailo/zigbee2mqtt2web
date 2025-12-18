@@ -88,6 +88,8 @@ chmod +x "$TGT_SVC_RUN/start.sh"
 cp "$SRC_ROOT/journal_parse.jq" "$SVC_RUN_BASE/journal_parse.jq"
 echo "journalctl --follow --output=json --unit '$TGT_SVC_NAME' | jq -r -f '$SVC_RUN_BASE/journal_parse.jq'" > "$TGT_SVC_RUN/logs.sh"
 chmod +x "$TGT_SVC_RUN/logs.sh"
+cp "$SRC_ROOT/use_https_here.sh" "$SVC_RUN_BASE/use_https_here.sh"
+chmod +x "$SVC_RUN_BASE/use_https_here.sh"
 
 cp "$SRC_ROOT/services_status.sh" "$SVC_RUN_BASE/services_status.sh"
 CMD_LOG_ALL="journalctl --follow --output=json"

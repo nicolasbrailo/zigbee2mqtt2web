@@ -139,6 +139,58 @@ def _monkeypatch_service_meta(cls, wwwurl):
         cls.__abstractmethods__ = cls.__abstractmethods__ - {'get_service_meta'}
 
 
+def _get_ssl_context():
+    """
+    Look for SSL certificate files to enable HTTPS.
+
+    Searches for cert.pem and key.pem in the current directory.
+    If both exist, returns an SSL context tuple for use with make_server.
+    If not found, returns None (server will use HTTP).
+
+    Returns:
+        tuple: (cert_path, key_path) if certs exist, None otherwise
+    """
+    cert_path = os.path.join(os.getcwd(), 'cert.pem')
+    key_path = os.path.join(os.getcwd(), 'key.pem')
+    if os.path.exists(cert_path) and os.path.exists(key_path):
+        log.info("Found SSL certificates, will serve HTTPS")
+        return (cert_path, key_path)
+    log.info("No SSL certificates found, will serve HTTP")
+    return None
+
+
+def _create_www_server(AppClass, cfg):
+    """
+    Create Flask app and WSGI server for a service.
+
+    Sets up the Flask application and werkzeug server with optional HTTPS support.
+    If cert.pem and key.pem exist in the working directory, HTTPS is enabled.
+
+    Args:
+        AppClass: Service class, used for Flask app naming
+        cfg: Configuration dict with optional 'http_host' and 'http_port'
+
+    Returns:
+        tuple: (flaskapp, wwwserver) where flaskapp has public_url_base set
+    """
+    class _QuietRequestHandler(WSGIRequestHandler):
+        def log_date_time_string(self):
+            return ""
+
+    flaskapp = Flask(AppClass.__name__)
+    http_host = _get_http_host(cfg)
+    ssl_context = _get_ssl_context()
+    wwwserver = make_server(http_host,
+                            _get_port(cfg, http_host),
+                            flaskapp,
+                            request_handler=_QuietRequestHandler,
+                            ssl_context=ssl_context)
+    protocol = "https" if ssl_context else "http"
+    flaskapp.public_url_base = f"{protocol}://{http_host}:{wwwserver.server_port}"
+    log.info("Will serve www requests to %s", flaskapp.public_url_base)
+    return flaskapp, wwwserver
+
+
 def _get_config():
     """ Will open config.json for this service. If the config file doesn't exist, returns an empty map. Will kill the
     running service if the config changes, or if a new config file is created after the service has been started with
@@ -260,19 +312,8 @@ def service_runner_with_www(AppClass):
     The Flask app runs in a background thread while the main thread
     runs the service's loop_forever().
     """
-    # Custom request handler that skips the timestamp in logs
-    class CustomRequestHandler(WSGIRequestHandler):
-        def log_date_time_string(self):
-            return ""  # Return empty string to skip timestamp
-
     cfg = _get_config()
-    flaskapp = Flask(AppClass.__name__)
-    http_host = _get_http_host(cfg)
-    wwwserver = make_server(http_host,
-                            _get_port(cfg, http_host),
-                            flaskapp, request_handler=CustomRequestHandler)
-    flaskapp.public_url_base = f"http://{http_host}:{wwwserver.server_port}"
-    log.info("Will serve www requests to %s", flaskapp.public_url_base)
+    flaskapp, wwwserver = _create_www_server(AppClass, cfg)
 
     def serve_url(url_path, view_func, methods=['GET']):
         return flaskapp.add_url_rule(rule=url_path,
