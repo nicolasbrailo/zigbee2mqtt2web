@@ -137,7 +137,6 @@ class Z2MProxy:
 
         if not device_added:
             log.info('Bridge published network definition. No new devices were found.')
-            return
 
         monkeypatch_lights(self)
         if not self._cb_on_z2m_network_discovery:
