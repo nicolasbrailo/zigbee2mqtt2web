@@ -2,6 +2,7 @@
 import os
 import pathlib
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 import urllib3
@@ -60,6 +61,8 @@ class ZmwDashboard(ZmwMqttServiceMonitor):
     def _setup_service_proxies(self):
         proxies = {}
         for svc_name, svc_meta in self.get_known_services().items():
+            if svc_name == "ZmwDashboard":
+                continue  # Don't proxy requests to ourselves
             if "www" not in svc_meta or svc_meta["www"] is None:
                 log.error("Service %s doesn't have a www service, can't proxy", svc_name)
                 continue
@@ -76,20 +79,30 @@ class ZmwDashboard(ZmwMqttServiceMonitor):
     def _get_user_defined_links(self):
         return self._user_defined_links
 
+    def _fetch_service_alerts(self, svc_name, svc_url):
+        """Fetch alerts from a single service."""
+        try:
+            resp = requests.get(f"{svc_url}/svc_alerts", timeout=2, verify=False)
+            if resp.status_code == 200:
+                return [(svc_name, alert) for alert in resp.json()]
+        except Exception:  # pylint: disable=broad-exception-caught
+            log.debug("Failed to get alerts from %s", svc_name, exc_info=True)
+        return []
+
     def get_service_alerts(self):
         """Aggregate alerts from all proxied services."""
         if self._svc_proxy is None:
             return ["Service proxy not running yet..."]
         alerts = []
-        for svc_name, svc_url in self._svc_proxy.get_proxied_services().items():
-            try:
-                resp = requests.get(f"{svc_url}/svc_alerts", timeout=2, verify=False)
-                if resp.status_code == 200:
-                    svc_alerts = resp.json()
-                    for alert in svc_alerts:
-                        alerts.append(f"{svc_name}: {alert}")
-            except Exception:  # pylint: disable=broad-exception-caught
-                log.debug("Failed to get alerts from %s", svc_name, exc_info=True)
+        services = list(self._svc_proxy.get_proxied_services().items())
+        if not services:
+            return []
+        with ThreadPoolExecutor(max_workers=len(services)) as executor:
+            futures = {executor.submit(self._fetch_service_alerts, name, url): name
+                       for name, url in services}
+            for future in as_completed(futures):
+                for svc_name, alert in future.result():
+                    alerts.append(f"{svc_name}: {alert}")
         return alerts
 
     def on_startup_fail_missing_deps(self, deps):

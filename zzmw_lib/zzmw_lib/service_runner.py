@@ -125,7 +125,8 @@ def _create_www_server(AppClass, cfg):
                             get_cached_port(cfg, "http_port", http_host),
                             flaskapp,
                             request_handler=_QuietRequestHandler,
-                            ssl_context=ssl_context)
+                            ssl_context=ssl_context,
+                            threaded=True)
     protocol = "https" if ssl_context else "http"
     flaskapp.public_url_base = f"{protocol}://{http_host}:{wwwserver.server_port}"
     log.info("Will serve www requests to %s", flaskapp.public_url_base)
