@@ -94,9 +94,8 @@ def _get_ssl_context():
     cert_path = os.path.join(os.getcwd(), 'cert.pem')
     key_path = os.path.join(os.getcwd(), 'key.pem')
     if os.path.exists(cert_path) and os.path.exists(key_path):
-        log.info("Found SSL certificates, will serve HTTPS")
+        log.info("Found SSL certificates, this service will be HTTPS")
         return (cert_path, key_path)
-    log.info("No SSL certificates found, will serve HTTP")
     return None
 
 

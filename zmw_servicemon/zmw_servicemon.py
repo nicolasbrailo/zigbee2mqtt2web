@@ -54,9 +54,9 @@ class ZmwServicemon(ZmwMqttServiceMonitor):
             if not status_script.is_file():
                 return abort(500, description=f"Can't find status script at {status_script}")
         cmd = str(status_script)
-        syslogcmd = subprocess.run(cmd.split(), stdout=subprocess.PIPE, text=True, check=True).stdout
+        syslogcmd = subprocess.run(cmd.split(), stdout=subprocess.PIPE, text=True, check=True)
         conv = Ansi2HTMLConverter(inline=True, scheme='ansi2html')
-        return conv.convert(syslogcmd, full=False)
+        return conv.convert(syslogcmd.stdout, full=False)
 
     def on_new_svc_discovered(self, svc_name, svc_meta):
         """ Called by ZmwMqttServiceMonitor when a new service is discovered. Not guaranteed that service is alive. """

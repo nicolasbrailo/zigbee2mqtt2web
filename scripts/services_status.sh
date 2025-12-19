@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+THIS_SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'  # No Color
@@ -25,5 +27,13 @@ function check_svc_status() {
   done | column -t
 }
 
-# call with check_svc_status svc1 svc2 svc3
+services=()
+for dir in "$THIS_SCRIPT_DIR"/*/; do
+    name="$(basename $dir)"
+    if [ -f "${dir}${name}.service" ]; then
+        services+=("$name")
+    fi
+done
+
+check_svc_status "${services[@]}"
 

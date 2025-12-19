@@ -88,29 +88,14 @@ chmod +x "$TGT_SVC_RUN/start.sh"
 cp "$SRC_ROOT/journal_parse.jq" "$SVC_RUN_BASE/journal_parse.jq"
 echo "journalctl --follow --output=json --unit '$TGT_SVC_NAME' | jq -r -f '$SVC_RUN_BASE/journal_parse.jq'" > "$TGT_SVC_RUN/logs.sh"
 chmod +x "$TGT_SVC_RUN/logs.sh"
-cp "$SRC_ROOT/use_https_here.sh" "$SVC_RUN_BASE/use_https_here.sh"
-chmod +x "$SVC_RUN_BASE/use_https_here.sh"
+cp "$SRC_ROOT/use_https_here.sh" "$TGT_SVC_RUN/use_https_here.sh"
+chmod +x "$TGT_SVC_RUN/use_https_here.sh"
+cp "$SRC_ROOT/logs.sh" "$SRC_ROOT/services_status.sh" "$SRC_ROOT/restart_all.sh" "$SVC_RUN_BASE/"
+chmod +x "$SVC_RUN_BASE/"*.sh
 
-cp "$SRC_ROOT/services_status.sh" "$SVC_RUN_BASE/services_status.sh"
-CMD_LOG_ALL="journalctl --follow --output=json"
-ALL_UNITS=""
-for SVC in $( ls -d $SVC_RUN_BASE/* ); do
-  MAYBE_SVC_NAME=$(basename "$SVC")
-  if [ -f "$SVC/$MAYBE_SVC_NAME.service" ]; then
-    CMD_LOG_ALL+=" --unit '$MAYBE_SVC_NAME'"
-    ALL_UNITS+=" '$MAYBE_SVC_NAME'"
-  fi
-done
-
-echo "$CMD_LOG_ALL | jq -r -f '$SVC_RUN_BASE/journal_parse.jq'" > "$SVC_RUN_BASE/logs.sh"
-chmod +x "$SVC_RUN_BASE/logs.sh"
-echo "check_svc_status $ALL_UNITS" >> "$SVC_RUN_BASE/services_status.sh"
-chmod +x "$SVC_RUN_BASE/services_status.sh"
-echo "echo 'Will restart EVERYTHING at the same time. Sure? Ctrl-c to cancel.' && read && sudo systemctl restart $ALL_UNITS" > "$SVC_RUN_BASE/restart_all.sh"
-chmod +x "$SVC_RUN_BASE/restart_all.sh"
-
-# Install. Symlink may already exist if the service already did.
-sudo ln -s "$TGT_SVC_RUN/$TGT_SVC_NAME.service" "/etc/systemd/system/$TGT_SVC_NAME.service" || true
+if [ ! -f "/etc/systemd/system/$TGT_SVC_NAME.service" ]; then
+  sudo ln -s "$TGT_SVC_RUN/$TGT_SVC_NAME.service" "/etc/systemd/system/$TGT_SVC_NAME.service" || true
+fi
 sudo systemctl daemon-reload
 
 sudo systemctl enable "$TGT_SVC_NAME"
