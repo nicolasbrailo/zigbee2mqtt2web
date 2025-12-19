@@ -1762,17 +1762,16 @@ class TTSAnnounce extends React.Component {
 
       const form = new FormData();
       form.append("audio_data", blob, "mic_cap.ogg");
+      form.append("vol", this.state.ttsVolume);
 
-      mAjax({
-        url: `${this.props.api_base_path}/announce_user_recording`,
-        data: form,
-        cache: false,
-        contentType: false,
-        processData: false,
-        method: "POST",
-        success: () => console.log("Sent user recording"),
-        error: showGlobalError
-      });
+      fetch(`${this.props.api_base_path}/announce_user_recording`, {
+        method: 'POST',
+        body: form
+      }).then(resp => {
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          console.log("Sent user recording");
+      })
+      .catch(showGlobalError);
 
       rec.stream.getTracks().forEach(t => t.stop());
       this.recorderRef.current = null;
@@ -1792,19 +1791,6 @@ class TTSAnnounce extends React.Component {
   }
 
   render() {
-    if (this.state.isRecording) {
-      return (
-        <ul>
-          <li>
-            <button onClick={this.onMicRecSend}>Send</button>
-          </li>
-          <li>
-            <button onClick={this.onCancel}>Cancel</button>
-          </li>
-        </ul>
-      );
-    }
-
     return (
       <div>
         <input
@@ -1828,6 +1814,20 @@ class TTSAnnounce extends React.Component {
             <option value="en-GB">EN GB</option>
           </select>
 
+          {this.canRecordMic && (
+            this.state.isRecording ? (
+              <>
+              <div className="card warn" style={{flex: "0 0 25%"}}>
+                <p>Recording in progress!</p>
+                <button onClick={this.onMicRecSend}>Send</button>
+                <button onClick={this.onCancel}>Cancel</button>
+              </div>
+              </>
+            ) : (
+              <button onClick={this.onMicRecRequested}>Record</button>
+            )
+          )}
+
           <label>Vol</label>
           <input
             type="range"
@@ -1837,12 +1837,6 @@ class TTSAnnounce extends React.Component {
             onChange={e => this.setState({ ttsVolume: parseInt(e.target.value, 10) })}
             title={`Volume: ${this.state.ttsVolume}%`}
           />
-
-          {this.canRecordMic && (
-            <button onClick={this.onMicRecRequested}>
-              Record
-            </button>
-          )}
         </div>
 
         {this.state.speakerList && (
@@ -1916,6 +1910,44 @@ const ProxiedServices = {
     }
   },
 };
+
+class AlertsList extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { alerts: [] };
+  }
+
+  componentDidMount() {
+    this.fetchAlerts();
+    this.interval = setInterval(() => this.fetchAlerts(), 30000);
+  }
+
+  componentWillUnmount() {
+    if (this.interval) clearInterval(this.interval);
+  }
+
+  fetchAlerts() {
+    mJsonGet('/svc_alerts', (res) => {
+      this.setState({ alerts: res || [] });
+    });
+  }
+
+  render() {
+    if (this.state.alerts.length === 0) {
+      return null;
+    }
+    return (
+      <div className="card warn">
+        <p>Alert!</p>
+        <ul>
+          {this.state.alerts.map((alert, idx) => (
+            <li key={idx}>{alert}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+}
 
 /* The scenes service is exposed by a user service, so we don't depend directly on the user app. Instead
  * we depend on a couple of endpoints like /ls_scenes to retrieve the right content. */
@@ -2142,6 +2174,7 @@ function Dashboard(props) {
 
   return (
     <main>
+      <AlertsList />
       <LightsSection />
       <SceneListSection />
       <SensorsListSection />

@@ -96,7 +96,7 @@ class TestTimeoutMonitor:
 
         # Should now be monitored
         assert 'Sensor1' in self.monitor._timeout_jobs
-        assert self.monitor._timeout_jobs['Sensor1'] == mock_job
+        assert self.monitor._timeout_jobs['Sensor1']['job'] == mock_job
 
     def test_timeout_scheduled_with_correct_duration(self):
         """Test timeout job is scheduled with correct duration"""
@@ -162,8 +162,9 @@ class TestTimeoutMonitor:
         # Trigger timeout
         timeout_callback()
 
-        # Should be removed from monitoring
-        assert 'Sensor1' not in self.monitor._timeout_jobs
+        # Should still be in monitoring but with job set to None
+        assert 'Sensor1' in self.monitor._timeout_jobs
+        assert self.monitor._timeout_jobs['Sensor1']['job'] is None
 
     def test_timeout_job_removed_on_normal_transition(self):
         """Test timeout job is removed when sensor transitions back to normal"""
@@ -300,3 +301,94 @@ class TestTimeoutMonitor:
         # Check second argument is 'date'
         call_args = self.scheduler.add_job.call_args
         assert call_args[0][1] == 'date'
+
+    def test_get_monitoring_sensors_empty(self):
+        """Test get_monitoring_sensors returns empty dict when no sensors monitored"""
+        result = self.monitor.get_monitoring_sensors()
+        assert result == {}
+
+    def test_get_monitoring_sensors_shows_time_remaining(self):
+        """Test get_monitoring_sensors shows time remaining for pending timeouts"""
+        thing = self._create_thing('Sensor1')
+        mock_job = Mock()
+        mock_job.id = 'job1'
+        self.scheduler.add_job.return_value = mock_job
+
+        self.monitor.notify_change(thing, entering_non_normal=True)
+
+        result = self.monitor.get_monitoring_sensors()
+
+        assert 'Sensor1' in result
+        # Should show seconds until timeout (approximately 300 seconds)
+        assert 'seconds until timeout' in result['Sensor1']
+
+    def test_get_monitoring_sensors_shows_expired(self):
+        """Test get_monitoring_sensors shows expired message after timeout triggers"""
+        thing = self._create_thing('Sensor1')
+
+        timeout_callback = None
+        def capture_callback(callback, *args, **kwargs):
+            nonlocal timeout_callback
+            timeout_callback = callback
+            mock_job = Mock()
+            mock_job.id = 'job1'
+            return mock_job
+
+        self.scheduler.add_job.side_effect = capture_callback
+
+        self.monitor.notify_change(thing, entering_non_normal=True)
+        timeout_callback()
+
+        result = self.monitor.get_monitoring_sensors()
+
+        assert 'Sensor1' in result
+        assert 'Timeout expired' in result['Sensor1']
+        assert '300' in result['Sensor1']  # timeout_secs value
+
+    def test_get_monitoring_sensors_removed_after_normal(self):
+        """Test sensor removed from get_monitoring_sensors after returning to normal"""
+        thing = self._create_thing('Sensor1')
+        mock_job = Mock()
+        mock_job.id = 'job1'
+        self.scheduler.add_job.return_value = mock_job
+
+        self.monitor.notify_change(thing, entering_non_normal=True)
+        assert 'Sensor1' in self.monitor.get_monitoring_sensors()
+
+        self.monitor.notify_change(thing, entering_non_normal=False)
+        assert 'Sensor1' not in self.monitor.get_monitoring_sensors()
+
+    def test_get_monitoring_sensors_multiple_sensors(self):
+        """Test get_monitoring_sensors with multiple sensors in different states"""
+        self.monitor._actions_on_sensor_change['Sensor2']['timeout_secs'] = 200
+
+        thing1 = self._create_thing('Sensor1')
+        thing2 = self._create_thing('Sensor2')
+
+        timeout_callback1 = None
+        def capture_callback(callback, *args, **kwargs):
+            nonlocal timeout_callback1
+            mock_job = Mock()
+            mock_job.id = f'job{len(self.monitor._timeout_jobs)}'
+            if timeout_callback1 is None:
+                timeout_callback1 = callback
+            return mock_job
+
+        self.scheduler.add_job.side_effect = capture_callback
+
+        # Both enter non-normal
+        self.monitor.notify_change(thing1, entering_non_normal=True)
+        self.monitor.notify_change(thing2, entering_non_normal=True)
+
+        # Trigger timeout for Sensor1 only
+        timeout_callback1()
+
+        result = self.monitor.get_monitoring_sensors()
+
+        # Sensor1 should show expired
+        assert 'Sensor1' in result
+        assert 'Timeout expired' in result['Sensor1']
+
+        # Sensor2 should show time remaining
+        assert 'Sensor2' in result
+        assert 'seconds until timeout' in result['Sensor2']

@@ -63,6 +63,11 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
                              cb_on_z2m_network_discovery=self._on_z2m_network_discovery,
                              cb_is_device_interesting=lambda t: t.name in wanted_things)
 
+    def get_service_alerts(self):
+        if self._boiler is None:
+            return [f"Boiler '{self._z2m_boiler_name}' not found in the network yet"]
+        return []
+
     def svc_state(self):
         """Return current service state as dict."""
         tsched = self.schedule.active().as_jsonifyable_dict()
@@ -99,6 +104,7 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
             log.critical(
                 "MQTT network published update, boiler %s is now gone. Will crash.",
                 self._z2m_boiler_name)
+            self._boiler = None
             os.kill(os.getpid(), signal.SIGTERM)
             time.sleep(1)
             log.critical("Sent SIGTERM, if you're seeing this something is broken...")

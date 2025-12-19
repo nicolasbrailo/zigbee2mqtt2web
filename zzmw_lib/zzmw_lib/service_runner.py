@@ -287,6 +287,11 @@ def service_runner_with_www(AppClass):
     _monkeypatch_service_meta(AppClass, flaskapp.public_url_base)
     app = AppClass(cfg, flaskapp)
 
+    # Add an endpoint to retrieve any alerts that a service can optionally override
+    if not hasattr(app, 'get_service_alerts'):
+        app.get_service_alerts = lambda: []
+    flaskapp.serve_url('/svc_alerts', app.get_service_alerts)
+
     def signal_handler(sig, frame):
         log.info("Shutdown requested by signal, stop app...")
         wwwserver.shutdown()

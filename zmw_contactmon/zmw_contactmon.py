@@ -50,6 +50,12 @@ class ZmwContactmon(ZmwMqttService):
 
         self._z2m = Z2mContactSensorDebouncer(cfg, self, self._actions_on_sensor_change, self._on_sensor_change)
 
+    def get_service_alerts(self):
+        alerts = []
+        for sensor, status in self._timeouts.get_monitoring_sensors().items():
+            alerts.append(f"{sensor}: {status}")
+        return alerts
+
     def on_service_received_message(self, subtopic, msg):
         pass
 

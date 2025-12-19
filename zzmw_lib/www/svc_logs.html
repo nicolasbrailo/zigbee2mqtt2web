@@ -99,6 +99,8 @@
 
     <div id="error_display" style="display:none;" class="error_display"></div>
 
+    <div id="alerts_container" class="card warn" style="display:none;"></div>
+
     <h3>Service logs</h3>
     <div id="logs_container" class="card">
       <!-- Logs will be inserted here -->
@@ -256,7 +258,21 @@
     document.getElementById('logs_container').innerHTML = '';
   }
 
-  // Load logs on page load
+  function refreshAlerts() {
+    mJsonGet('/svc_alerts', function(alerts) {
+      const container = document.getElementById('alerts_container');
+      if (!alerts || alerts.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+      container.innerHTML = '<p>This service report errors</p><ul>' +
+        alerts.map(a => '<li>' + escapeHtml(a) + '</li>').join('') + '</ul>';
+      container.style.display = 'block';
+    });
+  }
+
+  // Load alerts and logs on page load
+  refreshAlerts();
   refreshLogs();
 </script>
 </html>

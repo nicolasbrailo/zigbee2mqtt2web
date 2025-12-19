@@ -29,6 +29,44 @@ const ProxiedServices = {
   },
 };
 
+class AlertsList extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { alerts: [] };
+  }
+
+  componentDidMount() {
+    this.fetchAlerts();
+    this.interval = setInterval(() => this.fetchAlerts(), 30000);
+  }
+
+  componentWillUnmount() {
+    if (this.interval) clearInterval(this.interval);
+  }
+
+  fetchAlerts() {
+    mJsonGet('/svc_alerts', (res) => {
+      this.setState({ alerts: res || [] });
+    });
+  }
+
+  render() {
+    if (this.state.alerts.length === 0) {
+      return null;
+    }
+    return (
+      <div className="card warn">
+        <p>Alert!</p>
+        <ul>
+          {this.state.alerts.map((alert, idx) => (
+            <li key={idx}>{alert}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+}
+
 /* The scenes service is exposed by a user service, so we don't depend directly on the user app. Instead
  * we depend on a couple of endpoints like /ls_scenes to retrieve the right content. */
 class ScenesList extends React.Component {
@@ -254,6 +292,7 @@ function Dashboard(props) {
 
   return (
     <main>
+      <AlertsList />
       <LightsSection />
       <SceneListSection />
       <SensorsListSection />

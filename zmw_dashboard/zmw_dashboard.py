@@ -3,6 +3,11 @@ import os
 import pathlib
 import threading
 
+import requests
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 from zzmw_lib.zmw_mqtt_mon import ZmwMqttServiceMonitor
 from zzmw_lib.service_runner import service_runner_with_www
 from zzmw_lib.logs import build_logger
@@ -70,6 +75,22 @@ class ZmwDashboard(ZmwMqttServiceMonitor):
 
     def _get_user_defined_links(self):
         return self._user_defined_links
+
+    def get_service_alerts(self):
+        """Aggregate alerts from all proxied services."""
+        if self._svc_proxy is None:
+            return ["Service proxy not running yet..."]
+        alerts = []
+        for svc_name, svc_url in self._svc_proxy.get_proxied_services().items():
+            try:
+                resp = requests.get(f"{svc_url}/svc_alerts", timeout=2, verify=False)
+                if resp.status_code == 200:
+                    svc_alerts = resp.json()
+                    for alert in svc_alerts:
+                        alerts.append(f"{svc_name}: {alert}")
+            except Exception:  # pylint: disable=broad-exception-caught
+                log.debug("Failed to get alerts from %s", svc_name, exc_info=True)
+        return alerts
 
     def on_startup_fail_missing_deps(self, deps):
         log.critical("Some dependencies are missing, functionality may be broken in the dashboard: %s", deps)

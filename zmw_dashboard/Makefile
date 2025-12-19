@@ -16,6 +16,7 @@ rebuild_ui:
 	../zzmw_lib/www/babel_compile_single.sh ./www/app.cat.js ./www/app.rel.js
 
 rebuild_deps: pipenv_rebuild_deps_base
+	pipenv install requests
 	pipenv install aiohttp
 	pipenv install "flask[async]"
 

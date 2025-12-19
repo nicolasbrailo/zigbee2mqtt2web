@@ -1,6 +1,7 @@
 """MQTT doorbell camera service with motion detection and recording."""
 import os
 import pathlib
+import time
 
 from flask import send_file, request, jsonify
 
@@ -21,6 +22,7 @@ class ZmwReolinkDoorbellCam(ReolinkDoorbell):
         self._mqtt = mqtt
 
     def on_doorbell_button_pressed(self, cam_host, snap_path, full_cam_msg):
+        self._mqtt.on_doorbell_pressed()
         self._mqtt.publish_own_svc_message("on_doorbell_button_pressed", {
             'event': 'on_doorbell_button_pressed',
             'cam_host': cam_host,
@@ -82,8 +84,11 @@ class ZmwReolinkDoorbellCam(ReolinkDoorbell):
 
 class ZmwReolinkDoorbell(ZmwMqttService):
     """ Bridge between Zmw services and a Reolink cam """
+    DOORBELL_ALERT_DURATION_SECS = 60
+
     def __init__(self, cfg, www):
         super().__init__(cfg, "zmw_reolink_doorbell")
+        self._doorbell_pressed_at = None
 
         # Initialize camera and NVR
         self.cam = ZmwReolinkDoorbellCam(cfg, webhook_url=f"{www.public_url_base}/doorbell", mqtt=self)
@@ -101,6 +106,20 @@ class ZmwReolinkDoorbell(ZmwMqttService):
 
         # Connect to camera (starts background tasks)
         self.cam.connect()
+
+    def on_doorbell_pressed(self):
+        """Record when the doorbell was pressed"""
+        self._doorbell_pressed_at = time.time()
+
+    def get_service_alerts(self):
+        """Return alert if doorbell was pressed within the last 60 seconds"""
+        if self._doorbell_pressed_at is None:
+            return []
+        elapsed = time.time() - self._doorbell_pressed_at
+        if elapsed < self.DOORBELL_ALERT_DURATION_SECS:
+            secs_ago = int(elapsed)
+            return [f"Doorbell pressed {secs_ago} seconds ago"]
+        return []
 
     def _get_snap(self):
         """Get a new snapshot from camera"""
