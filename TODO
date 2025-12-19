@@ -1,6 +1,5 @@
 * Rename build dir to www.artifacts so it's not in gitignore
 * Replace custom mAjax with fetch()?
-* Check logs, exc_info isn't working? (ONly for flask handlers, others are fine)
 * RGB get prop from z2m is broken, always null
 * Temp sensors -> Apply "windchill" factor
 * Monitor arbitrary svc with servicemon
@@ -22,3 +21,26 @@
 * misc Look for lost z2m devices
 * misc Look into journal rotation - why isn't it rotating on its own
 * misc Can I join baticasa_doorbell with the main mqtt_doorbell service?
+
+# Make dashboard faster, AIdeas
+
+  High Impact
+
+  1. Batch API endpoint - Create a single /dashboard_init endpoint that returns lights, scenes, sensors, and alerts in one request. Eliminates multiple round trips (~4 requests → 1).
+  2. Prefetch before React renders - Start fetching critical data (lights, scenes, sensors) immediately when JS loads, before React even mounts. Store in a global cache that components check first.
+  3. Stale-while-revalidate for all data - Show cached data from localStorage immediately (like ProxiedServices does), then refresh in background. Users see instant content.
+
+  Medium Impact
+
+  4. Prioritize visible content - Load LightsSection data first, defer SensorsListSection and SceneListSection slightly. Or load them in parallel but render lights first.
+  5. HTTP/2 - If your server supports it, multiple requests multiplex over one connection. Requires HTTPS (which you have) and server config.
+  6. Lazy load expandable sections - The hidden sections (Announce, Contact, Heating, Door) should only fetch data when expanded. Check if they already do this.
+
+  Lower Impact / Quick Wins
+
+  7. gzip compression - Ensure Flask responses are compressed. Add flask-compress or configure at reverse proxy level.
+  8. Cache headers - Add Cache-Control headers for static assets (favicon.ico, CSS, JS).
+  9. Reduce polling frequency - AlertsList polls every 30s. If alerts are rare, 60s might be fine.
+  10. Connection keep-alive - Ensure the server isn't closing connections between requests.
+
+

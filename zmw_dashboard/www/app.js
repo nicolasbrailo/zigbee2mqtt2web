@@ -318,9 +318,11 @@ function Dashboard(props) {
 
 Dashboard.buildProps = () => ({ key: 'dashboard' });
 
-ProxiedServices.init(() => {
-  z2mStartReactApp('#app_root', Dashboard);
-  const store = new LocalStorageManager();
-  const opts = store.cacheGet("ZmwDashboardConfig", null);
-  document.documentElement.setAttribute('data-theme', opts?.theme);
-});
+// Start React app immediately - don't wait for ProxiedServices
+// ProxiedServices.get() is only used for badge links, not API calls
+const store = new LocalStorageManager();
+const opts = store.cacheGet("ZmwDashboardConfig", null);
+document.documentElement.setAttribute('data-theme', opts?.theme);
+
+ProxiedServices.init(() => {}); // Fetch in background for badge links
+z2mStartReactApp('#app_root', Dashboard);
