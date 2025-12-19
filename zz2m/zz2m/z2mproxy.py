@@ -132,12 +132,13 @@ class Z2MProxy:
                 else:
                     self._reg_to_ignore(thing)
 
+        is_first_discovery = not self._z2m_devices_discovered
+        self._z2m_devices_discovered = True
+
         if not device_added:
             log.info('Bridge published network definition. No new devices were found.')
             return
 
-        is_first_discovery = not self._z2m_devices_discovered
-        self._z2m_devices_discovered = True
         monkeypatch_lights(self)
         if not self._cb_on_z2m_network_discovery:
             log.info('Zigbee2Mqtt network,%s device definition published. Discovered %d things.',
