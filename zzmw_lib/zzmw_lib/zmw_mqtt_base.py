@@ -138,6 +138,7 @@ class ZmwMqttBase(ABC):
             log.critical(
                 'Error on MQTT message handling. Topic %s, payload %s. '
                 'Ex: {%s}', msg.topic, msg.payload, ex, exc_info=True)
+            return
 
         log.error(f"Unhandeld message with topic '%s'", topic)
 
