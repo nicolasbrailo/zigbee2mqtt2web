@@ -1,5 +1,34 @@
 /* Override classless.css: allow horizontal overflow, which may look ugly but otherwise may hide important data */
 body { overflow-x: auto; }
+/* Create a list of dl/dd/dt for table like panels */
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+}
+dd {
+  margin: 0; /* override default dd indentation */
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color, #ddd);
+}
+dt {
+  white-space: nowrap;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color, #ddd);
+}
+dd:last-of-type {
+  border-bottom: none;
+}
+dt label {
+  color: var(--cfg);
+  font-size: .75rem;
+}
+dt small {
+  color: var(--cdark);
+  font-size: .5rem;
+  display: block;
+}
 /* Default buttons are ridiculosly big */
 button {
   margin: .1em;
