@@ -24,7 +24,8 @@ class ZmwCatSnackDispenser(ZmwMqttService):
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
 
-        history = DispensingHistory(self._z2m_cat_feeder_name, history_len=10, cb_on_dispense=self._notify_dispense_event)
+        history = DispensingHistory(self._z2m_cat_feeder_name, history_len=10,
+                                         cb_on_dispense=self._notify_dispense_event)
         schedule = DispensingSchedule(self._z2m_cat_feeder_name, history, self.feed_now,
                                             cfg["feeding_schedule"], cfg["schedule_tolerance_secs"])
         self._dispense_tracking = DispenseTracking(history, schedule)
@@ -51,11 +52,11 @@ class ZmwCatSnackDispenser(ZmwMqttService):
             self.message_svc("ZmwTelegram",
                              "register_command", {'cmd': 'DispenseCatSnacks', 'descr': 'Feed the cat'})
 
-    def on_service_received_message(self, subtopic, msg):
+    def on_service_received_message(self, subtopic, payload):  # pylint: disable=unused-argument
         # Ignore: we'll receive an echo of our own messages here
         pass
 
-    def on_dep_published_message(self, svc_name, subtopic, msg):
+    def on_dep_published_message(self, svc_name, subtopic, payload):  # pylint: disable=unused-argument
         if svc_name == 'ZmwTelegram' and subtopic.startswith("on_command/DispenseCatSnacks"):
             self.feed_now(source="Telegram")
 
@@ -88,14 +89,14 @@ class ZmwCatSnackDispenser(ZmwMqttService):
         # any unit has had a chance to reply back through the network, this won't help prevent callback loops
         self._cat_feeder.on_any_change_from_mqtt = self._z2m_thing_bcasting
 
-    def _z2m_thing_bcasting(self, msg):
+    def _z2m_thing_bcasting(self, _msg):
         self._dispense_tracking.check_dispensing(self._cat_feeder)
         self._config_enforcer.ensure_config(self._cat_feeder, correct_if_bad=True)
         self._z2m.broadcast_thing(self._cat_feeder)
 
     def feed_now(self, source="unknown", serving_size=None):
         if not self._dispense_tracking.request_feed_now(source, self._cat_feeder, serving_size):
-            return abort(409, description=f"Can't request food now, another request may be in progress.")
+            return abort(409, description="Can't request food now, another request may be in progress.")
         self._z2m.broadcast_thing(self._cat_feeder)
         return {}
 

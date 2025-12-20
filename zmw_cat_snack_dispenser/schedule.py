@@ -42,7 +42,8 @@ def _validate_schedule_config(feeding_schedule, tolerance_secs):
             raise ValueError(f"Schedule entry {i} missing required keys: {missing_keys}")
 
         if schedule['days'] not in _VALID_DAYS:
-            raise ValueError(f"Schedule entry {i} has invalid days value '{schedule['days']}', must be one of: {_VALID_DAYS}")
+            raise ValueError(f"Schedule entry {i} has invalid days value '{schedule['days']}', "
+                             f"must be one of: {_VALID_DAYS}")
 
         hour = schedule['hour']
         if not isinstance(hour, int) or hour < 0 or hour > 23:
@@ -130,7 +131,7 @@ class DispensingSchedule:
 
             # Check if within tolerance (before or after)
             if diff_secs <= self._tolerance_secs:
-                if closest_diff_secs is not None:
+                if closest_diff_secs is not None and closest_schedule is not None:
                     log.error("Ambiguous match: event matches both %02d:%02d and %02d:%02d. "
                               "Config validation should have prevented this. There is a bug in this service.",
                               closest_schedule['hour'], closest_schedule['minute'],

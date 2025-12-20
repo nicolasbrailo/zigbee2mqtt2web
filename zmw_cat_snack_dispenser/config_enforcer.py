@@ -72,7 +72,7 @@ class ConfigEnforcer:
 
     def ensure_config(self, cat_feeder, correct_if_bad=False):
         # Check if we ran ensure_config recently: when we set the config, the unit will reply with messages back that
-        # may contain partial config states, or other config that we have yet to set. Skipping messages here for a 
+        # may contain partial config states, or other config that we have yet to set. Skipping messages here for a
         # small time will prevent message loops and log noise.
         now = datetime.now()
         if self._ensure_config_last_run is not None:

@@ -21,10 +21,12 @@ class DispenseTracking:
         * When someone presses the button in the unit, it will broadcast a message with feeding_source=manual
         * When someone triggers the unit remotely (eg through z2m) it will broadcast feeding_source=remote
         * When the unit triggers due to a schedule it will broadcast feeding_source=schedule
-        * Once dispensing, the unit will broadcast messages until serving is complete. This seems to be: until portions_per_day and weight_per_day increases:
+        * Once dispensing, the unit will broadcast messages until serving is complete. This seems to be:
+          until portions_per_day and weight_per_day increases:
           - portions should increase by feeding_size
           - weight_per_day should increase by feeding_size * portion_weight
-          - EG: if portion_weight was configured by the user to be 7, and feeding_size was configured to 2, then portions_per_day+=2 and weight_per_day+=14
+          - EG: if portion_weight was configured by the user to be 7, and feeding_size was configured to 2,
+            then portions_per_day+=2 and weight_per_day+=14
         """
         any_unset = (self._last_weight_per_day is None) or (self._last_portions_per_day is None)
         any_set = (self._last_weight_per_day is not None) or (self._last_portions_per_day is not None)
@@ -85,7 +87,7 @@ class DispenseTracking:
         """ Start a feed request, which needs to be fulfilled later via check_dispensing. Returns True if the
         dispense request shouldn't be started (eg there is one in flight """
         if cat_feeder is None:
-            self._snack_history.register_error(source, f"Snack dispensing unit not discovered yet")
+            self._snack_history.register_error(source, "Snack dispensing unit not discovered yet")
             return False
 
         if not self._snack_history.register_request(source, serving_size):

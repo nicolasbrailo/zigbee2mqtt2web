@@ -10,7 +10,7 @@
 (try (.["LOGGER"] // "?") catch "?") as $logger |
 
 # source file relative to base path
-((try (.CODE_FILE // "-") catch "-" | sub("^/home/batman/src/baticasa2/"; "") | sub("^.*/\\.venv/lib/[^/]+/site-packages/"; "")) + (try ((":" + .CODE_LINE // "") | tostring) catch "")) as $src |
+((try (.CODE_FILE // "-") catch "-" | sub("^/home/batman/src/BatiCasa/zigbee2mqtt2web/"; "") | sub("^.*/\\.venv/lib/[^/]+/site-packages/"; "")) + (try ((":" + .CODE_LINE // "") | tostring) catch "")) as $src |
 
 # ANSI color for errors (0-3)
 (if (try (.PRIORITY|tonumber) catch 99) <= 3 then "\u001b[31m" else "" end) as $color |
