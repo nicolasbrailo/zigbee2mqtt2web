@@ -1,0 +1,17 @@
+{
+  "auto_lights_off": {
+    "enable": true,
+    "day_of_week": "mon-fri",
+    "time": "09:00"
+  },
+  "vacations_mode": {
+    "enable": true,
+    "late_afternoon": "17:30",
+    "evening": "20:00",
+    "night": "23:00"
+  },
+  "speaker_announce": [
+    {"time": "08:00", "lang": "en", "msg": "Good morning!", "vol": 40},
+    {"time": "12:00", "lang": "en", "msg": "Time for lunch", "vol": 40}
+  ]
+}

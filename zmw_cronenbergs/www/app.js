@@ -38,12 +38,13 @@ class CronenbergMonitor extends React.Component {
   }
 
   calculateSummary() {
-    if (!this.state.stats || this.state.stats.length === 0) {
+    const history = this.state.stats?.light_check_history;
+    if (!history || history.length === 0) {
       return { forgotten: 0, clean: 0 };
     }
 
-    const forgotten = this.state.stats.filter(s => s.lights_forgotten).length;
-    const clean = this.state.stats.filter(s => !s.lights_forgotten).length;
+    const forgotten = history.filter(s => s.lights_forgotten).length;
+    const clean = history.filter(s => !s.lights_forgotten).length;
 
     return { forgotten, clean };
   }
@@ -54,12 +55,39 @@ class CronenbergMonitor extends React.Component {
     }
 
     const summary = this.calculateSummary();
+    const history = this.state.stats.light_check_history;
+    const vacationsMode = this.state.stats.vacations_mode;
+    const speakerAnnounce = this.state.stats.speaker_announce || [];
 
     return (
       <div id="CronenbergMonitorContainer">
-        <h3><img src="/favicon.ico" alt="Crons" />Light Check Statistics</h3>
+        <div className={vacationsMode ? "card warn" : "card hint"}>
+          <strong>Vacations Mode:</strong> {vacationsMode ? "Enabled" : "Disabled"}
+          {vacationsMode && <p>Random light effects are active to simulate presence.</p>}
+        </div>
 
-        {this.state.stats.length === 0 ? (
+        {speakerAnnounce.length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            <h4>Scheduled Announcements</h4>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {speakerAnnounce.map((announce, idx) => (
+                <li key={idx} style={{
+                  marginBottom: '8px',
+                  padding: '10px',
+                  backgroundColor: '#2a2a2a',
+                  borderRadius: '5px',
+                  borderLeft: '4px solid #4a90e2'
+                }}>
+                  <span style={{ color: '#4a90e2', fontWeight: 'bold' }}>{announce.time}</span>
+                  <span style={{ marginLeft: '15px', color: '#ccc' }}>{announce.msg}</span>
+                  <span style={{ marginLeft: '10px', color: '#888', fontSize: '0.85em' }}>({announce.lang}, vol: {announce.vol})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {history.length === 0 ? (
           <p>No light checks recorded yet</p>
         ) : (
           <div>
@@ -75,7 +103,7 @@ class CronenbergMonitor extends React.Component {
                   <div style={{ color: '#888', fontSize: '0.9em' }}>Days with no lights on</div>
                 </div>
                 <div>
-                  <span style={{ color: '#4a90e2', fontSize: '2em', fontWeight: 'bold' }}>{this.state.stats.length}</span>
+                  <span style={{ color: '#4a90e2', fontSize: '2em', fontWeight: 'bold' }}>{history.length}</span>
                   <div style={{ color: '#888', fontSize: '0.9em' }}>Total checks (last 10 days)</div>
                 </div>
               </div>
@@ -83,7 +111,7 @@ class CronenbergMonitor extends React.Component {
 
             <h4>Recent Checks</h4>
             <ul style={{ listStyle: 'none', padding: 0 }}>
-              {this.state.stats.slice().reverse().map((check, idx) => this.renderCheck(check, idx))}
+              {history.slice().reverse().map((check, idx) => this.renderCheck(check, idx))}
             </ul>
           </div>
         )}
