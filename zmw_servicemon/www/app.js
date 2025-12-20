@@ -10,6 +10,7 @@ class ServiceMonitor extends React.Component {
     this.state = {
       services: null,
       systemdServicesStdout: null,
+      uptimeStdout: null,
       recentErrors: null,
     };
   }
@@ -30,6 +31,13 @@ class ServiceMonitor extends React.Component {
       type: 'GET',
       dataType: 'text',
       success: (stdout) => { this.setState({ systemdServicesStdout: stdout }); },
+      error: showGlobalError,
+    });
+    mAjax({
+      url: '/system_uptime',
+      type: 'GET',
+      dataType: 'text',
+      success: (stdout) => { this.setState({ uptimeStdout: stdout }); },
       error: showGlobalError,
     });
   }
@@ -130,6 +138,7 @@ class ServiceMonitor extends React.Component {
       ):(
         <div>
           <p>{statusSummary}</p>
+          { this.state.uptimeStdout && <p>{this.state.uptimeStdout}</p> }
           <pre dangerouslySetInnerHTML={{__html: this.state.systemdServicesStdout}}></pre>
         </div>
       )}

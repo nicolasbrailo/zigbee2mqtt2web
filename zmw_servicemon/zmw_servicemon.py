@@ -33,6 +33,7 @@ class ZmwServicemon(ZmwMqttServiceMonitor):
 
         www.register_www_dir(os.path.join(pathlib.Path(__file__).parent.resolve(), 'www'))
         www.serve_url('/ls', lambda: json.dumps(dict(sorted(self.get_known_services().items())), default=str))
+        www.serve_url('/system_uptime', self.system_uptime)
         www.serve_url('/systemd_status', self.systemd_status)
         www.serve_url('/recent_errors', lambda: json.dumps(self._journal_monitor.get_recent_errors(), default=str))
         www.serve_url('/recent_errors_clear', self._journal_monitor.clear_recent_errors)
@@ -44,6 +45,9 @@ class ZmwServicemon(ZmwMqttServiceMonitor):
                 log.error("Exception", exc_info=True)
             return ""
         www.serve_url('/recent_errors_test_new', _log_error)
+
+    def system_uptime(self):
+        return subprocess.run("uptime", stdout=subprocess.PIPE, text=True, check=True).stdout
 
     def systemd_status(self):
         """Execute services_status.sh script and return HTML-formatted systemd status."""
