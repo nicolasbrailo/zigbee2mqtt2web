@@ -1,6 +1,7 @@
+import json
 import os
 import pathlib
-from flask import abort
+from flask import abort, request
 
 from zzmw_lib.service_runner import service_runner_with_www
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
@@ -11,7 +12,7 @@ from zz2m.www import Z2Mwebservice
 from config_enforcer import ConfigEnforcer
 from dispense_tracking import DispenseTracking
 from history import DispensingHistory
-from schedule import DispensingSchedule
+from schedule import DispensingSchedule, validate_schedule_config
 
 log = build_logger("ZmwCatSnackDispenser")
 
@@ -19,6 +20,7 @@ class ZmwCatSnackDispenser(ZmwMqttService):
     def __init__(self, cfg, www):
         super().__init__(cfg, svc_topic="zmw_cat_feeder", svc_deps=["ZmwTelegram"])
         self._z2m_cat_feeder_name = cfg["z2m_cat_feeder"]
+        self._schedule_tolerance_secs = cfg["schedule_tolerance_secs"]
 
         # Set up www directory and endpoints
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
@@ -41,6 +43,30 @@ class ZmwCatSnackDispenser(ZmwMqttService):
         www.serve_url('/feed_now', lambda: self.feed_now(source="User requested via WWW"))
         www.serve_url('/feed_history', self._dispense_tracking.get_history)
         www.serve_url('/feed_schedule', self._dispense_tracking.get_schedule)
+        www.serve_url('/save_schedule', self.save_schedule, methods=['PUT'])
+
+    def save_schedule(self):
+        try:
+            new_schedule = request.get_json()
+        except Exception as e:
+            return abort(400, description=f"Invalid JSON: {e}")
+
+        if new_schedule is None:
+            return abort(400, description="No JSON body provided")
+
+        try:
+            validate_schedule_config(new_schedule, self._schedule_tolerance_secs)
+        except ValueError as e:
+            return abort(400, description=str(e))
+
+        with open('config.json', 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        config['feeding_schedule'] = new_schedule
+        with open('config.json', 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2)
+
+        log.info("Schedule saved. Service will restart automatically once changes are detected by the system...")
+        return {'status': 'saved'}
 
     def get_service_alerts(self):
         if self._cat_feeder is None:

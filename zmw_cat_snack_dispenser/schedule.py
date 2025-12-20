@@ -27,7 +27,7 @@ def _days_to_apscheduler(days):
     return days
 
 
-def _validate_schedule_config(feeding_schedule, tolerance_secs):
+def validate_schedule_config(feeding_schedule, tolerance_secs):
     """Validate the feeding schedule configuration."""
     if not isinstance(feeding_schedule, list):
         raise ValueError("feeding_schedule must be a list")
@@ -74,7 +74,7 @@ class DispensingSchedule:
     food. To do this, we expect this object to be called when a dispense event is triggered. If the dispense event
     fails to trigger, a timeout will expire on this service, and we will try to force a dispense event. """
     def __init__(self, cat_feeder_name, history, cb_emergency_dispense, feeding_schedule, tolerance_secs):
-        _validate_schedule_config(feeding_schedule, tolerance_secs)
+        validate_schedule_config(feeding_schedule, tolerance_secs)
 
         self._cat_feeder_name = cat_feeder_name
         self._snack_history = history

@@ -30,6 +30,10 @@ class CatFeeder extends React.Component {
       originalValues: {},
       feedHistory: [],
       feedSchedule: [],
+      editableSchedule: [],
+      newEntryHour: 0,
+      newEntryMinute: 0,
+      newEntryServingSize: 1,
     };
     this.settingsRef = React.createRef();
   }
@@ -52,10 +56,47 @@ class CatFeeder extends React.Component {
   async fetchSchedule() {
     return new Promise((resolve) => {
       mJsonGet('/feed_schedule', (schedule) => {
-        this.setState({ feedSchedule: schedule || [] });
+        const scheduleData = schedule || [];
+        this.setState({
+          feedSchedule: scheduleData,
+          editableSchedule: scheduleData.map(entry => ({ ...entry })),
+        });
         resolve();
       });
     });
+  }
+
+  handleDeleteScheduleEntry(index) {
+    this.setState((prevState) => ({
+      editableSchedule: prevState.editableSchedule.filter((_, i) => i !== index),
+    }));
+  }
+
+  handleAddScheduleEntry() {
+    const { newEntryHour, newEntryMinute, newEntryServingSize } = this.state;
+    const newEntry = {
+      days: 'everyday',
+      hour: newEntryHour,
+      minute: newEntryMinute,
+      serving_size: newEntryServingSize,
+    };
+    this.setState((prevState) => ({
+      editableSchedule: [...prevState.editableSchedule, newEntry],
+      newEntryHour: 0,
+      newEntryMinute: 0,
+      newEntryServingSize: 1,
+    }));
+  }
+
+  handleSaveSchedule() {
+    const { editableSchedule } = this.state;
+    const payload = editableSchedule.map(entry => ({
+      days: entry.days || 'everyday',
+      hour: entry.hour,
+      minute: entry.minute,
+      serving_size: entry.serving_size,
+    }));
+    mJsonPut('/save_schedule', JSON.stringify(payload));
   }
 
   handleFeedNow() {
@@ -343,19 +384,65 @@ class CatFeeder extends React.Component {
             <table>
               <thead>
                 <tr>
-                  <th>Time</th>
+                  <th>Hour</th>
+                  <th>Minute</th>
                   <th>Serving Size</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
-                {this.state.feedSchedule.map((entry, index) => (
+                {this.state.editableSchedule.map((entry, index) => (
                   <tr key={index}>
-                    <td>{String(entry.hour).padStart(2, '0')}:{String(entry.minute).padStart(2, '0')}</td>
+                    <td>{String(entry.hour).padStart(2, '0')}</td>
+                    <td>{String(entry.minute).padStart(2, '0')}</td>
                     <td>{entry.serving_size}</td>
+                    <td>
+                      <button onClick={() => this.handleDeleteScheduleEntry(index)}>Delete</button>
+                    </td>
                   </tr>
                 ))}
+                <tr>
+                  <td>
+                    <input
+                      type="text"
+                      value={this.state.newEntryHour}
+                      onChange={(e) => this.setState({ newEntryHour: Number(e.target.value) })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      value={this.state.newEntryMinute}
+                      onChange={(e) => this.setState({ newEntryMinute: Number(e.target.value) })}
+                    />
+                  </td>
+                  <td>
+                    {this.state.metadata.actions.serving_size ? (
+                      <>
+                        <input
+                          type="range"
+                          min={this.state.metadata.actions.serving_size.value.meta.value_min}
+                          max={this.state.metadata.actions.serving_size.value.meta.value_max}
+                          value={this.state.newEntryServingSize}
+                          onChange={(e) => this.setState({ newEntryServingSize: Number(e.target.value) })}
+                        />
+                        <span>{this.state.newEntryServingSize}</span>
+                      </>
+                    ) : (
+                      <input
+                        type="number"
+                        value={this.state.newEntryServingSize}
+                        onChange={(e) => this.setState({ newEntryServingSize: Number(e.target.value) })}
+                      />
+                    )}
+                  </td>
+                  <td>
+                    <button onClick={() => this.handleAddScheduleEntry()}>Add</button>
+                  </td>
+                </tr>
               </tbody>
             </table>
+            <button onClick={() => this.handleSaveSchedule()}>Save Schedule (will restart service)</button>
           </details>
           </>
         )}

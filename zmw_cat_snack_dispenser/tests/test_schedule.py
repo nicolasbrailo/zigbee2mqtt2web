@@ -4,7 +4,7 @@ from datetime import datetime
 
 from schedule import (
     _days_to_apscheduler,
-    _validate_schedule_config,
+    validate_schedule_config,
     DispensingSchedule,
 )
 
@@ -38,104 +38,104 @@ class TestDaysToApscheduler:
 
 
 class TestValidateScheduleConfig:
-    """Tests for the _validate_schedule_config function."""
+    """Tests for the validate_schedule_config function."""
 
     def test_valid_config_passes(self):
         config = [{'days': 'everyday', 'hour': 8, 'minute': 30, 'serving_size': 1}]
-        _validate_schedule_config(config, tolerance_secs=60)  # Should not raise
+        validate_schedule_config(config, tolerance_secs=60)  # Should not raise
 
     def test_not_a_list_raises_error(self):
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config("not a list", tolerance_secs=60)
+            validate_schedule_config("not a list", tolerance_secs=60)
         assert "feeding_schedule must be a list" in str(exc_info.value)
 
     def test_dict_instead_of_list_raises_error(self):
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config({'days': 'everyday', 'hour': 8, 'minute': 30, 'serving_size': 1}, tolerance_secs=60)
+            validate_schedule_config({'days': 'everyday', 'hour': 8, 'minute': 30, 'serving_size': 1}, tolerance_secs=60)
         assert "feeding_schedule must be a list" in str(exc_info.value)
 
     def test_entry_not_dict_raises_error(self):
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(["not a dict"], tolerance_secs=60)
+            validate_schedule_config(["not a dict"], tolerance_secs=60)
         assert "Schedule entry 0 must be a dictionary" in str(exc_info.value)
 
     def test_missing_days_key_raises_error(self):
         config = [{'hour': 8, 'minute': 30, 'serving_size': 1}]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert "missing required keys" in str(exc_info.value)
         assert "'days'" in str(exc_info.value)
 
     def test_missing_hour_key_raises_error(self):
         config = [{'days': 'everyday', 'minute': 30, 'serving_size': 1}]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert "missing required keys" in str(exc_info.value)
         assert "'hour'" in str(exc_info.value)
 
     def test_missing_minute_key_raises_error(self):
         config = [{'days': 'everyday', 'hour': 8, 'serving_size': 1}]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert "missing required keys" in str(exc_info.value)
         assert "'minute'" in str(exc_info.value)
 
     def test_missing_serving_size_key_raises_error(self):
         config = [{'days': 'everyday', 'hour': 8, 'minute': 30}]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert "missing required keys" in str(exc_info.value)
         assert "'serving_size'" in str(exc_info.value)
 
     def test_invalid_days_value_raises_error(self):
         config = [{'days': 'invalid', 'hour': 8, 'minute': 30, 'serving_size': 1}]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert "invalid days value 'invalid'" in str(exc_info.value)
 
     @pytest.mark.parametrize('hour', [-1, 24, 25, 100])
     def test_invalid_hour_out_of_range_raises_error(self, hour):
         config = [{'days': 'everyday', 'hour': hour, 'minute': 30, 'serving_size': 1}]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert f"invalid hour '{hour}'" in str(exc_info.value)
         assert "must be an integer 0-23" in str(exc_info.value)
 
     def test_hour_as_string_raises_error(self):
         config = [{'days': 'everyday', 'hour': "8", 'minute': 30, 'serving_size': 1}]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert "invalid hour" in str(exc_info.value)
 
     def test_hour_as_float_raises_error(self):
         config = [{'days': 'everyday', 'hour': 8.5, 'minute': 30, 'serving_size': 1}]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert "invalid hour" in str(exc_info.value)
 
     @pytest.mark.parametrize('minute', [-1, 60, 61, 100])
     def test_invalid_minute_out_of_range_raises_error(self, minute):
         config = [{'days': 'everyday', 'hour': 8, 'minute': minute, 'serving_size': 1}]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert f"invalid minute '{minute}'" in str(exc_info.value)
         assert "must be an integer 0-59" in str(exc_info.value)
 
     def test_minute_as_string_raises_error(self):
         config = [{'days': 'everyday', 'hour': 8, 'minute': "30", 'serving_size': 1}]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert "invalid minute" in str(exc_info.value)
 
     @pytest.mark.parametrize('hour', [0, 12, 23])
     def test_valid_hour_boundary_values(self, hour):
         config = [{'days': 'everyday', 'hour': hour, 'minute': 30, 'serving_size': 1}]
-        _validate_schedule_config(config, tolerance_secs=60)  # Should not raise
+        validate_schedule_config(config, tolerance_secs=60)  # Should not raise
 
     @pytest.mark.parametrize('minute', [0, 30, 59])
     def test_valid_minute_boundary_values(self, minute):
         config = [{'days': 'everyday', 'hour': 8, 'minute': minute, 'serving_size': 1}]
-        _validate_schedule_config(config, tolerance_secs=60)  # Should not raise
+        validate_schedule_config(config, tolerance_secs=60)  # Should not raise
 
 
 class TestScheduleProximityValidation:
@@ -147,7 +147,7 @@ class TestScheduleProximityValidation:
             {'days': 'everyday', 'hour': 8, 'minute': 0, 'serving_size': 1},
             {'days': 'everyday', 'hour': 10, 'minute': 0, 'serving_size': 1},
         ]
-        _validate_schedule_config(config, tolerance_secs=60)  # Should not raise
+        validate_schedule_config(config, tolerance_secs=60)  # Should not raise
 
     def test_schedules_within_tolerance_raises_error(self):
         """Two schedules 30 seconds apart should fail with 60s tolerance."""
@@ -156,7 +156,7 @@ class TestScheduleProximityValidation:
             {'days': 'everyday', 'hour': 8, 'minute': 0, 'serving_size': 1},  # Same time
         ]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert "within" in str(exc_info.value)
         assert "tolerance" in str(exc_info.value)
 
@@ -167,7 +167,7 @@ class TestScheduleProximityValidation:
             {'days': 'everyday', 'hour': 8, 'minute': 1, 'serving_size': 1},  # 60 seconds apart
         ]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert "within" in str(exc_info.value)
         assert "60s apart" in str(exc_info.value)
 
@@ -177,7 +177,7 @@ class TestScheduleProximityValidation:
             {'days': 'everyday', 'hour': 8, 'minute': 0, 'serving_size': 1},
             {'days': 'everyday', 'hour': 8, 'minute': 2, 'serving_size': 1},  # 120 seconds apart
         ]
-        _validate_schedule_config(config, tolerance_secs=60)  # Should not raise
+        validate_schedule_config(config, tolerance_secs=60)  # Should not raise
 
     def test_changing_tolerance_affects_validation(self):
         """Schedules 2 minutes apart should fail with 180s tolerance but pass with 60s."""
@@ -186,11 +186,11 @@ class TestScheduleProximityValidation:
             {'days': 'everyday', 'hour': 8, 'minute': 2, 'serving_size': 1},  # 120 seconds apart
         ]
         # Should pass with 60s tolerance
-        _validate_schedule_config(config, tolerance_secs=60)
+        validate_schedule_config(config, tolerance_secs=60)
 
         # Should fail with 180s tolerance
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=180)
+            validate_schedule_config(config, tolerance_secs=180)
         assert "within" in str(exc_info.value)
 
     def test_multiple_schedules_validates_all_pairs(self):
@@ -201,7 +201,7 @@ class TestScheduleProximityValidation:
             {'days': 'everyday', 'hour': 8, 'minute': 0, 'serving_size': 1},  # Duplicate of first
         ]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=60)
+            validate_schedule_config(config, tolerance_secs=60)
         assert "entries 0" in str(exc_info.value)
         assert "2" in str(exc_info.value)
 
@@ -212,7 +212,7 @@ class TestScheduleProximityValidation:
             {'days': 'everyday', 'hour': 8, 'minute': 31, 'serving_size': 1},
         ]
         with pytest.raises(ValueError) as exc_info:
-            _validate_schedule_config(config, tolerance_secs=120)
+            validate_schedule_config(config, tolerance_secs=120)
         error_msg = str(exc_info.value)
         assert "08:30" in error_msg
         assert "08:31" in error_msg
@@ -220,11 +220,11 @@ class TestScheduleProximityValidation:
     def test_single_schedule_always_passes_proximity(self):
         """A single schedule has no conflicts."""
         config = [{'days': 'everyday', 'hour': 8, 'minute': 0, 'serving_size': 1}]
-        _validate_schedule_config(config, tolerance_secs=60)  # Should not raise
+        validate_schedule_config(config, tolerance_secs=60)  # Should not raise
 
     def test_empty_schedule_passes(self):
         """An empty schedule list should pass validation."""
-        _validate_schedule_config([], tolerance_secs=60)  # Should not raise
+        validate_schedule_config([], tolerance_secs=60)  # Should not raise
 
 
 class TestDispensingSchedule:

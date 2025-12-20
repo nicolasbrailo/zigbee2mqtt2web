@@ -43,7 +43,11 @@ function mAjax(cfg) {
 
 
   if (cfg.type.toLowerCase() == "put") {
-    req.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+    if (cfg.dataType && cfg.dataType.toLowerCase() == 'json') {
+      req.setRequestHeader('Content-type', 'application/json');
+    } else {
+      req.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+    }
     req.send(cfg.data);
   } else {
     if (cfg.data) {
