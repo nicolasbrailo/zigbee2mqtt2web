@@ -76,14 +76,14 @@ class ZmwCatSnackDispenser(ZmwMqttService):
     def on_service_came_up(self, service_name):
         if service_name == "ZmwTelegram":
             self.message_svc("ZmwTelegram",
-                             "register_command", {'cmd': 'DispenseCatSnacks', 'descr': 'Feed the cat'})
+                             "register_command", {'cmd': 'dispensecatsnacks', 'descr': 'Feed the cat'})
 
     def on_service_received_message(self, subtopic, payload):  # pylint: disable=unused-argument
         # Ignore: we'll receive an echo of our own messages here
         pass
 
     def on_dep_published_message(self, svc_name, subtopic, payload):  # pylint: disable=unused-argument
-        if svc_name == 'ZmwTelegram' and subtopic.startswith("on_command/DispenseCatSnacks"):
+        if svc_name == 'ZmwTelegram' and subtopic.startswith("on_command/dispensecatsnacks"):
             self.feed_now(source="Telegram")
 
     def _notify_dispense_event(self, source, error, portions_dispensed):

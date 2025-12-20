@@ -112,6 +112,13 @@ def _validate_telegram_cmds(cmds):
             raise ValueError(
                 f'TelegramBot {cmd} not valid: format should be tuple of (command, description, callback)') from ex
 
+        # Telegram API requires lowercase commands - normalize and warn if needed
+        cmd_lower = cmd.lower()
+        if cmd != cmd_lower:
+            log.error("TelegramBot command '%s' contains uppercase letters, Telegram API requires lowercase. "
+                      "Automatically converting to '%s'.", cmd, cmd_lower)
+            cmd = cmd_lower
+
         if cmd in known_commands:
             raise KeyError(f'TelegramBot command {cmd} is duplicated')
 
