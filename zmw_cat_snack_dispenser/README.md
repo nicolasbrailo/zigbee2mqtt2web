@@ -1,6 +1,8 @@
-# Cat feeder
+# Cat Snack Dispenser
 
 Ensures cats don't go hungry. Integrates with Aqara ZNCWWSQ01LM aqara.feeder.acn001.
+
+![](README_screenshot.png)
 
 Cat feeder service will
 
