@@ -62,6 +62,14 @@ class ZmwTelegram(ZmwMqttService):
         self._public_url_base = www.register_www_dir(www_path)
         www.serve_url('/messages', lambda: json.dumps(list(self._msg.get_history()), default=str))
 
+    def get_service_alerts(self):
+        alerts = []
+        if len(self._msg_times) == self._RATE_LIMIT_MAX_MSGS:
+            oldest = self._msg_times[0]
+            if time.time() - oldest < self._RATE_LIMIT_WINDOW_SECS:
+                alerts.append("Currently rate limiting")
+        return alerts
+
     def _rate_limited_send(self, send_fn):
         """Rate-limit outgoing messages. Allows max 3 messages per minute.
         Continued attempts reset the cooldown window."""

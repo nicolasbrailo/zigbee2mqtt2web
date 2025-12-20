@@ -32,6 +32,14 @@ class ZmwWhatsapp(ZmwMqttService):
         self._public_url_base = www.register_www_dir(www_path)
         www.serve_url('/messages', lambda: json.dumps(list(self._message_history), default=str))
 
+    def get_service_alerts(self):
+        alerts = []
+        if len(self._msg_times) == self._RATE_LIMIT_MAX_MSGS:
+            oldest = self._msg_times[0]
+            if time.time() - oldest < self._RATE_LIMIT_WINDOW_SECS:
+                alerts.append("Currently rate limiting")
+        return alerts
+
     def _track_message(self, direction, msg_type, **details):
         """Track message events for history"""
         event = {
