@@ -35,6 +35,13 @@ class ShellyPlugMonitor extends React.Component {
     });
   }
 
+  formatNumber(value, decimals) {
+    if (value === null || value === undefined) {
+      return '?';
+    }
+    return value.toFixed(decimals);
+  }
+
   formatUptime(seconds) {
     const months = Math.floor(seconds / (30 * 24 * 3600));
     seconds %= 30 * 24 * 3600;
@@ -58,20 +65,27 @@ class ShellyPlugMonitor extends React.Component {
   renderDevice(name, stats) {
     const powerStatus = stats.powered_on ? 'Power: ON' : 'Power: OFF';
     const powerClass = stats.powered_on ? 'bg-success' : 'bg-error';
+    const uptime = stats.device_uptime !== null && stats.device_uptime !== undefined
+      ? this.formatUptime(stats.device_uptime)
+      : '?';
+    const ipDisplay = stats.device_ip
+      ? stats.device_ip
+      : <span className="warn">device is offline</span>;
+    const cardClass = stats.online ? 'card hint' : 'card warn';
 
     return (
-      <div key={name} className="card">
-        <h4>{name}, {powerStatus} - <small>updated: {stats.device_current_time}</small></h4>
-        <table>
+      <div key={name} className={cardClass}>
+        <p><b>{name}</b>, {powerStatus} - <small>updated: {stats.device_current_time || '?'}</small></p>
+        <table style={{width: '100%', maxWidth: '500px', tableLayout: 'fixed'}}>
           <tbody>
-            <tr><td>Power</td><td>{stats.active_power_watts.toFixed(1)} W</td></tr>
-            <tr><td>Current</td><td>{stats.current_amps.toFixed(3)} A</td></tr>
-            <tr><td>Voltage</td><td>{stats.voltage_volts.toFixed(1)} V</td></tr>
-            <tr><td>Temperature</td><td>{stats.temperature_c.toFixed(1)} °C</td></tr>
-            <tr><td>Energy (last min)</td><td>{stats.last_minute_energy_use_watt_hour.toFixed(3)} Wh</td></tr>
-            <tr><td>Energy (lifetime)</td><td>{stats.lifetime_energy_use_watt_hour.toFixed(3)} Wh</td></tr>
-            <tr><td>Uptime</td><td>{this.formatUptime(stats.device_uptime)}</td></tr>
-            <tr><td>IP</td><td>{stats.device_ip}</td></tr>
+            <tr><td>Power</td><td>{this.formatNumber(stats.active_power_watts, 1)} W</td></tr>
+            <tr><td>Current</td><td>{this.formatNumber(stats.current_amps, 3)} A</td></tr>
+            <tr><td>Voltage</td><td>{this.formatNumber(stats.voltage_volts, 1)} V</td></tr>
+            <tr><td>Temperature</td><td>{this.formatNumber(stats.temperature_c, 1)} °C</td></tr>
+            <tr><td>Energy (last min)</td><td>{this.formatNumber(stats.last_minute_energy_use_watt_hour, 3)} Wh</td></tr>
+            <tr><td>Energy (lifetime)</td><td>{this.formatNumber(stats.lifetime_energy_use_watt_hour, 3)} Wh</td></tr>
+            <tr><td>Uptime</td><td style={{wordBreak: 'break-word'}}>{uptime}</td></tr>
+            <tr><td>IP</td><td>{ipDisplay}</td></tr>
           </tbody>
         </table>
       </div>

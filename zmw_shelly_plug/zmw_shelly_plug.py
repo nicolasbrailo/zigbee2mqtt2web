@@ -25,15 +25,16 @@ class ZmwShellyPlug(ZmwMqttService):
         self._timer = None
 
         www.serve_url('/ls_devs', lambda: [d.get_name() for d in self._devices])
-        www.serve_url('/all_stats', lambda: {d.get_name(): d.get_stats() for d in self._devices})
+        www.serve_url('/all_stats', lambda: {d.get_name(): d.get_stats_bg() for d in self._devices})
         self._bcast()
 
     def _bcast(self):
         self._timer = threading.Timer(self._bcast_period_secs, self._bcast)
         self._timer.start()
         for dev in self._devices:
-            stats = dev.get_stats()
-            self.publish_own_svc_message(f'{stats["device_name"]}/stats', stats)
+            stats = dev.get_stats_bg()
+            if stats and stats["online"]:
+                self.publish_own_svc_message(f'{stats["device_name"]}/stats', stats)
 
     def stop(self):
         """Stop the broadcast timer and clean up."""

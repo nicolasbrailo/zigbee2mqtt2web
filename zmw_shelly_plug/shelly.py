@@ -1,5 +1,6 @@
 """Shelly Gen2 device API client."""
 import json
+import threading
 from json.decoder import JSONDecodeError
 
 from requests import post
@@ -89,20 +90,35 @@ class ShellyPlug(ShellyGen2):
 
     def update_device_config(self):
         """Fetch and cache device configuration."""
-        try:
-            self._device_cfg = self.post("Switch.GetConfig", {"id": 0})
-        except (RequestException, PermissionError, LookupError, ValueError, KeyError):
-            self._device_cfg = {}
-        if "name" not in self._device_cfg:
-            self._device_cfg["name"] = self._host
+        def _f():
+            try:
+                self._device_cfg = self.post("Switch.GetConfig", {"id": 0})
+            except (RequestException, PermissionError, LookupError, ValueError, KeyError):
+                self._device_cfg = {}
+
+        thread = threading.Thread(target=_f, daemon=True)
+        thread.start()
 
     def get_name(self):
         """Return device name."""
+        if "name" not in self._device_cfg:
+            self.update_device_config()
+            self._device_cfg["name"] = self._host
         return self._device_cfg["name"]
+
+    def get_stats_bg(self):
+        """ Same as get_stats, but will return last cached stats and then fetch new ones in the background """
+        cached_stats = self._stats
+        thread = threading.Thread(target=self.get_stats, daemon=True)
+        thread.start()
+        return cached_stats
 
     def get_stats(self):
         """Return current device statistics."""
-        stats = self.post("Shelly.GetStatus")
+        try:
+            stats = self.post("Shelly.GetStatus")
+        except (RequestException, PermissionError, LookupError, ValueError, KeyError):
+            stats = {"online": False}
         switch = stats.get("switch:0", {})
         sys_stats = stats.get("sys", {})
         wifi = stats.get("wifi", {})
@@ -119,5 +135,6 @@ class ShellyPlug(ShellyGen2):
             "device_current_time": sys_stats.get("time"),
             "device_uptime": sys_stats.get("uptime"),
             "device_ip": wifi.get("sta_ip"),
+            "online": "sta_ip" in wifi,
         }
         return self._stats
