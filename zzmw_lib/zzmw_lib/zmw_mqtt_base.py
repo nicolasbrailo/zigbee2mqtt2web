@@ -104,7 +104,7 @@ class ZmwMqttBase(ABC):
         log.info('MQTT client [%s]:%d %s unsubscribed (reason %s)',
                  self._mqtt_ip, self._mqtt_port, self._svc_topic, str(reason_code))
 
-    def subscribe_with_cb(self, topic, cb):
+    def subscribe_with_cb(self, topic, cb, replace_if_exists=False):
         with self._topics_with_cb_lock:
             if topic in self._topics_with_cb:
                 raise KeyError(f"Topic {topic} already has a callback")

@@ -80,7 +80,7 @@ class TimeoutMonitor:
                 # Timeout has expired (job is None) or time has passed
                 expired_ago = max(0, -remaining_secs)
                 total_open = job_info['timeout_secs'] + expired_ago
-                result[thing_name] = f"** Timeout expired {expired_ago} seconds ago, open for {total_open} seconds **"
+                result[thing_name] = f"** Sensor reports open, timeout expired {expired_ago} seconds ago, open for {total_open} seconds **"
             else:
-                result[thing_name] = f"{remaining_secs} seconds until timeout"
+                result[thing_name] = f"reports open"
         return result

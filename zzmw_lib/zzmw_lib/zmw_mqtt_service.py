@@ -125,7 +125,8 @@ class ZmwMqttService(ZmwMqttBase):
                 topic = f"{svc_meta['mqtt_topic']}/#"
                 log.info('Dependency "%s" is now running, subscribing to "%s"', name, topic)
                 self.subscribe_with_cb(topic,
-                                       lambda subtopic, payload: self.on_dep_published_message(name, subtopic, payload))
+                                       lambda subtopic, payload: self.on_dep_published_message(name, subtopic, payload),
+                                       replace_if_exists=True)
 
             svc_just_came_up = name not in self._known_services
             self._known_services[name] = svc_meta
