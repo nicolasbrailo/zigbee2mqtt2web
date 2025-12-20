@@ -1,0 +1,8 @@
+{
+  "z2m_cat_feeder": "SnacksPurrveyor",
+  "schedule_tolerance_secs": 120,
+  "feeding_schedule": [
+    {"days": "everyday", "hour": 17, "minute": 7, "serving_size": 1},
+    {"days": "everyday", "hour": 17, "minute": 8, "serving_size": 1}
+  ]
+}
