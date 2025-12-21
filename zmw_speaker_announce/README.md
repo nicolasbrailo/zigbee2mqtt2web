@@ -1,10 +1,11 @@
-# mqtt_speaker_announce
+# ZmwSpeakerAnnounce
 
-Sonos speaker announcement service with TTS support.
+Sonos speaker announcement service with TTS and user recording support. Can be controlled over MQTT.
 
-## Behaviour
+![](README_screenshot.png)
 
-Plays audio announcements on Sonos speakers. Supports text-to-speech conversion, custom audio assets, and volume control.
+* TTS mode: enter a text on the UI of this service and it will be converted to an audio asset, then played over all known speakers in your network. Different languages supported for TTS.
+* User record: use your device's microphone to record a message, then broadcast it over your speakers. Note this requires running the server in HTTPS mode, as phones won't enable microphone access for web apps without SSL. Since the server uses a self-signed certificate, a security warning will be displayed when the UI runs in HTTPS mode.
 
 ## MQTT
 
@@ -12,14 +13,8 @@ Plays audio announcements on Sonos speakers. Supports text-to-speech conversion,
 
 **Methods (subscribe):**
 - `ls` - List available speakers
-- `tts` - Text-to-speech (`{msg, lang?, vol?}`)
-- `save_asset` - Save audio file to cache (`{local_path}`)
+- `tts` - Text-to-speech
 - `play_asset` - Play audio (`{name}` or `{local_path}` or `{public_www}`, `vol?`)
-
-**Announces (publish):**
-- `ls_reply` - List of speakers
-- `tts_reply` - TTS result with URI
-- `save_asset_reply` - Asset save status
 
 ## WWW Endpoints
 

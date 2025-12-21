@@ -1,10 +1,8 @@
-# mqtt_spotify
+# ZmwSpotify
 
-Spotify playback control service.
+Spotify playback control service. Exposes Spotify control over MQTT.
 
-## Behaviour
-
-Controls Spotify playback. Manages OAuth authentication, provides playback controls (play/pause, volume, track navigation), and exposes current playing state.
+Manages OAuth authentication, provides playback controls (play/pause, volume, track navigation), and exposes current playing state.
 
 ## MQTT
 
@@ -20,7 +18,3 @@ Controls Spotify playback. Manages OAuth authentication, provides playback contr
 **Announces (publish):**
 - `state` - Current player state (is_playing, volume, media_info)
 
-## WWW Endpoints
-
-- `/reauth` - OAuth re-authorization page
-- `/reauth/complete/<code>` - Complete OAuth flow

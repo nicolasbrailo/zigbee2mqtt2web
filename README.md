@@ -1,7 +1,6 @@
-# zigbee2mqtt2web
+# ZMW
 
-zigbee2mqtt2web will expose a Zigbee network as a small set of REST endpoints, and provide a basic UI to manage your zigbee network with a web interface, with sensible defaults and minimal configuration. Clone, do `install_all_svcs.sh` and configure your network. Some things may work.
-
+ZMW will expose a Zigbee network as a small set of RESTish endpoints, and provide a basic UI to manage your Zigbee network with a web interface, with sensible defaults and minimal configuration. Clone, do `install_all_svcs.sh` and configure your network. Some things may work.
 
 ## What does it do?
 
@@ -104,6 +103,27 @@ Runs calendar-based automation tasks:
 ![](zmw_cronenbergs/README_screenshot.png)
 
 
+# ZmwDashboard
+
+Dashboard system that ties all other ZMW services to a mobile friendly interface.
+
+![](zmw_dashboard/README_screenshot.png)
+
+This service integrates with all other ZMW services running in the system to
+
+* Enable quick lights control.
+* Exposes scenes ("fake" buttons created by a user-service, which perform a set of actions on other ZmwServices).
+* Exposes a list of sensors, by default showing temperature.
+* Speaker-announce: send an announcement through the Sonos LAN speakers in your network (user recording not supported here: running the dashboard via HTTPS with a self-signed cert is painful!)
+* Each section (lights, scenes, sensors, cameras...) can link to the main service, which exposes further functionality.
+* Contact monitoring: expose door states, and lets you bypass chimes (if your door is configured to play a chime when open).
+* Heating: monitor heating state and turn it on/off
+* Doorbell cam: show last snap of the doorbell camera, and lets you take a new one. Also displays if the doorbell has rung recently.
+* Theming: supports Classless CSS themes.
+* Links to user-defined services: add more links to all of those services running in your LAN, so you have a centralised place to access them.
+* System alerts: display any system level alerts, such as services down or your cat running out of food.
+
+
 # baticasa_doorbell
 
 Doorbell event handler and notification coordinator.
@@ -179,23 +199,26 @@ Connects to Zigbee2MQTT, discovers all light devices on the network, and exposes
 - `/z2m/get/<thing_name>` - retrieves properties of a device
 
 
-# mqtt_doorbell_cam
+# ZmwReolinkDoorbell
 
 Reolink doorbell camera service with motion detection, recording, and event broadcasting over MQTT.
-Connects to a Reolink doorbell camera via webhook/ONVIF, captures snapshots, records video clips, and broadcasts camera events (button press, motion) to other services via MQTT.
 
-## MQTT
+![](zmw_reolink_doorbell/README_screenshot.png)
+
+This service connects to a Reolink doorbell camera via webhook/ONVIF, and exposes a set of functionality over MQTT and WWW:
+
+## MQTT messages
 **Methods (subscribe):**
-- `mqtt_doorbell_cam/snap` - Take a snapshot
-- `mqtt_doorbell_cam/rec` - Start recording (`{secs: N}`)
+- `mqtt_doorbell_cam/snap` - Takes a snapshot, announces response when ready
+- `mqtt_doorbell_cam/rec` - Start doorbell cam recording (`{secs: N}`)
 
 **Announces (publish):**
-- `on_snap_ready` - Snapshot captured
+- `on_snap_ready` - Snapshot captured, will reply with the path of the captured file
 - `on_doorbell_button_pressed` - Doorbell button pressed
-- `on_motion_detected` - Motion detected
+- `on_motion_detected` - Camera reports motion
 - `on_motion_cleared` - Motion cleared
-- `on_motion_timeout` - Motion event timed out
-- `on_new_recording` - Recording completed
+- `on_motion_timeout` - Motion event timed out without camera reporting clear
+- `on_new_recording` - A new recording completed and it's available. Will broadcast local path over MQTT.
 - `on_recording_failed` - Recording failed
 - `on_reencoding_ready` - Re-encoding completed
 - `on_reencoding_failed` - Re-encoding failed
@@ -207,41 +230,69 @@ Connects to a Reolink doorbell camera via webhook/ONVIF, captures snapshots, rec
 - `/lastsnap` - Get last saved snapshot (JPEG)
 - `/record?secs=N` - Start recording (5-120 seconds)
 
-# mqtt_sensor_mon
+## NVR
+
+This service also has an NVR-like functionality. Unlike an NVR, the service doesn't record all the time: it will just start recording once the camera reports motion or doorbell-press. This means you will always miss the first few seconds of motion (but will save a lot on energy and storage).
+
+![](zmw_reolink_doorbell/README_screenshot2.png)
+
+## Integrations
+
+This service will integrate with ZmwDoorman to:
+
+* Send Telegram notifications when the doorbell is pressed
+* Play audio chimes over LAN speakers when the doorbell is pressed
+* Send Whatsapp messages when motion is detected
+
+And others (see the readme for ZmwDoorman for details).
+
+
+# ZmwSensors
 
 Sensor data monitoring and history service.
 
-## Behaviour
+![](zmw_sensormon/README_screenshot.png)
 
-Monitors Zigbee sensors (temperature, humidity, power, battery, contact, occupancy, etc.) and stores historical readings in a database. Provides APIs for querying sensor data.
+Monitors MQTT sensors (temperature, humidity, power, battery, contact, occupancy, etc.) and stores historical readings in a database. Integrates with Z2M out of the box. Also has an integration with ZmwShelly (see readme for this service). Provides APIs for querying sensor data, and a React component to display badges with readings for a set of sensors.
 
 ## WWW Endpoints
 
 - Sensor history query endpoints (registered via `SensorsHistory`)
 - `/z2m/*` - Z2M web service endpoints
 
-# service_mon
+# ZmwServicemon
 
 Monitors all other running z2m services, tracks their status (up/down), and monitors systemd journal for errors. Provides a dashboard view of system health.
 
-## WWW Endpoints
+![](zmw_servicemon/README_screenshot.png)
 
-- `/ls` - List all known services with metadata and status
-- `/systemd_status` - HTML-formatted systemd status output
-- `/recent_errors` - Recent errors from journal monitor
+This service will let you know the health of your ZMW services at a glance. It will
 
-# Shelly Plug
+* Display the list of running services (or when a service was last seen, if it's not running).
+* Let you read detailed logs of each service.
+* Provide a quick link to each service.
+* Display the systemd status of a service (a systemd service may be running, but not registered as a ZMW service. A ZMW service may also be running, but not registered to systemd).
+* Display a list of errors: ZmwServicemon will tail the journal for each ZMW service, and will capture errors and warnings. These will be displayed in ZmwServicemon www.
+* Optional Telegram integration: integrates with ZmwTelegram to send you a message when the system encounters an error.
 
-Connects to a Shelly plug defined in config.json, broadcasts read stats over MQTT
+
+# ZmwShellyPlug
+
+Connects to a list of Shelly plugs defined in config.json, broadcasts stats over MQTT.
+
+![](zmw_shelly_plug/README_screenshot.png)
+
+This service is pretty useless on its own, but it will broadcast power consumption info over MQTT. Useful when integrated with ZmwSensors.
 
 
-# mqtt_speaker_announce
+# ZmwSpeakerAnnounce
 
-Sonos speaker announcement service with TTS support.
+Sonos speaker announcement service with TTS and user recording support. Can be controlled over MQTT.
 
-## Behaviour
+![](zmw_speaker_announce/README_screenshot.png)
 
-Plays audio announcements on Sonos speakers. Supports text-to-speech conversion, custom audio assets, and volume control.
+* TTS mode: enter a text on the UI of this service and it will be converted to an audio asset, then played over all known speakers in your network. Different languages supported for TTS.
+* User record: use your device's microphone to record a message, then broadcast it over your speakers. Note this requires running the server in HTTPS mode, as phones won't enable microphone access for web apps without SSL. Since the server uses a self-signed certificate, a security warning will be displayed when the UI runs in HTTPS mode.
 
 ## MQTT
 
@@ -249,14 +300,8 @@ Plays audio announcements on Sonos speakers. Supports text-to-speech conversion,
 
 **Methods (subscribe):**
 - `ls` - List available speakers
-- `tts` - Text-to-speech (`{msg, lang?, vol?}`)
-- `save_asset` - Save audio file to cache (`{local_path}`)
+- `tts` - Text-to-speech
 - `play_asset` - Play audio (`{name}` or `{local_path}` or `{public_www}`, `vol?`)
-
-**Announces (publish):**
-- `ls_reply` - List of speakers
-- `tts_reply` - TTS result with URI
-- `save_asset_reply` - Asset save status
 
 ## WWW Endpoints
 
@@ -265,13 +310,11 @@ Plays audio announcements on Sonos speakers. Supports text-to-speech conversion,
 - `/announcement_history` - Recent announcements
 - `/tts/*` - Cached TTS audio files
 
-# mqtt_spotify
+# ZmwSpotify
 
-Spotify playback control service.
+Spotify playback control service. Exposes Spotify control over MQTT.
 
-## Behaviour
-
-Controls Spotify playback. Manages OAuth authentication, provides playback controls (play/pause, volume, track navigation), and exposes current playing state.
+Manages OAuth authentication, provides playback controls (play/pause, volume, track navigation), and exposes current playing state.
 
 ## MQTT
 
@@ -287,12 +330,8 @@ Controls Spotify playback. Manages OAuth authentication, provides playback contr
 **Announces (publish):**
 - `state` - Current player state (is_playing, volume, media_info)
 
-## WWW Endpoints
 
-- `/reauth` - OAuth re-authorization page
-- `/reauth/complete/<code>` - Complete OAuth flow
-
-# mqtt_telegram
+# ZmwTelegram
 
 MQTT to Telegram bot bridge for bidirectional messaging.
 
@@ -310,11 +349,12 @@ Runs a Telegram bot that receives commands and relays them over MQTT. Other serv
 **Announces (publish):**
 - `on_command/<cmd>` - Relayed Telegram command
 
-## WWW Endpoints
+## WWW
 
-- `/messages` - Message history JSON
+Provides a history of sent or received Telegram messages.
 
-# mqtt_whatsapp
+
+# ZmwWhatsapp
 
 MQTT to WhatsApp bridge for sending messages.
 

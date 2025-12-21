@@ -1,4 +1,4 @@
-# mqtt_whatsapp
+# ZmwWhatsapp
 
 MQTT to WhatsApp bridge for sending messages.
 

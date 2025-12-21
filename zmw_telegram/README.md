@@ -1,4 +1,4 @@
-# mqtt_telegram
+# ZmwTelegram
 
 MQTT to Telegram bot bridge for bidirectional messaging.
 
@@ -16,6 +16,7 @@ Runs a Telegram bot that receives commands and relays them over MQTT. Other serv
 **Announces (publish):**
 - `on_command/<cmd>` - Relayed Telegram command
 
-## WWW Endpoints
+## WWW
 
-- `/messages` - Message history JSON
+Provides a history of sent or received Telegram messages.
+

@@ -1,10 +1,10 @@
-# mqtt_sensor_mon
+# ZmwSensors
 
 Sensor data monitoring and history service.
 
-## Behaviour
+![](README_screenshot.png)
 
-Monitors Zigbee sensors (temperature, humidity, power, battery, contact, occupancy, etc.) and stores historical readings in a database. Provides APIs for querying sensor data.
+Monitors MQTT sensors (temperature, humidity, power, battery, contact, occupancy, etc.) and stores historical readings in a database. Integrates with Z2M out of the box. Also has an integration with ZmwShelly (see readme for this service). Provides APIs for querying sensor data, and a React component to display badges with readings for a set of sensors.
 
 ## WWW Endpoints
 
