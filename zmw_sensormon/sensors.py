@@ -248,10 +248,8 @@ class SensorsHistory:
                 log.error("Cannot register sensor %s with invalid metric name: %s", thing.name, e)
                 raise
 
-        if thing.on_any_change_from_mqtt is not None:
-            raise AttributeError(
-                f'Thing {thing.name} already has an observer')
-
+        # If this thing already had an observer, overwrite it. This can happen if the network drops a device
+        # and then adds it again.
         thing.on_any_change_from_mqtt = lambda _: self._on_update(thing, metrics)
         log.info('Registered sensor %s to sensor_history', thing.name)
 

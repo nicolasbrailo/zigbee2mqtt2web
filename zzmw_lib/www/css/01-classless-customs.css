@@ -29,6 +29,27 @@ dt small {
   font-size: .5rem;
   display: block;
 }
+/* Responsive tables: allow text wrapping */
+table {
+  width: 100%;
+  table-layout: fixed;
+}
+tr {
+  display: flex;
+}
+td {
+  flex: 1;
+  display: flex;
+  white-space: normal;
+  padding: .1rem; margin: 0;
+  border-radius: 4px;
+}
+td button {
+  flex: 1;
+  font-size: 60%;
+  white-space: normal;
+  word-break: break-word;
+}
 /* Default buttons are ridiculosly big */
 button {
   margin: .1em;
