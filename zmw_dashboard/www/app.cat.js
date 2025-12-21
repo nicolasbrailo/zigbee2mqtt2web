@@ -874,7 +874,7 @@ class ZmwLight extends React.Component {
   onStateChange(e) {
     const v = e.target.checked;
     this.setState({ state: v });
-    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.light.thing_name}`, `state=${v}`);
+    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.light.thing_name}`, {state: v});
   }
 
   onBrightnessChange(e) {
@@ -884,25 +884,25 @@ class ZmwLight extends React.Component {
     } else {
       this.setState({ brightness: v, state: true });
     }
-    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.light.thing_name}`, `brightness=${v}`);
+    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.light.thing_name}`, {brightness: v});
   }
 
   onColorTempChange(e) {
     const v = e.target.value;
     this.setState({ color_temp: v });
-    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.light.thing_name}`, `color_temp=${v}`);
+    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.light.thing_name}`, {color_temp: v});
   }
 
   onColorRgbChange(e) {
     const v = e.target.value;
     this.setState({ color_rgb: v });
-    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.light.thing_name}`, `color_rgb=${v}`);
+    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.light.thing_name}`, {color_rgb: v});
   }
 
   onEffectChange(e) {
     const v = e.target.value;
     this.setState({ effect: v });
-    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.light.thing_name}`, `effect=${v}`);
+    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.light.thing_name}`, {effect: v});
   }
 
   renderColorTemp() {
