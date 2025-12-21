@@ -45,10 +45,28 @@ function mAjax(cfg) {
   if (cfg.type.toLowerCase() == "put") {
     if (cfg.dataType && cfg.dataType.toLowerCase() == 'json') {
       req.setRequestHeader('Content-type', 'application/json');
+      let dataToSend = cfg.data;
+      if (cfg.data != null) {
+        if (typeof cfg.data === 'object') {
+          dataToSend = JSON.stringify(cfg.data);
+        } else {
+          const err = `mAjax: dataType for '${cfg.url}' is JSON but data is not an object/array: ${typeof cfg.data}`;
+          console.error(err, cfg);
+          if (cfg.error) {
+            cfg.error({
+              status: 0,
+              statusText: `Invalid JSON data for ${cfg.url}`,
+              responseText: err,
+            });
+          }
+          return req;
+        }
+      }
+      req.send(dataToSend);
     } else {
       req.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+      req.send(cfg.data);
     }
-    req.send(cfg.data);
   } else {
     if (cfg.data) {
       console.error("Request.data is not null for non-PUT method, not sure if valid", cfg);

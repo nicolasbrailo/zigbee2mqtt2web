@@ -29,23 +29,35 @@ def _safe_jsonify(cb):
     return _apply_cb
 
 
-def _set_props_of_thing(z2m, thing_name):
-    for key, val in FlaskRequest.form.items():
+def _get_request_data():
+    """Get request data from form, json, or args - whichever has data."""
+    if FlaskRequest.form and len(FlaskRequest.form) > 0:
+        return dict(FlaskRequest.form.items())
+    json_data = FlaskRequest.get_json(silent=True)
+    if json_data:
+        return json_data
+    if FlaskRequest.args and len(FlaskRequest.args) > 0:
+        return dict(FlaskRequest.args.items())
+    return None
+
+def _set_props_of_thing(z2m, thing_name, data):
+    for key, val in data.items():
         z2m.get_thing(thing_name).set(key, val)
 
     z2m.broadcast_thing(thing_name)
 
 def _thing_put(z2m, thing_name):
-    if FlaskRequest.form is None or len(list(FlaskRequest.form.items())) == 0:
+    data = _get_request_data()
+    if data is None or len(data) == 0:
         raise RuntimeError('Set prop requires at least one PUT value')
 
     # Validate all k,v's are valid and exist before applying any. Note values may be empty or non existent
-    for key, val in FlaskRequest.form.items():
+    for key, val in data.items():
         if key is None or len(key) == 0:
             raise RuntimeError(f'Invalid set of PUT values f{key}:f{val}')
 
     try:
-        res = _set_props_of_thing(z2m, thing_name)
+        res = _set_props_of_thing(z2m, thing_name, data)
         return json.dumps(res, default=_make_serializable)
     except KeyError as ex:
         log.warn('User requested non-existing thing. %s', ex, exc_info=True)
@@ -66,5 +78,5 @@ class Z2Mwebservice:
         www.serve_url('/z2m/ls', z2m.get_thing_names)
         www.serve_url('/z2m/get_world', z2m.get_world_state)
         www.serve_url('/z2m/meta/<thing_name>', _safe_jsonify(z2m.get_thing_meta))
-        www.serve_url('/z2m/set/<thing_name>', lambda thing_name: _thing_put(z2m, thing_name), ['PUT'])
+        www.serve_url('/z2m/set/<thing_name>', lambda thing_name: _thing_put(z2m, thing_name), ['PUT', 'POST'])
         www.serve_url('/z2m/get/<thing_name>', lambda thing_name: z2m.get_thing(thing_name).get_json_state())

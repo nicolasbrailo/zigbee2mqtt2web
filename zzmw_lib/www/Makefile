@@ -7,7 +7,7 @@ css: build/zmw.css
 build/zmw.css: ./css/* build
 	./build/npm/node_modules/.bin/uglifycss ./css/* > build/zmw.css
 
-.PHONY: zmw.js
+.PHONY: js
 js: build/zmw.js
 build/zmw.js: build build/extjs/react.dom.js build/extjs/react.js js/*
 	@# Order is important (eg we need to define react before zmw)
