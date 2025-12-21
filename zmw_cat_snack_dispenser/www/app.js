@@ -96,7 +96,7 @@ class CatFeeder extends React.Component {
       minute: entry.minute,
       serving_size: entry.serving_size,
     }));
-    mJsonPut('/save_schedule', JSON.stringify(payload));
+    mJsonPut('/save_schedule', payload);
   }
 
   handleFeedNow() {
@@ -205,12 +205,7 @@ class CatFeeder extends React.Component {
     // Don't send empty payload
     if (Object.keys(payload).length === 0) return;
 
-    // Convert payload to query string format
-    const params = Object.entries(payload)
-      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
-      .join('&');
-
-    mJsonPut(`/z2m/set/${thingName}`, params);
+    mJsonPut(`/z2m/set/${thingName}`, payload);
 
     if (this.settingsRef.current) {
       this.settingsRef.current.open = false;
