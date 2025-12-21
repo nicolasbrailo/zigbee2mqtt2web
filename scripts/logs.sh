@@ -24,4 +24,4 @@ for svc in "${services[@]}"; do
     unit_args+=("-u" "$svc")
 done
 
-journalctl --follow --output=json "${unit_args[@]}" | jq -r -f "$THIS_SCRIPT_DIR/journal_parse.jq"
+journalctl --follow --output=json "${unit_args[@]}" | jq --arg basepath "$ZMW_PROJECT_ROOT" -r -f "$THIS_SCRIPT_DIR/journal_parse.jq"

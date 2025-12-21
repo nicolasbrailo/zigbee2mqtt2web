@@ -8,6 +8,7 @@ if [ -z "${1+x}" ]; then
 fi
 
 SRC_ROOT=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+ZMW_PROJECT_ROOT=$( dirname "$SRC_ROOT" )
 TGT_SVC_SRC=$( readlink -f "$1" )
 TGT_SVC_NAME=$( basename "$TGT_SVC_SRC" )
 SVC_RUN_BASE="/home/$USER/run/baticasa"
@@ -86,12 +87,15 @@ chmod +x "$TGT_SVC_RUN/stop.sh"
 echo "sudo systemctl start '$TGT_SVC_NAME'" > "$TGT_SVC_RUN/start.sh"
 chmod +x "$TGT_SVC_RUN/start.sh"
 cp "$SRC_ROOT/journal_parse.jq" "$SVC_RUN_BASE/journal_parse.jq"
-echo "journalctl --follow --output=json --unit '$TGT_SVC_NAME' | jq -r -f '$SVC_RUN_BASE/journal_parse.jq'" > "$TGT_SVC_RUN/logs.sh"
+echo "journalctl --follow --output=json --unit '$TGT_SVC_NAME' | jq --arg basepath '$ZMW_PROJECT_ROOT' -r -f '$SVC_RUN_BASE/journal_parse.jq'" > "$TGT_SVC_RUN/logs.sh"
 chmod +x "$TGT_SVC_RUN/logs.sh"
 cp "$SRC_ROOT/use_https_here.sh" "$TGT_SVC_RUN/use_https_here.sh"
 chmod +x "$TGT_SVC_RUN/use_https_here.sh"
 cp "$SRC_ROOT/logs.sh" "$SRC_ROOT/services_status.sh" "$SRC_ROOT/restart_all.sh" "$SVC_RUN_BASE/"
 chmod +x "$SVC_RUN_BASE/"*.sh
+
+# Add a variable to logs.sh to let it know where the project root is, so that jq can print journal logs and strip the full path
+sed -i "2i ZMW_PROJECT_ROOT='$ZMW_PROJECT_ROOT'" "$SVC_RUN_BASE/logs.sh
 
 if [ ! -f "/etc/systemd/system/$TGT_SVC_NAME.service" ]; then
   sudo ln -s "$TGT_SVC_RUN/$TGT_SVC_NAME.service" "/etc/systemd/system/$TGT_SVC_NAME.service" || true
