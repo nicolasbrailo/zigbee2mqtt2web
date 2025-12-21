@@ -26,7 +26,7 @@ class ZmwCronenbergs(ZmwMqttServiceNoCommands):
     """
 
     def __init__(self, cfg, www):
-        super().__init__(cfg, svc_deps=['ZmwTelegram'])
+        super().__init__(cfg, svc_deps=['ZmwTelegram', 'ZmwSpeakerAnnounce'])
         self._z2m = Z2MProxy(cfg, self)
 
         self._light_check_history = deque(maxlen=10)
@@ -148,8 +148,9 @@ class ZmwCronenbergs(ZmwMqttServiceNoCommands):
         log.info(msg)
 
     def _on_speaker_announce_cron(self, lang, msg, vol):
-        # TODO: Implement speaker announcement
-        pass
+        payload = {'msg': msg, 'lang': lang, 'vol': vol}
+        log.info("Cron trigger for TTS: %s", payload)
+        self.message_svc("ZmwSpeakerAnnounce", "tts", payload)
 
 
 service_runner_with_www(ZmwCronenbergs)
