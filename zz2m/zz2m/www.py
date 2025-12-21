@@ -49,12 +49,12 @@ def _set_props_of_thing(z2m, thing_name, data):
 def _thing_put(z2m, thing_name):
     data = _get_request_data()
     if data is None or len(data) == 0:
-        raise RuntimeError('Set prop requires at least one PUT value')
+        raise RuntimeError('Set prop requires at least one PUT/POST value')
 
     # Validate all k,v's are valid and exist before applying any. Note values may be empty or non existent
     for key, val in data.items():
         if key is None or len(key) == 0:
-            raise RuntimeError(f'Invalid set of PUT values f{key}:f{val}')
+            raise RuntimeError(f'Invalid set of PUT/POST values f{key}:f{val}')
 
     try:
         res = _set_props_of_thing(z2m, thing_name, data)

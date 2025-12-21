@@ -109,12 +109,9 @@ class ServiceMagicProxy:
 
                 # Forward request body for methods that support it
                 if request.method in ['POST', 'PUT', 'PATCH']:
-                    if request.content_type and 'application/json' in request.content_type:
-                        kwargs['json'] = request.get_json(silent=True)
-                    elif request.data:
-                        kwargs['data'] = request.data
-                    elif request.form:
-                        kwargs['data'] = request.form
+                    data = request.get_data()
+                    if data:
+                        kwargs['data'] = data
 
                 # Make the request
                 async with session.request(request.method, target_url, **kwargs) as resp:
