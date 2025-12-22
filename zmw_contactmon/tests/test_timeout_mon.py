@@ -319,8 +319,8 @@ class TestTimeoutMonitor:
         result = self.monitor.get_monitoring_sensors()
 
         assert 'Sensor1' in result
-        # Should show seconds until timeout (approximately 300 seconds)
-        assert 'seconds until timeout' in result['Sensor1']
+        # Should show sensor reports open
+        assert 'reports open' in result['Sensor1']
 
     def test_get_monitoring_sensors_shows_expired(self):
         """Test get_monitoring_sensors shows expired message after timeout triggers"""
@@ -342,7 +342,7 @@ class TestTimeoutMonitor:
         result = self.monitor.get_monitoring_sensors()
 
         assert 'Sensor1' in result
-        assert 'Timeout expired' in result['Sensor1']
+        assert 'timeout expired' in result['Sensor1']
         assert '300' in result['Sensor1']  # timeout_secs value
 
     def test_get_monitoring_sensors_removed_after_normal(self):
@@ -387,8 +387,8 @@ class TestTimeoutMonitor:
 
         # Sensor1 should show expired
         assert 'Sensor1' in result
-        assert 'Timeout expired' in result['Sensor1']
+        assert 'timeout expired' in result['Sensor1']
 
-        # Sensor2 should show time remaining
+        # Sensor2 should show reports open
         assert 'Sensor2' in result
-        assert 'seconds until timeout' in result['Sensor2']
+        assert 'reports open' in result['Sensor2']

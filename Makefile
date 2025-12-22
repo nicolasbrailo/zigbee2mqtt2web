@@ -1,5 +1,6 @@
 # Auto-discover all subdirectories with Makefiles
 LINT_DIRS := $(patsubst %/Makefile,%,$(wildcard */Makefile))
+TEST_DIRS := $(patsubst %/tests,%,$(wildcard */tests))
 
 .PHONY: systemdeps
 systemdeps:
@@ -8,7 +9,7 @@ systemdeps:
 .PHONY: test
 test:
 	@echo "Running test on all projects..."
-	@for dir in $(LINT_DIRS); do \
+	@for dir in $(TEST_DIRS); do \
 		make -C $$dir test || true; \
 	done
 

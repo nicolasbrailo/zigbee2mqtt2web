@@ -15,6 +15,7 @@ class TestDoorOpenSceneLightManager:
             "door_open_scene_thing_to_manage": ["Light1", "Light2"],
         }
         self.mqtt_client = Mock()
+        self.scheduler = Mock()
 
     def _create_mock_thing(self, name, thing_type='light', is_on=False):
         """Helper to create mock thing object"""
@@ -34,7 +35,7 @@ class TestDoorOpenSceneLightManager:
         mock_z2m = Mock()
         mock_z2m_class.return_value = mock_z2m
 
-        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client)
+        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client, self.scheduler)
 
         # Simulate Z2M network discovery with lights
         light1 = self._create_mock_thing("Light1")
@@ -85,7 +86,7 @@ class TestDoorOpenSceneLightManager:
         mock_z2m = Mock()
         mock_z2m_class.return_value = mock_z2m
 
-        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client)
+        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client, self.scheduler)
 
         # Simulate Z2M network discovery with a light and a non-light
         light1 = self._create_mock_thing("Light1", thing_type='light')
@@ -115,7 +116,7 @@ class TestDoorOpenSceneLightManager:
         mock_z2m_class.return_value = mock_z2m
 
         # Config requests Light1 and Light2
-        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client)
+        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client, self.scheduler)
 
         # But Z2M only discovers Light1
         light1 = self._create_mock_thing("Light1")
@@ -146,7 +147,7 @@ class TestDoorOpenSceneLightManager:
         mock_z2m = Mock()
         mock_z2m_class.return_value = mock_z2m
 
-        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client)
+        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client, self.scheduler)
 
         light1 = self._create_mock_thing("Light1")
         known_things = {"Light1": light1}
@@ -180,7 +181,7 @@ class TestDoorOpenSceneLightManager:
         mock_z2m = Mock()
         mock_z2m_class.return_value = mock_z2m
 
-        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client)
+        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client, self.scheduler)
 
         # Light1 is off, Light2 is already on
         light1 = self._create_mock_thing("Light1", is_on=False)
@@ -215,7 +216,7 @@ class TestDoorOpenSceneLightManager:
         mock_z2m = Mock()
         mock_z2m_class.return_value = mock_z2m
 
-        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client)
+        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client, self.scheduler)
 
         light1 = self._create_mock_thing("Light1")
         light2 = self._create_mock_thing("Light2")
@@ -237,7 +238,7 @@ class TestDoorOpenSceneLightManager:
         mock_z2m = Mock()
         mock_z2m_class.return_value = mock_z2m
 
-        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client)
+        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client, self.scheduler)
 
         light1 = self._create_mock_thing("Light1")
         light2 = self._create_mock_thing("Light2")
@@ -289,7 +290,7 @@ class TestDoorOpenSceneLightManager:
         mock_z2m = Mock()
         mock_z2m_class.return_value = mock_z2m
 
-        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client)
+        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client, self.scheduler)
 
         light1 = self._create_mock_thing("Light1")
         known_things = {"Light1": light1}
@@ -314,7 +315,7 @@ class TestDoorOpenSceneLightManager:
         mock_z2m = Mock()
         mock_z2m_class.return_value = mock_z2m
 
-        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client)
+        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client, self.scheduler)
 
         light1 = self._create_mock_thing("Light1")
         light2 = self._create_mock_thing("Light2")
@@ -361,7 +362,7 @@ class TestDoorOpenSceneLightManager:
         mock_z2m = Mock()
         mock_z2m_class.return_value = mock_z2m
 
-        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client)
+        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client, self.scheduler)
 
         light1 = self._create_mock_thing("Light1")
         known_things = {"Light1": light1}
@@ -402,7 +403,7 @@ class TestDoorOpenSceneLightManager:
         mock_z2m = Mock()
         mock_z2m_class.return_value = mock_z2m
 
-        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client)
+        mgr = DoorOpenSceneLightManager(self.cfg, self.mqtt_client, self.scheduler)
 
         # First discovery: only Light1
         light1 = self._create_mock_thing("Light1")
@@ -440,6 +441,7 @@ class TestDoorOpenScene:
             "latlon": [45.0, 9.0],
         }
         self.mqtt_client = Mock()
+        self.scheduler = Mock()
 
     @patch('door_open_scene.is_sun_out')
     @patch('door_open_scene.DoorOpenSceneLightManager')
@@ -453,7 +455,7 @@ class TestDoorOpenScene:
         mock_timer = Mock()
         mock_timer_class.return_value = mock_timer
 
-        scene = DoorOpenScene(self.cfg, self.mqtt_client)
+        scene = DoorOpenScene(self.cfg, self.mqtt_client, self.scheduler)
 
         # Call maybe_start
         scene.maybe_start()
@@ -487,7 +489,7 @@ class TestDoorOpenScene:
         mock_light_mgr = Mock()
         mock_light_mgr_class.return_value = mock_light_mgr
 
-        scene = DoorOpenScene(self.cfg, self.mqtt_client)
+        scene = DoorOpenScene(self.cfg, self.mqtt_client, self.scheduler)
 
         # Call maybe_start
         scene.maybe_start()
@@ -511,7 +513,7 @@ class TestDoorOpenScene:
         mock_timer2 = Mock()
         mock_timer_class.side_effect = [mock_timer1, mock_timer2]
 
-        scene = DoorOpenScene(self.cfg, self.mqtt_client)
+        scene = DoorOpenScene(self.cfg, self.mqtt_client, self.scheduler)
 
         # Call maybe_start to start the timer
         scene.maybe_start()
@@ -540,7 +542,7 @@ class TestDoorOpenScene:
         mock_timer2 = Mock()
         mock_timer_class.side_effect = [mock_timer1, mock_timer2]
 
-        scene = DoorOpenScene(self.cfg, self.mqtt_client)
+        scene = DoorOpenScene(self.cfg, self.mqtt_client, self.scheduler)
 
         # Call maybe_start to start the timer
         scene.maybe_start()
@@ -573,7 +575,7 @@ class TestDoorOpenScene:
         mock_light_mgr = Mock()
         mock_light_mgr_class.return_value = mock_light_mgr
 
-        scene = DoorOpenScene(self.cfg, self.mqtt_client)
+        scene = DoorOpenScene(self.cfg, self.mqtt_client, self.scheduler)
 
         # Don't call maybe_start, so no timer is active
         assert scene._door_open_scene_timer is None
@@ -595,7 +597,7 @@ class TestDoorOpenScene:
         mock_timer = Mock()
         mock_timer_class.return_value = mock_timer
 
-        scene = DoorOpenScene(self.cfg, self.mqtt_client)
+        scene = DoorOpenScene(self.cfg, self.mqtt_client, self.scheduler)
 
         # Call maybe_start
         scene.maybe_start()
@@ -625,7 +627,7 @@ class TestDoorOpenScene:
         mock_timer = Mock()
         mock_timer_class.return_value = mock_timer
 
-        scene = DoorOpenScene(self.cfg, self.mqtt_client)
+        scene = DoorOpenScene(self.cfg, self.mqtt_client, self.scheduler)
 
         # is_sun_out is called once in __init__
         mock_is_sun_out.assert_called_with(45.0, 9.0)

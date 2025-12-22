@@ -11,6 +11,7 @@ class TestZ2mContactSensorDebouncer:
         """Setup test fixtures"""
         self.cfg = {}
         self.mqtt = Mock()
+        self.scheduler = Mock()
         self.actions_on_sensor_change = {
             'Sensor1': {
                 'normal_state': False,
@@ -29,7 +30,8 @@ class TestZ2mContactSensorDebouncer:
                 self.cfg,
                 self.mqtt,
                 self.actions_on_sensor_change,
-                self.callback
+                self.callback,
+                self.scheduler
             )
 
     def _create_thing(self, name, contact_value):
