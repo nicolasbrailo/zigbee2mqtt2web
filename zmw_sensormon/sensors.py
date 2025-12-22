@@ -1,6 +1,5 @@
 """ Keeps a historical database of sensor readings """
 
-from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import sqlite3
 import logging
@@ -185,7 +184,7 @@ class SensorsHistory:
     """ Automatically hooks up an observer to a sensor-like thing, and keeps
     track of changes in the sensor so it can save the change history to a DB """
 
-    def __init__(self, dbpath, retention_rows=None, retention_days=None):
+    def __init__(self, dbpath, scheduler, retention_rows=None, retention_days=None):
         self._retention_rows = retention_rows
         self._retention_days = retention_days
         self._dbpath = dbpath
@@ -194,8 +193,7 @@ class SensorsHistory:
         with sqlite3.connect(self._dbpath):
             pass
 
-        self._scheduler = BackgroundScheduler()
-        self._scheduler.start()
+        self._scheduler = scheduler
 
         # Clear old sensors once a day, some time at a random hour during the night
         self._scheduler.add_job(

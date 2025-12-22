@@ -26,7 +26,7 @@ logging.getLogger("reolink_aio.helpers").setLevel(logging.ERROR)
 
 
 async def _connect_to_cam(cam_host, cam_user, cam_pass, webhook_url, rtsp_cbs,
-                          rec_path, rec_retention_days, rec_default_duration_secs):
+                          rec_path, rec_retention_days, rec_default_duration_secs, scheduler):
     log.info("Connecting to doorbell at %s...", cam_host)
     cam = ReolinkDoorbellHost(cam_host, cam_user, cam_pass, use_https=True)
 
@@ -64,7 +64,7 @@ async def _connect_to_cam(cam_host, cam_user, cam_pass, webhook_url, rtsp_cbs,
     try:
         rtspurl = await cam.get_rtsp_stream_source(0, "main")
         log.info("Cam %s offers RTSP at %s", cam_host, rtspurl)
-        rtsp = Rtsp(cam_host, rtsp_cbs, rtspurl, rec_path, rec_retention_days, rec_default_duration_secs)
+        rtsp = Rtsp(cam_host, rtsp_cbs, rtspurl, rec_path, scheduler, rec_retention_days, rec_default_duration_secs)
     except ReolinkError:
         log.error("Failed to get RTSP URL from cam %s (recording disabled)", cam_host, exc_info=True)
 
@@ -122,7 +122,8 @@ class ReolinkDoorbell(ABC):
         self._should_be_connected = True
         try:
             camtask = _connect_to_cam(self._cam_host, self._cam_user, self._cam_pass, self._webhook_url, self,
-                                      self._rec_path, self._rec_retention_days, self._rec_default_duration_secs)
+                                      self._rec_path, self._rec_retention_days, self._rec_default_duration_secs,
+                                      self._scheduler)
             self._cam, self.rtsp = self._runner.run_until_complete(camtask)
         except ReolinkError:
             log.error("Failed to reconnect to cam %s, will retry later", self._cam_host, exc_info=True)

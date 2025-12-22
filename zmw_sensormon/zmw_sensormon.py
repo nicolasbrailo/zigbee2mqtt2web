@@ -105,7 +105,7 @@ class ZmwSensormon(ZmwMqttNullSvc):
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
 
-        self._sensors = SensorsHistory(dbpath=cfg['db_path'], retention_days=cfg['retention_days'])
+        self._sensors = SensorsHistory(dbpath=cfg['db_path'], scheduler=sched, retention_days=cfg['retention_days'])
         self._sensors.register_to_webserver(www)
 
         self._z2m = Z2MProxy(cfg, self, sched,

@@ -1,5 +1,4 @@
 """RTSP recording and management for camera streams."""
-from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
 from threading import Lock
 import os
@@ -68,9 +67,8 @@ def _delete_old_files(directory, days_threshold):
 
 class Rtsp:
     """ Manage RTSP recordings """
-    def __init__(self, cam_host, event_cb, rtspurl, rec_path_prefix, retention_days=15, default_duration_secs=10):
-        self._scheduler = BackgroundScheduler()
-        self._scheduler.start()
+    def __init__(self, cam_host, event_cb, rtspurl, rec_path_prefix, scheduler, retention_days=15, default_duration_secs=10):
+        self._scheduler = scheduler
 
         self._default_recording_duration_secs = default_duration_secs
         self._process_stop_timeout_secs = 5
