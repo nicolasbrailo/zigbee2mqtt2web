@@ -318,7 +318,6 @@ class ZmwSpotify(ZmwMqttService):
         match subtopic:
             case "publish_state":
                 self.publish_own_svc_message("state", self._get_full_state())
-
             case "stop":
                 log.info("Received stop command")
                 self._with_spotify('stop', self._stop)
@@ -337,9 +336,8 @@ class ZmwSpotify(ZmwMqttService):
                     return
                 log.info("Setting volume to %s", payload['value'])
                 self._with_spotify('set_volume', self._set_volume_pct, payload['value'])
-
             case _:
-                log.warning("Ignoring unknown MQTT topic: %s", subtopic)
+                pass
 
 
 service_runner(ZmwSpotify)
