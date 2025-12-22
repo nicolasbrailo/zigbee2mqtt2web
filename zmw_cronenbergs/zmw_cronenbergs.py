@@ -5,14 +5,13 @@ import pathlib
 from datetime import datetime
 from collections import deque
 
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 from zzmw_lib.zmw_mqtt_service import ZmwMqttServiceNoCommands
 from zzmw_lib.logs import build_logger
 
 from zz2m.z2mproxy import Z2MProxy
 from zz2m.light_helpers import turn_all_lights_off
 
-from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 log = build_logger("ZmwCronenbergs")
@@ -25,9 +24,9 @@ class ZmwCronenbergs(ZmwMqttServiceNoCommands):
     - Sending notifications about scheduled events
     """
 
-    def __init__(self, cfg, www):
-        super().__init__(cfg, svc_deps=['ZmwTelegram', 'ZmwSpeakerAnnounce'])
-        self._z2m = Z2MProxy(cfg, self)
+    def __init__(self, cfg, www, sched):
+        super().__init__(cfg, sched, svc_deps=['ZmwTelegram', 'ZmwSpeakerAnnounce'])
+        self._z2m = Z2MProxy(cfg, self, sched)
 
         self._light_check_history = deque(maxlen=10)
 
@@ -37,8 +36,7 @@ class ZmwCronenbergs(ZmwMqttServiceNoCommands):
         www.serve_url('/stats', self._get_stats)
         www.serve_url('/mock_auto_lights_off', self._mock_auto_lights_off)
 
-        self._scheduler = BackgroundScheduler()
-        self._scheduler.start()
+        self._scheduler = sched
 
         # Schedule automatic lights off if configured
         if 'auto_lights_off' in cfg and cfg['auto_lights_off']['enable']:
@@ -153,4 +151,4 @@ class ZmwCronenbergs(ZmwMqttServiceNoCommands):
         self.message_svc("ZmwSpeakerAnnounce", "tts", payload)
 
 
-service_runner_with_www(ZmwCronenbergs)
+service_runner(ZmwCronenbergs)

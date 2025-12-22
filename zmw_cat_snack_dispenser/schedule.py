@@ -1,4 +1,3 @@
-from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
 import threading
 
@@ -73,7 +72,7 @@ class DispensingSchedule:
     and we want to monitor it from here. That is so that if this service dies, the unit will continue to dispense
     food. To do this, we expect this object to be called when a dispense event is triggered. If the dispense event
     fails to trigger, a timeout will expire on this service, and we will try to force a dispense event. """
-    def __init__(self, cat_feeder_name, history, cb_emergency_dispense, feeding_schedule, tolerance_secs):
+    def __init__(self, cat_feeder_name, history, cb_emergency_dispense, feeding_schedule, tolerance_secs, scheduler):
         validate_schedule_config(feeding_schedule, tolerance_secs)
 
         self._cat_feeder_name = cat_feeder_name
@@ -83,7 +82,7 @@ class DispensingSchedule:
         self._tolerance_secs = tolerance_secs
         self._pending_check_timers = {}  # key: (hour, minute), value: Timer
 
-        self._scheduler = BackgroundScheduler()
+        self._scheduler = scheduler
         for schedule in self._feeding_schedule:
             day_of_week = _days_to_apscheduler(schedule['days'])
             sched_hour = schedule['hour']
@@ -96,7 +95,6 @@ class DispensingSchedule:
                 hour=sched_hour,
                 minute=sched_minute,
             )
-        self._scheduler.start()
 
     def get_schedule(self):
         return self._feeding_schedule

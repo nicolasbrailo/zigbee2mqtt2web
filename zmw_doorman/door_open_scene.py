@@ -8,7 +8,7 @@ from zzmw_lib.logs import build_logger
 log = build_logger("DoorOpenScene")
 
 class DoorOpenSceneLightManager:
-    def __init__(self, cfg, mqtt_client):
+    def __init__(self, cfg, mqtt_client, scheduler):
         self._wanted_things = cfg["door_open_scene_thing_to_manage"]
         self._known_things = {}
         self._managing_things = {}
@@ -16,7 +16,7 @@ class DoorOpenSceneLightManager:
         self._ignoring_updates_until = None
         self._ignore_updates_secs = 3
         self._is_running = False
-        self._z2m = Z2MProxy(cfg, mqtt_client,
+        self._z2m = Z2MProxy(cfg, mqtt_client, scheduler,
                              cb_on_z2m_network_discovery=self._on_z2m_network_discovery,
                              cb_is_device_interesting=lambda t: t.name in self._wanted_things)
 
@@ -74,8 +74,8 @@ class DoorOpenSceneLightManager:
             self._managing_things = {}
 
 class DoorOpenScene:
-    def __init__(self, cfg, mqtt_client):
-        self._light_mgr = DoorOpenSceneLightManager(cfg, mqtt_client)
+    def __init__(self, cfg, mqtt_client, scheduler):
+        self._light_mgr = DoorOpenSceneLightManager(cfg, mqtt_client, scheduler)
         self._door_open_scene_timer = None
         self._door_open_scene_timeout_secs = cfg["door_open_scene_timeout_secs"]
         self._latlon = cfg["latlon"]

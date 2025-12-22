@@ -8,7 +8,6 @@ import random
 
 from datetime import datetime, timedelta
 from paho.mqtt import publish as mqtt_bcast
-from apscheduler.schedulers.background import BackgroundScheduler
 
 log = build_logger("ZmwMqttService", logging.INFO)
 #log = build_logger("ZmwMqttService")
@@ -16,7 +15,7 @@ log = build_logger("ZmwMqttService", logging.INFO)
 class ZmwMqttService(ZmwMqttBase):
     """ An ZmwMqttService listens for commands and will send replies over mqtt. It may have dependencies to other services. """
 
-    def __init__(self, cfg, svc_topic, svc_deps=[]):
+    def __init__(self, cfg, svc_topic, scheduler, svc_deps=[]):
         super().__init__(cfg)
         self._svc_topic = svc_topic
         if self._svc_topic is not None:
@@ -37,8 +36,7 @@ class ZmwMqttService(ZmwMqttBase):
         self.subscribe_with_cb(self._global_svc_discovery_announce_topic, lambda _t, payload: self._on_service_updown(True, payload))
         self.subscribe_with_cb(self._global_svc_discovery_leaving_topic, lambda _t, payload: self._on_service_updown(False, payload))
 
-        self._svc_sched = BackgroundScheduler()
-        self._svc_sched.start()
+        self._svc_sched = scheduler
 
         self._start_monitoring_deps()
 
@@ -258,8 +256,8 @@ class ZmwMqttService(ZmwMqttBase):
 
 
 class ZmwMqttServiceNoCommands(ZmwMqttService):
-    def __init__(self, cfg, svc_deps=[]):
-        super().__init__(cfg, svc_topic=None, svc_deps=svc_deps)
+    def __init__(self, cfg, scheduler, svc_deps=[]):
+        super().__init__(cfg, svc_topic=None, scheduler=scheduler, svc_deps=svc_deps)
 
     def on_service_received_message(self, subtopic, payload):
         log.error("Unexpected message %s %s", subtopic, payload)

@@ -5,7 +5,7 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
-        "apscheduler",
+        "apscheduler>=3.10.4",
         "flask",
         "inotify-simple",
         "paho-mqtt",

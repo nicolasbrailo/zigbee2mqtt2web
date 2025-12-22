@@ -20,7 +20,7 @@ class ButtonActionService(ZmwMqttNullSvc):
     is triggered.
     Start the service with service_runner_with_www(YourClass)
     """
-    def __init__(self, cfg, www, www_path):
+    def __init__(self, cfg, www, www_path, scheduler):
         super().__init__(cfg)
 
         # Set up www directory and endpoints
@@ -34,7 +34,7 @@ class ButtonActionService(ZmwMqttNullSvc):
         self._bound_callbacks = []
         self._discovered_btn_actions = {}
 
-        self._z2m = Z2MProxy(cfg, self, cb_on_z2m_network_discovery=self._on_z2m_network_discovery)
+        self._z2m = Z2MProxy(cfg, self, scheduler, cb_on_z2m_network_discovery=self._on_z2m_network_discovery)
 
     def _on_z2m_network_discovery(self, _is_first_discovery, known_things):
         """Handle Z2M network discovery and bind button callbacks."""

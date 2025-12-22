@@ -1,7 +1,7 @@
 """Sensor monitoring and history service."""
 from zzmw_lib.zmw_mqtt_nullsvc import ZmwMqttNullSvc
 from zzmw_lib.logs import build_logger
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 
 from zz2m.z2mproxy import Z2MProxy
 from zz2m.www import Z2Mwebservice
@@ -88,15 +88,19 @@ class ShellyPlugMonitor:
         if sensor_name not in self._known_shellies:
             adapter = ShellyAdapter(sensor_name)
             self._known_shellies[sensor_name] = adapter
-            self._sensors.register_sensor(adapter, ShellyAdapter.METRICS)
-            log.info("New shelly plug discovered: %s", sensor_name)
+            try:
+                self._sensors.register_sensor(adapter, ShellyAdapter.METRICS)
+                log.info("New shelly plug discovered: %s", sensor_name)
+            except ValueError:
+                log.error("New sensor '%s' can't be registered. This may be normal if a Shelly plug has no known name yet",
+                          sensor_name, exc_info=True)
 
         self._known_shellies[sensor_name].update(payload)
 
 
 class ZmwSensormon(ZmwMqttNullSvc):
     """MQTT service for monitoring sensor data and maintaining history."""
-    def __init__(self, cfg, www):
+    def __init__(self, cfg, www, sched):
         super().__init__(cfg)
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
@@ -104,7 +108,7 @@ class ZmwSensormon(ZmwMqttNullSvc):
         self._sensors = SensorsHistory(dbpath=cfg['db_path'], retention_days=cfg['retention_days'])
         self._sensors.register_to_webserver(www)
 
-        self._z2m = Z2MProxy(cfg, self,
+        self._z2m = Z2MProxy(cfg, self, sched,
                              cb_on_z2m_network_discovery=self._on_z2m_network_discovery,
                              cb_is_device_interesting=lambda t: len(interesting_actions(t)) > 0)
         self._z2mw = Z2Mwebservice(www, self._z2m)
@@ -130,4 +134,4 @@ class ZmwSensormon(ZmwMqttNullSvc):
                 log.info('Will monitor %s, publishes %s', thing_name, str(acts))
                 self._sensors.register_sensor(thing, acts)
 
-service_runner_with_www(ZmwSensormon)
+service_runner(ZmwSensormon)

@@ -11,13 +11,13 @@ class Z2mContactSensorDebouncer:
     Debounces sensor reports: a CB will only trigger when a report sensor is 'good': will skip duplicated reports,
     skip non-monitored sensors, validate sensor state, etc.
     """
-    def __init__(self, cfg, mqtt, actions_on_sensor_change, cb_on_transition):
+    def __init__(self, cfg, mqtt, actions_on_sensor_change, cb_on_transition, scheduler):
         self.monitoring = {} # Things we're monitoring
         self.history = {} # History of things we're monitoring
         self.monitoring_prev_state = {} # Last known contact state for each thing
         self.cb_on_transition = cb_on_transition
         self._actions_on_sensor_change = actions_on_sensor_change
-        self._z2m = Z2MProxy(cfg, mqtt,
+        self._z2m = Z2MProxy(cfg, mqtt, scheduler,
                              cb_on_z2m_network_discovery=self._on_z2m_network,
                              cb_is_device_interesting=lambda t: 'contact' in t.actions.keys())
 

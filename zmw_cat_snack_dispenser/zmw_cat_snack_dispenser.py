@@ -3,7 +3,7 @@ import os
 import pathlib
 from flask import abort, request
 
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 from zzmw_lib.logs import build_logger
 from zz2m.z2mproxy import Z2MProxy
@@ -17,8 +17,8 @@ from schedule import DispensingSchedule, validate_schedule_config
 log = build_logger("ZmwCatSnackDispenser")
 
 class ZmwCatSnackDispenser(ZmwMqttService):
-    def __init__(self, cfg, www):
-        super().__init__(cfg, svc_topic="zmw_cat_feeder", svc_deps=["ZmwTelegram"])
+    def __init__(self, cfg, www, sched):
+        super().__init__(cfg, svc_topic="zmw_cat_feeder", scheduler=sched, svc_deps=["ZmwTelegram"])
         self._z2m_cat_feeder_name = cfg["z2m_cat_feeder"]
         self._schedule_tolerance_secs = cfg["schedule_tolerance_secs"]
 
@@ -29,13 +29,13 @@ class ZmwCatSnackDispenser(ZmwMqttService):
         history = DispensingHistory(self._z2m_cat_feeder_name, history_len=10,
                                          cb_on_dispense=self._notify_dispense_event)
         schedule = DispensingSchedule(self._z2m_cat_feeder_name, history, self.feed_now,
-                                            cfg["feeding_schedule"], cfg["schedule_tolerance_secs"])
+                                            cfg["feeding_schedule"], cfg["schedule_tolerance_secs"], sched)
         self._dispense_tracking = DispenseTracking(history, schedule)
         self._config_enforcer = ConfigEnforcer(backoff_secs=1, schedule=self._dispense_tracking)
 
         self._cat_feeder = None
 
-        self._z2m = Z2MProxy(cfg, self,
+        self._z2m = Z2MProxy(cfg, self, sched,
                              cb_on_z2m_network_discovery=self._on_z2m_network_discovery,
                              cb_is_device_interesting=lambda t: t.name == self._z2m_cat_feeder_name)
         self._z2mw = Z2Mwebservice(www, self._z2m)
@@ -126,4 +126,4 @@ class ZmwCatSnackDispenser(ZmwMqttService):
         self._z2m.broadcast_thing(self._cat_feeder)
         return {}
 
-service_runner_with_www(ZmwCatSnackDispenser)
+service_runner(ZmwCatSnackDispenser)

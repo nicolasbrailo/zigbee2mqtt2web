@@ -3,7 +3,6 @@ log = build_logger("Z2M")
 
 from zz2m.light_helpers import monkeypatch_lights
 
-from apscheduler.schedulers.background import BackgroundScheduler
 from ctypes import c_int32
 from datetime import datetime, timedelta
 
@@ -26,7 +25,8 @@ class Z2MProxy:
         mqtt: MqttProxy instance for MQTT communication
         topic: MQTT topic prefix for Zigbee2MQTT (default: 'zigbee2mqtt')
     """
-    def __init__(self, cfg, mqtt, topic='zigbee2mqtt', cb_on_z2m_network_discovery=None, cb_is_device_interesting=None):
+    def __init__(self, cfg, mqtt, scheduler, topic='zigbee2mqtt',
+                 cb_on_z2m_network_discovery=None, cb_is_device_interesting=None):
         self._z2m_topic = topic
         self._known_things = {}
         self._z2m_subtopic_cbs = []
@@ -38,8 +38,7 @@ class Z2MProxy:
         self._cb_on_z2m_network_discovery = cb_on_z2m_network_discovery
         self._cb_is_device_interesting = cb_is_device_interesting or (lambda x: True)
 
-        self._scheduler = BackgroundScheduler()
-        self._scheduler.start()
+        self._scheduler = scheduler
         self._z2m_ping_timeout_minutes = 5
         self._scheduler.add_job(
             self._z2m_connect_check,

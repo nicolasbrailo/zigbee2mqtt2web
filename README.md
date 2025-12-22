@@ -48,6 +48,9 @@ Install new services with `make rebuild_ui && make install_svc`. This will trigg
 * Use config_apply and config_merge to manage all service config files from a single place.
 * Use restart_and_log to restart a service and tail its logs.
 * Use logs.sh to tail the logs of all services in the system.
+* There is a restart_all helper that will shutdown and bringup services in an ordered way. This is unnecessary, but it prevents log spam and warnings in the logs while services boot up.
+* If you need to refresh the code of a service, just restart it. Service CWD is the ~/run directory specified at install time, but code points to the git repo, making bugfixes easy to deploy.
+* If you need to reinstall a service (eg because its dependencies changed, or because a systemd template or script was updated) type `make install_svc` again. The command is idempotent. It will shutdown and clean up the old service, then install the update.
 
 All service management scripts are wrappers on top of systemd/systemctl/journalctl.
 

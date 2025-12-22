@@ -1,8 +1,6 @@
 """Contact sensor monitoring with timeout and curfew alerts."""
 
-from apscheduler.schedulers.background import BackgroundScheduler
-
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 from zzmw_lib.logs import build_logger
 
@@ -21,12 +19,11 @@ class ZmwContactmon(ZmwMqttService):
     Monitors Z2M contact sensors and executes configured actions (notifications,
     announcements) when sensors change state, timeout, or violate curfew.
     """
-    def __init__(self, cfg, www):
-        super().__init__(cfg, svc_topic='zmw_contactmon',
+    def __init__(self, cfg, www, sched):
+        super().__init__(cfg, svc_topic='zmw_contactmon', scheduler=sched,
                          svc_deps=['ZmwSpeakerAnnounce', 'ZmwWhatsapp', 'ZmwTelegram'])
 
-        self._sched = BackgroundScheduler()
-        self._sched.start()
+        self._sched = sched
 
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
@@ -48,7 +45,10 @@ class ZmwContactmon(ZmwMqttService):
         www.serve_url('/enable_chimes', self._exec.enable_chimes)
         www.serve_url('/test_curfew', self._curfew)
 
-        self._z2m = Z2mContactSensorDebouncer(cfg, self, self._actions_on_sensor_change, self._on_sensor_change)
+        self._z2m = Z2mContactSensorDebouncer(cfg, self,
+                                              self._actions_on_sensor_change,
+                                              self._on_sensor_change,
+                                              self._sched)
 
     def get_service_alerts(self):
         alerts = []
@@ -91,4 +91,4 @@ class ZmwContactmon(ZmwMqttService):
                 log.info("Curfew: Sensor %s in non-normal state, triggering curfew action", sensor_name)
                 self._exec.on_transition(sensor_name, 'curfew')
 
-service_runner_with_www(ZmwContactmon)
+service_runner(ZmwContactmon)

@@ -8,7 +8,7 @@ from datetime import datetime
 from collections import deque
 
 from zzmw_lib.logs import build_logger
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 
 from whatsapp import WhatsApp
@@ -21,8 +21,8 @@ class ZmwWhatsapp(ZmwMqttService):
     _RATE_LIMIT_MAX_MSGS = 3
     _RATE_LIMIT_WINDOW_SECS = 60
 
-    def __init__(self, cfg, www):
-        super().__init__(cfg, "zmw_whatsapp")
+    def __init__(self, cfg, www, _sched):
+        super().__init__(cfg, "zmw_whatsapp", scheduler=_sched)
         self._wa = WhatsApp(cfg, test_mode=False)
         self._message_history = deque(maxlen=cfg['msg_history_len'])
         self._msg_times = deque(maxlen=self._RATE_LIMIT_MAX_MSGS)
@@ -89,4 +89,4 @@ class ZmwWhatsapp(ZmwMqttService):
             case _:
                 log.error("Ignoring unknown message '%s'", subtopic)
 
-service_runner_with_www(ZmwWhatsapp)
+service_runner(ZmwWhatsapp)

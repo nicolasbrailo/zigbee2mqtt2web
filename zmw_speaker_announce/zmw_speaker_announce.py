@@ -10,7 +10,7 @@ from datetime import datetime
 from flask import abort, request
 
 from zzmw_lib.logs import build_logger
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 
 from http_asset_server import HttpAssetServer
@@ -47,8 +47,8 @@ def save_audio_as_mp3(audio_file, output_dir):
 
 class ZmwSpeakerAnnounce(ZmwMqttService):
     """MQTT proxy for Sonos speaker announcements."""
-    def __init__(self, cfg, www):
-        super().__init__(cfg, "zmw_speaker_announce")
+    def __init__(self, cfg, www, _sched):
+        super().__init__(cfg, "zmw_speaker_announce", scheduler=_sched)
         self._cfg = cfg
         self._announce_vol = cfg['announce_volume']
         self._announcement_history = deque(maxlen=10)
@@ -226,4 +226,4 @@ class ZmwSpeakerAnnounce(ZmwMqttService):
         return vol
 
 
-service_runner_with_www(ZmwSpeakerAnnounce)
+service_runner(ZmwSpeakerAnnounce)

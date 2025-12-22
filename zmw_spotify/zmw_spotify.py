@@ -8,10 +8,8 @@ from spotipy.oauth2 import SpotifyOAuth
 from spotipy import Spotify as Spotipy
 from spotipy import SpotifyException
 
-from apscheduler.schedulers.background import BackgroundScheduler
-
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 from zzmw_lib.logs import build_logger
 
 log = build_logger("ZmwSpotify")
@@ -64,8 +62,8 @@ def _new_spotipy(cfg):
 class ZmwSpotify(ZmwMqttService):
     """MQTT Spotify control service for playback management."""
 
-    def __init__(self, cfg, www):
-        super().__init__(cfg, "zmw_spotify")
+    def __init__(self, cfg, www, sched):
+        super().__init__(cfg, "zmw_spotify", scheduler=sched)
         self._cfg = cfg
         self._spotipy = None
 
@@ -83,9 +81,7 @@ class ZmwSpotify(ZmwMqttService):
             log.error('Failed to authenticate Spotify, will retry later', exc_info=True)
 
         # Schedule periodic token refresh
-        self._scheduler = BackgroundScheduler()
-        self._scheduler.start()
-        self._scheduler.add_job(
+        sched.add_job(
             func=self._refresh_access_tok,
             trigger="interval",
             seconds=_SPOTIFY_SECS_BETWEEN_TOK_REFRESH)
@@ -346,4 +342,4 @@ class ZmwSpotify(ZmwMqttService):
                 log.warning("Ignoring unknown MQTT topic: %s", subtopic)
 
 
-service_runner_with_www(ZmwSpotify)
+service_runner(ZmwSpotify)

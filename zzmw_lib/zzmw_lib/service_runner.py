@@ -9,6 +9,8 @@ import sys
 import threading
 import time
 
+from apscheduler.schedulers.background import BackgroundScheduler
+
 from flask import Flask
 from flask import send_from_directory, abort, redirect, url_for
 from werkzeug.serving import make_server, WSGIRequestHandler
@@ -202,8 +204,7 @@ def get_this_service_logs():
 
     return {"logs": logs, "count": len(logs)}
 
-
-def service_runner_with_www(AppClass):
+def service_runner(AppClass):
     """
     Run a service application with embedded Flask web server.
 
@@ -285,7 +286,14 @@ def service_runner_with_www(AppClass):
         raise ValueError("Don't know how to run app '%s', this runner is meant to be used with ZmwMqttServices", AppClass.__name__)
 
     _monkeypatch_service_meta(AppClass, flaskapp.public_url_base)
-    app = AppClass(cfg, flaskapp)
+
+    # Create a global scheduler: I've found problems with using too many schedulers, and because this needs to be a
+    # reliable mechanism to schedule things (otherwise the service is broken) we'll try to minimize issues that may
+    # happen due to concurrency bugs between BG schedulers.
+    global_bg_svc_sheduler = BackgroundScheduler()
+    global_bg_svc_sheduler.start()
+
+    app = AppClass(cfg, flaskapp, global_bg_svc_sheduler)
 
     # Add an endpoint to retrieve any alerts that a service can optionally override
     if not hasattr(app, 'get_service_alerts'):
@@ -299,6 +307,7 @@ def service_runner_with_www(AppClass):
         log.info("Clean exit")
         sys.exit(0)
 
+    signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
     if flaskapp.startup_automatically:
         # User may override this when the app is instanciated

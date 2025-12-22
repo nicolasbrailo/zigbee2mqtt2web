@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "1bfc263a86bb51cd38b2dd3ac77257c65719aa0e1c91d64bdbd211b63d19d0cc"
+            "sha256": "1e0d00b88b23a644896af8f763a73f52f8a5ba3e913ad166e8b8b135038f28f4"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -19,11 +19,11 @@
     "default": {
         "apscheduler": {
             "hashes": [
-                "sha256:0db77af6400c84d1747fe98a04b8b58f0080c77d11d338c4f507a9752880f221",
-                "sha256:6162cb5683cb09923654fa9bdd3130c4be4bfda6ad8990971c9597ecd52965d2"
+                "sha256:2a9966b052ec805f020c8c4c3ae6e6a06e24b1bf19f2e11d91d8cca0473eef41",
+                "sha256:ce005177f741409db4e4dd40a7431b76feb856b9dd69d57e0da49d6715bfd26d"
             ],
-            "index": "pypi",
-            "version": "==3.11.1"
+            "markers": "python_version >= '3.8'",
+            "version": "==3.11.2"
         },
         "blinker": {
             "hashes": [
@@ -202,7 +202,7 @@
             "editable": true,
             "path": "/home/batman/src/BatiCasa/zigbee2mqtt2web/zz2m"
         },
-        "zzmw-common": {
+        "zzmw-lib": {
             "editable": true,
             "path": "/home/batman/src/BatiCasa/zigbee2mqtt2web/zzmw_lib"
         }

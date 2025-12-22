@@ -4,9 +4,9 @@ from datetime import datetime
 from .zmw_mqtt_service import ZmwMqttServiceNoCommands
 
 class ZmwMqttServiceMonitor(ZmwMqttServiceNoCommands):
-    def __init__(self, cfg, svc_deps=[]):
+    def __init__(self, cfg, scheduler, svc_deps=[]):
         self._all_services_ever_seen = {}
-        super().__init__(cfg, svc_deps)
+        super().__init__(cfg, scheduler, svc_deps)
 
     def _on_service_updown(self, up, svc_meta):
         """ Hack an MqttServiceClient to work as a global service monitor; an MqttServiceClient is meant to

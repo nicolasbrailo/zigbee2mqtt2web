@@ -402,7 +402,8 @@ class TelegramLongpollBot(ABC):
             bot_descr=None,
             message_history_len=50,
             terminate_on_unauthorized_access=False,
-            try_parse_msg_as_cmd=False):
+            try_parse_msg_as_cmd=False,
+            scheduler=None):
         """ See TelegramBot """
         self._t = None
         self._cmds_set = False
@@ -426,8 +427,11 @@ class TelegramLongpollBot(ABC):
         self._bot_name = bot_name
         self._bot_descr = bot_descr
 
-        self._scheduler = BackgroundScheduler()
-        self._scheduler.start()
+        if scheduler is not None:
+            self._scheduler = scheduler
+        else:
+            self._scheduler = BackgroundScheduler()
+            self._scheduler.start()
         self._poll_job = self._scheduler.add_job(
             func=self._poll_updates,
             trigger="interval",

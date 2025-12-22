@@ -3,7 +3,7 @@ import time
 import os
 import pathlib
 
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 from zzmw_lib.zmw_mqtt_service import ZmwMqttServiceNoCommands
 from zzmw_lib.logs import build_logger
 
@@ -17,8 +17,8 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
     # TODO:
     # * Add command to send video
     # * Telegram command to pause notifications
-    def __init__(self, cfg, www):
-        super().__init__(cfg, svc_deps=['ZmwSpeakerAnnounce', 'ZmwWhatsapp', 'ZmwTelegram',
+    def __init__(self, cfg, www, sched):
+        super().__init__(cfg, sched, svc_deps=['ZmwSpeakerAnnounce', 'ZmwWhatsapp', 'ZmwTelegram',
                                         'ZmwReolinkDoorbell', 'ZmwContactmon'])
         self._cfg = cfg
         # Ensure required config keys exist
@@ -30,7 +30,7 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
         self._snap_request_timeout_secs = 5
         self._telegram_cmd_door_snap = 'door_snap'
 
-        self._door_open_scene = DoorOpenScene(cfg, self)
+        self._door_open_scene = DoorOpenScene(cfg, self, sched)
 
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
@@ -143,4 +143,4 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
         """Handle door motion timeout event."""
         log.warning("Motion event timedout, no vacancy reported")
 
-service_runner_with_www(ZmwDoorman)
+service_runner(ZmwDoorman)

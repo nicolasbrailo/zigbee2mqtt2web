@@ -7,7 +7,7 @@ from flask import send_file, request, jsonify
 
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 from zzmw_lib.logs import build_logger
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 
 from reolink import ReolinkDoorbell
 from nvrish import Nvr
@@ -17,8 +17,8 @@ log = build_logger("ZmwReolinkDoorbell")
 class ZmwReolinkDoorbellCam(ReolinkDoorbell):
     """ Link Reolink events to mqtt b-casts """
 
-    def __init__(self, cfg, webhook_url, mqtt):
-        super().__init__(cfg, webhook_url)
+    def __init__(self, cfg, webhook_url, mqtt, scheduler):
+        super().__init__(cfg, webhook_url, scheduler)
         self._mqtt = mqtt
 
     def on_doorbell_button_pressed(self, cam_host, snap_path, full_cam_msg):
@@ -86,12 +86,12 @@ class ZmwReolinkDoorbell(ZmwMqttService):
     """ Bridge between Zmw services and a Reolink cam """
     DOORBELL_ALERT_DURATION_SECS = 60
 
-    def __init__(self, cfg, www):
-        super().__init__(cfg, "zmw_reolink_doorbell")
+    def __init__(self, cfg, www, sched):
+        super().__init__(cfg, "zmw_reolink_doorbell", scheduler=sched)
         self._doorbell_pressed_at = None
 
         # Initialize camera and NVR
-        self.cam = ZmwReolinkDoorbellCam(cfg, webhook_url=f"{www.public_url_base}/doorbell", mqtt=self)
+        self.cam = ZmwReolinkDoorbellCam(cfg, webhook_url=f"{www.public_url_base}/doorbell", mqtt=self, scheduler=sched)
         self.nvr = Nvr(cfg['rec_path'], www)
 
         # Register Flask routes
@@ -167,4 +167,4 @@ class ZmwReolinkDoorbell(ZmwMqttService):
             case _:
                 pass
 
-service_runner_with_www(ZmwReolinkDoorbell)
+service_runner(ZmwReolinkDoorbell)

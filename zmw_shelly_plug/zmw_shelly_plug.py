@@ -3,7 +3,7 @@ import os
 import pathlib
 import threading
 
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 from zzmw_lib.logs import build_logger
 
@@ -14,8 +14,8 @@ log = build_logger("ZmwShellyPlug")
 class ZmwShellyPlug(ZmwMqttService):
     """Service that monitors Shelly plugs and broadcasts stats via MQTT."""
 
-    def __init__(self, cfg, www):
-        super().__init__(cfg, svc_topic="zmw_shelly_plug")
+    def __init__(self, cfg, www, _sched):
+        super().__init__(cfg, svc_topic="zmw_shelly_plug", scheduler=_sched)
         # Set up www directory and endpoints
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
@@ -51,4 +51,4 @@ class ZmwShellyPlug(ZmwMqttService):
         log.error("Unexpected dep %s message %s %s", svc_name, subtopic, payload)
 
 
-service_runner_with_www(ZmwShellyPlug)
+service_runner(ZmwShellyPlug)

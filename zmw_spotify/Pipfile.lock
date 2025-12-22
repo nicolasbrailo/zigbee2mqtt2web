@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "de50ce91f8e7296ea5cbf2e2917439792720bfa08a7a71eee15f9f247b1b8fe0"
+            "sha256": "8d572f6f7c0b69ffa0674bc7c55e32e116601dbd09a1e475253b2dbc8ffb6645"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -19,11 +19,11 @@
     "default": {
         "apscheduler": {
             "hashes": [
-                "sha256:0db77af6400c84d1747fe98a04b8b58f0080c77d11d338c4f507a9752880f221",
-                "sha256:6162cb5683cb09923654fa9bdd3130c4be4bfda6ad8990971c9597ecd52965d2"
+                "sha256:2a9966b052ec805f020c8c4c3ae6e6a06e24b1bf19f2e11d91d8cca0473eef41",
+                "sha256:ce005177f741409db4e4dd40a7431b76feb856b9dd69d57e0da49d6715bfd26d"
             ],
-            "index": "pypi",
-            "version": "==3.11.1"
+            "markers": "python_version >= '3.8'",
+            "version": "==3.11.2"
         },
         "async-timeout": {
             "hashes": [
@@ -359,11 +359,11 @@
         },
         "urllib3": {
             "hashes": [
-                "sha256:5379eb6e1aba4088bae84f8242960017ec8d8e3decf30480b3a1abdaa9671a3f",
-                "sha256:e67d06fe947c36a7ca39f4994b08d73922d40e6cca949907be05efa6fd75110b"
+                "sha256:016f9c98bb7e98085cb2b4b17b87d2c702975664e4f060c6532e64d1c1a5e797",
+                "sha256:ec21cddfe7724fc7cb4ba4bea7aa8e2ef36f607a4bab81aa6ce42a13dc3f03dd"
             ],
             "markers": "python_version >= '3.9'",
-            "version": "==2.6.1"
+            "version": "==2.6.2"
         },
         "werkzeug": {
             "hashes": [
@@ -373,7 +373,7 @@
             "markers": "python_version >= '3.9'",
             "version": "==3.1.4"
         },
-        "zzmw-common": {
+        "zzmw-lib": {
             "editable": true,
             "path": "/home/batman/src/BatiCasa/zigbee2mqtt2web/zzmw_lib"
         }

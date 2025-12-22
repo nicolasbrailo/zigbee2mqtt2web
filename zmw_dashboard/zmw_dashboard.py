@@ -10,7 +10,7 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from zzmw_lib.zmw_mqtt_mon import ZmwMqttServiceMonitor
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 from zzmw_lib.logs import build_logger
 from service_magic_proxy import ServiceMagicProxy
 
@@ -32,12 +32,12 @@ def _validate_user_defined_links(links):
 
 class ZmwDashboard(ZmwMqttServiceMonitor):
     """Dashboard service that aggregates other services with generic proxying."""
-    def __init__(self, cfg, www):
+    def __init__(self, cfg, www, sched):
         # These are the minimum dep list that we know we'll need; there may be more, and we'll proxy all known
         # services, but we need at least these to have a healthy service running.
         min_deps = ["ZmwLights", "ZmwSpeakerAnnounce", "ZmwContactmon", "ZmwHeating", "ZmwReolinkDoorbell",
                     "ZmwSensormon"]
-        super().__init__(cfg, svc_deps=min_deps)
+        super().__init__(cfg, sched, svc_deps=min_deps)
 
         self._scenes_svc = cfg["scenes_service_name"]
         self._user_defined_links = cfg.get("user_defined_links", [])
@@ -185,4 +185,4 @@ class ZmwDashboard(ZmwMqttServiceMonitor):
         if self._svc_proxy is not None:
             self._svc_proxy.on_service_announced_meta(svc_name, svc_meta.get("www"))
 
-service_runner_with_www(ZmwDashboard)
+service_runner(ZmwDashboard)

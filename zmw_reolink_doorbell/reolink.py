@@ -6,7 +6,6 @@ import logging
 
 from abc import ABC, abstractmethod
 
-from apscheduler.schedulers.background import BackgroundScheduler
 from flask import request as FlaskRequest
 from threading import Lock
 
@@ -75,7 +74,7 @@ async def _connect_to_cam(cam_host, cam_user, cam_pass, webhook_url, rtsp_cbs,
 class ReolinkDoorbell(ABC):
     """ Subscribe to ONVIF notifications from a Reolink cam """
 
-    def __init__(self, cfg, webhook_url):
+    def __init__(self, cfg, webhook_url, scheduler):
         super().__init__()
         # __del__ will run if the ctor fails, so mark "we've been here" somehow
         self._should_be_connected = False
@@ -104,7 +103,7 @@ class ReolinkDoorbell(ABC):
         self._rec_retention_days = int(cfg['rec_retention_days'])
         self._rec_default_duration_secs = int(cfg['rec_default_duration_secs'])
 
-        self._scheduler = BackgroundScheduler()
+        self._scheduler = scheduler
         self._runner = asyncio.get_event_loop()
         self._announce_lock = Lock()
 
@@ -127,7 +126,6 @@ class ReolinkDoorbell(ABC):
             self._cam, self.rtsp = self._runner.run_until_complete(camtask)
         except ReolinkError:
             log.error("Failed to reconnect to cam %s, will retry later", self._cam_host, exc_info=True)
-        self._scheduler.start()
 
     def __del__(self):
         self.disconnect()

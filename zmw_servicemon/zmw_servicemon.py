@@ -9,7 +9,7 @@ from ansi2html import Ansi2HTMLConverter
 from flask import abort
 
 from zzmw_lib.zmw_mqtt_mon import ZmwMqttServiceMonitor
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 from zzmw_lib.logs import build_logger
 
 from journal_monitor import JournalMonitor
@@ -20,7 +20,7 @@ log = build_logger("ZmwServicemon")
 class ZmwServicemon(ZmwMqttServiceMonitor):
     """ Monitor other z2m2w services running on this host """
 
-    def __init__(self, cfg, www):
+    def __init__(self, cfg, www, sched):
         # Initialize journal monitor (exclude own service to prevent error loops)
         self._journal_monitor = JournalMonitor(
             max_errors=cfg['error_history_len'],
@@ -29,7 +29,7 @@ class ZmwServicemon(ZmwMqttServiceMonitor):
             own_service_name="zmw_servicemon"
         )
 
-        super().__init__(cfg)
+        super().__init__(cfg, sched)
 
         www.register_www_dir(os.path.join(pathlib.Path(__file__).parent.resolve(), 'www'))
         www.serve_url('/ls', lambda: json.dumps(dict(sorted(self.get_known_services().items())), default=str))
@@ -77,4 +77,4 @@ class ZmwServicemon(ZmwMqttServiceMonitor):
         self._journal_monitor.stop()
         super().stop()
 
-service_runner_with_www(ZmwServicemon)
+service_runner(ZmwServicemon)

@@ -4,10 +4,9 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-zzmw-common = {editable = true, path = "/home/batman/src/BatiCasa/zigbee2mqtt2web/zzmw_lib"}
+zzmw-lib = {editable = true, path = "/home/batman/src/BatiCasa/zigbee2mqtt2web/zzmw_lib"}
 reolink-aio = {editable = true, path = "/home/batman/src/BatiCasa/zigbee2mqtt2web/zext_libs/reolink_aio"}
 flask = "*"
-apscheduler = "*"
 
 [dev-packages]
 pylint = "*"

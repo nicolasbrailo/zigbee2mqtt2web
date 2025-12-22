@@ -4,7 +4,7 @@ import pathlib
 
 from zzmw_lib.zmw_mqtt_nullsvc import ZmwMqttNullSvc
 from zzmw_lib.logs import build_logger
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 
 from zz2m.z2mproxy import Z2MProxy
 from zz2m.www import Z2Mwebservice
@@ -13,7 +13,7 @@ log = build_logger("ZmwLights")
 
 class ZmwLights(ZmwMqttNullSvc):
     """ ZmwService for REST lights """
-    def __init__(self, cfg, www):
+    def __init__(self, cfg, www, sched):
         super().__init__(cfg)
         self._lights = []
 
@@ -22,7 +22,7 @@ class ZmwLights(ZmwMqttNullSvc):
         www.register_www_dir(www_path)
         www.serve_url('/get_lights', lambda: [l.get_json_state() for l in self._lights])
 
-        self._z2m = Z2MProxy(cfg, self,
+        self._z2m = Z2MProxy(cfg, self, sched,
                              cb_on_z2m_network_discovery=self._on_z2m_network_discovery,
                              cb_is_device_interesting=lambda t: t.thing_type == 'light')
         self._z2mw = Z2Mwebservice(www, self._z2m)
@@ -45,4 +45,4 @@ class ZmwLights(ZmwMqttNullSvc):
         for light in self._lights:
             log.info("Discovered light %s", light.name)
 
-service_runner_with_www(ZmwLights)
+service_runner(ZmwLights)

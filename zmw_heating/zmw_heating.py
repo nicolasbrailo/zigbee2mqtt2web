@@ -5,10 +5,9 @@ import time
 import pathlib
 from collections import deque
 from datetime import datetime, timedelta
-from apscheduler.schedulers.background import BackgroundScheduler
 
 from zzmw_lib.zmw_mqtt_service import ZmwMqttServiceNoCommands
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 from zzmw_lib.logs import build_logger
 from zz2m.z2mproxy import Z2MProxy
 
@@ -20,8 +19,8 @@ log = build_logger("ZmwHeating")
 
 class ZmwHeating(ZmwMqttServiceNoCommands):
     """ Service to control an on/off relay that operates a boiler """
-    def __init__(self, cfg, www):
-        super().__init__(cfg, svc_deps=['ZmwTelegram'])
+    def __init__(self, cfg, www, sched):
+        super().__init__(cfg, sched, svc_deps=['ZmwTelegram'])
 
         self._z2m_boiler_name = cfg['zigbee_boiler_name']
         self._rules = create_rules_from_config(cfg['rules'])
@@ -32,9 +31,7 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
         self._on_val = None
         self._curr_val = None
         self._boiler_state_history = deque(maxlen=30)
-
-        self._sched = BackgroundScheduler()
-        self._sched.start()
+        self._sched = sched
 
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
@@ -59,7 +56,7 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
             for s in r.get_monitored_sensors().keys():
                 wanted_things.add(s)
 
-        self._z2m = Z2MProxy(cfg, self,
+        self._z2m = Z2MProxy(cfg, self, sched,
                              cb_on_z2m_network_discovery=self._on_z2m_network_discovery,
                              cb_is_device_interesting=lambda t: t.name in wanted_things)
 
@@ -238,4 +235,4 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
         msg = f'Heating is now {now_on} (was {old_on}). Reason: {new.reason}'
         self.message_svc("ZmwTelegram", "send_text", {'msg': msg})
 
-service_runner_with_www(ZmwHeating)
+service_runner(ZmwHeating)

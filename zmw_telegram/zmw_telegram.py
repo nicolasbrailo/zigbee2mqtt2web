@@ -7,7 +7,7 @@ from collections import deque
 
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 from zzmw_lib.logs import build_logger
-from zzmw_lib.service_runner import service_runner_with_www
+from zzmw_lib.service_runner import service_runner
 
 from pytelegrambot import TelegramLongpollBot
 
@@ -16,7 +16,7 @@ log = build_logger("ZmwTelegram")
 class TelBot(TelegramLongpollBot):
     """Telegram bot wrapper that handles messages and commands."""
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, scheduler):
         cmds = [
             ('ping', 'Usage: /ping', self._ping),
         ]
@@ -30,7 +30,8 @@ class TelBot(TelegramLongpollBot):
             bot_descr=cfg['bot_name'],
             message_history_len=cfg['msg_history_len'],
             terminate_on_unauthorized_access=True,
-            try_parse_msg_as_cmd=True)
+            try_parse_msg_as_cmd=True,
+            scheduler=scheduler)
 
     def _ping(self, _bot, msg):
         log.info('Received user ping, sending pong')
@@ -51,10 +52,10 @@ class ZmwTelegram(ZmwMqttService):
     _RATE_LIMIT_MAX_MSGS = 3
     _RATE_LIMIT_WINDOW_SECS = 60
 
-    def __init__(self, cfg, www):
-        super().__init__(cfg, "zmw_telegram")
+    def __init__(self, cfg, www, sched):
+        super().__init__(cfg, "zmw_telegram", scheduler=sched)
         self._bcast_chat_id = cfg['bcast_chat_id']
-        self._msg = TelBot(cfg)
+        self._msg = TelBot(cfg, sched)
         self._msg_times = deque(maxlen=self._RATE_LIMIT_MAX_MSGS)
 
         # Set up www directory and endpoints
@@ -130,4 +131,4 @@ class ZmwTelegram(ZmwMqttService):
             cmd = msg['cmd']
         self.publish_own_svc_message(f"on_command/{cmd}", msg)
 
-service_runner_with_www(ZmwTelegram)
+service_runner(ZmwTelegram)
