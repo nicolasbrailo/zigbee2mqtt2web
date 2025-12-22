@@ -95,14 +95,14 @@ class ZmwMqttBase(ABC):
         self.on_service_discovery_ping()
 
     def _on_disconnect(self, _client, _userdata, _disconnect_flags, _ret_code, _props):
-        log.info('Disconnected from MQTT broker [%s]:%d topic %s', self._mqtt_ip, self._mqtt_port, self._svc_topic)
+        log.info('Disconnected from MQTT broker [%s]:%d', self._mqtt_ip, self._mqtt_port)
 
     def _on_subscribe(self, client, _userdata, _mid, _reason_code, _props):
         log.debug('MQTT client [%s]:%d subscribed', self._mqtt_ip, self._mqtt_port)
 
     def _on_unsubscribe(self, client, _userdata, _mid, reason_code, _props):
-        log.info('MQTT client [%s]:%d %s unsubscribed (reason %s)',
-                 self._mqtt_ip, self._mqtt_port, self._svc_topic, str(reason_code))
+        log.info('MQTT client [%s]:%d unsubscribed (reason %s)',
+                 self._mqtt_ip, self._mqtt_port, str(reason_code))
 
     def subscribe_with_cb(self, topic, cb, replace_if_exists=False):
         with self._topics_with_cb_lock:
