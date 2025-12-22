@@ -26,15 +26,14 @@ class IntegrationTestBase:
 
     @pytest.fixture
     def schedule(self, history, schedule_config):
-        with patch('schedule.BackgroundScheduler') as mock_sched:
-            mock_sched.return_value = Mock()
-            return DispensingSchedule(
-                cat_feeder_name="test_feeder",
-                history=history,
-                cb_emergency_dispense=Mock(),
-                feeding_schedule=schedule_config,
-                tolerance_secs=60,
-            )
+        return DispensingSchedule(
+            cat_feeder_name="test_feeder",
+            history=history,
+            cb_emergency_dispense=Mock(),
+            feeding_schedule=schedule_config,
+            tolerance_secs=60,
+            scheduler=Mock(),
+        )
 
     @pytest.fixture
     def tracker(self, history, schedule):

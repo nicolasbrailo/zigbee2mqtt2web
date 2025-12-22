@@ -12,6 +12,7 @@ from zz2m.www import Z2Mwebservice
 from config_enforcer import ConfigEnforcer
 from dispense_tracking import DispenseTracking
 from history import DispensingHistory
+from notification_manager import NotificationManager
 from schedule import DispensingSchedule, validate_schedule_config
 
 log = build_logger("ZmwCatSnackDispenser")
@@ -26,8 +27,11 @@ class ZmwCatSnackDispenser(ZmwMqttService):
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
 
+        self._notifications = NotificationManager(
+            cfg, self._z2m_cat_feeder_name, cfg["feeding_schedule"], sched, self.message_svc)
+
         history = DispensingHistory(self._z2m_cat_feeder_name, history_len=10,
-                                         cb_on_dispense=self._notify_dispense_event)
+                                         cb_on_dispense=self._notifications.notify_dispense_event)
         schedule = DispensingSchedule(self._z2m_cat_feeder_name, history, self.feed_now,
                                             cfg["feeding_schedule"], cfg["schedule_tolerance_secs"], sched)
         self._dispense_tracking = DispenseTracking(history, schedule)
@@ -74,33 +78,18 @@ class ZmwCatSnackDispenser(ZmwMqttService):
         return []
 
     def on_service_came_up(self, service_name):
-        if service_name == "ZmwTelegram":
-            self.message_svc("ZmwTelegram",
-                             "register_command", {'cmd': 'dispensecatsnacks', 'descr': 'Feed the cat'})
+        if service_name != "ZmwTelegram":
+            return
+        self.message_svc("ZmwTelegram",
+                         "register_command", {'cmd': 'dispensecatsnacks', 'descr': 'Feed the cat'})
 
-    def on_service_received_message(self, subtopic, payload):  # pylint: disable=unused-argument
+    def on_service_received_message(self, _subtopic, _payload):
         # Ignore: we'll receive an echo of our own messages here
         pass
 
     def on_dep_published_message(self, svc_name, subtopic, payload):  # pylint: disable=unused-argument
         if svc_name == 'ZmwTelegram' and subtopic.startswith("on_command/dispensecatsnacks"):
             self.feed_now(source="Telegram")
-
-    def _notify_dispense_event(self, source, error, portions_dispensed):
-        if error is not None and (portions_dispensed is None or portions_dispensed == 0):
-            msg = f"Error for {source} dispense on {self._z2m_cat_feeder_name}: {error}"
-        else:
-            if portions_dispensed is None:
-                quantity = "an unknown quantity of snacks"
-            elif portions_dispensed == 1:
-                quantity = "1 snack"
-            else:
-                quantity = f"{portions_dispensed} snacks"
-            msg = f"{source}: purveying {quantity} on {self._z2m_cat_feeder_name}."
-            if error is not None:
-                msg += f" (Warning: {error})"
-
-        self.message_svc("ZmwTelegram", "send_text", {'msg': msg})
 
     ### Z2M behaviour ###
     def _on_z2m_network_discovery(self, _is_first_discovery, known_things):

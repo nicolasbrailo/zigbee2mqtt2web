@@ -244,20 +244,17 @@ class TestDispensingSchedule:
 
     @pytest.fixture
     def mock_scheduler(self):
-        with patch('schedule.BackgroundScheduler') as mock:
-            mock_instance = Mock()
-            mock.return_value = mock_instance
-            yield mock_instance
+        return Mock()
 
     def create_schedule(self, mock_scheduler, mock_history, mock_emergency_cb, feeding_schedule, tolerance_secs=60):
-        with patch('schedule.BackgroundScheduler', return_value=mock_scheduler):
-            return DispensingSchedule(
-                cat_feeder_name="test_feeder",
-                history=mock_history,
-                cb_emergency_dispense=mock_emergency_cb,
-                feeding_schedule=feeding_schedule,
-                tolerance_secs=tolerance_secs,
-            )
+        return DispensingSchedule(
+            cat_feeder_name="test_feeder",
+            history=mock_history,
+            cb_emergency_dispense=mock_emergency_cb,
+            feeding_schedule=feeding_schedule,
+            tolerance_secs=tolerance_secs,
+            scheduler=mock_scheduler,
+        )
 
     def test_get_schedule_returns_feeding_schedule(self, mock_scheduler, mock_history, mock_emergency_cb, valid_schedule):
         ds = self.create_schedule(mock_scheduler, mock_history, mock_emergency_cb, valid_schedule)
@@ -284,15 +281,14 @@ class TestFulfillmentCheck:
         return [{'days': 'everyday', 'hour': 8, 'minute': 0, 'serving_size': 2}]
 
     def create_schedule(self, mock_history, mock_emergency_cb, feeding_schedule, tolerance_secs=60):
-        with patch('schedule.BackgroundScheduler') as mock_sched:
-            mock_sched.return_value = Mock()
-            return DispensingSchedule(
-                cat_feeder_name="test_feeder",
-                history=mock_history,
-                cb_emergency_dispense=mock_emergency_cb,
-                feeding_schedule=feeding_schedule,
-                tolerance_secs=tolerance_secs,
-            )
+        return DispensingSchedule(
+            cat_feeder_name="test_feeder",
+            history=mock_history,
+            cb_emergency_dispense=mock_emergency_cb,
+            feeding_schedule=feeding_schedule,
+            tolerance_secs=tolerance_secs,
+            scheduler=Mock(),
+        )
 
     def test_start_fulfillment_check_creates_timer(self, mock_history, mock_emergency_cb, valid_schedule):
         with patch('schedule.threading.Timer') as mock_timer:
@@ -371,15 +367,14 @@ class TestRegisterScheduleTriggered:
         return Mock()
 
     def create_schedule(self, mock_history, mock_emergency_cb, feeding_schedule, tolerance_secs=60):
-        with patch('schedule.BackgroundScheduler') as mock_sched:
-            mock_sched.return_value = Mock()
-            return DispensingSchedule(
-                cat_feeder_name="test_feeder",
-                history=mock_history,
-                cb_emergency_dispense=mock_emergency_cb,
-                feeding_schedule=feeding_schedule,
-                tolerance_secs=tolerance_secs,
-            )
+        return DispensingSchedule(
+            cat_feeder_name="test_feeder",
+            history=mock_history,
+            cb_emergency_dispense=mock_emergency_cb,
+            feeding_schedule=feeding_schedule,
+            tolerance_secs=tolerance_secs,
+            scheduler=Mock(),
+        )
 
     def test_register_schedule_triggered_cancels_pending_timer(self, mock_history, mock_emergency_cb):
         schedule_config = [{'days': 'everyday', 'hour': 8, 'minute': 0, 'serving_size': 1}]
@@ -437,15 +432,14 @@ class TestToleranceMatching:
         return Mock()
 
     def create_schedule(self, mock_history, mock_emergency_cb, feeding_schedule, tolerance_secs=60):
-        with patch('schedule.BackgroundScheduler') as mock_sched:
-            mock_sched.return_value = Mock()
-            return DispensingSchedule(
-                cat_feeder_name="test_feeder",
-                history=mock_history,
-                cb_emergency_dispense=mock_emergency_cb,
-                feeding_schedule=feeding_schedule,
-                tolerance_secs=tolerance_secs,
-            )
+        return DispensingSchedule(
+            cat_feeder_name="test_feeder",
+            history=mock_history,
+            cb_emergency_dispense=mock_emergency_cb,
+            feeding_schedule=feeding_schedule,
+            tolerance_secs=tolerance_secs,
+            scheduler=Mock(),
+        )
 
     def test_event_within_tolerance_matches(self, mock_history, mock_emergency_cb):
         schedule_config = [{'days': 'everyday', 'hour': 8, 'minute': 0, 'serving_size': 1}]
@@ -535,16 +529,15 @@ class TestMultipleSchedules:
     def mock_emergency_cb(self):
         return Mock()
 
-    def create_schedule(self, mock_history, mock_emergency_cb, feeding_schedule, tolerance_secs=60):
-        with patch('schedule.BackgroundScheduler') as mock_sched:
-            mock_sched.return_value = Mock()
-            return DispensingSchedule(
-                cat_feeder_name="test_feeder",
-                history=mock_history,
-                cb_emergency_dispense=mock_emergency_cb,
-                feeding_schedule=feeding_schedule,
-                tolerance_secs=tolerance_secs,
-            )
+    def create_schedule(self, mock_history, mock_emergency_cb, feeding_schedule, tolerance_secs=60, scheduler=None):
+        return DispensingSchedule(
+            cat_feeder_name="test_feeder",
+            history=mock_history,
+            cb_emergency_dispense=mock_emergency_cb,
+            feeding_schedule=feeding_schedule,
+            tolerance_secs=tolerance_secs,
+            scheduler=scheduler or Mock(),
+        )
 
     def test_multiple_schedules_picks_closest_match(self, mock_history, mock_emergency_cb):
         """When multiple schedules are within tolerance, the closest one should be selected."""
@@ -579,20 +572,10 @@ class TestMultipleSchedules:
             {'days': 'weekend', 'hour': 10, 'minute': 0, 'serving_size': 1},
         ]
 
-        with patch('schedule.BackgroundScheduler') as mock_sched:
-            mock_instance = Mock()
-            mock_sched.return_value = mock_instance
+        mock_scheduler = Mock()
+        self.create_schedule(mock_history, mock_emergency_cb, schedule_config, scheduler=mock_scheduler)
 
-            DispensingSchedule(
-                cat_feeder_name="test_feeder",
-                history=mock_history,
-                cb_emergency_dispense=mock_emergency_cb,
-                feeding_schedule=schedule_config,
-                tolerance_secs=60,
-            )
-
-            assert mock_instance.add_job.call_count == 3
-            mock_instance.start.assert_called_once()
+        assert mock_scheduler.add_job.call_count == 3
 
 
 class TestHistoryRegistration:
@@ -607,15 +590,14 @@ class TestHistoryRegistration:
         return Mock()
 
     def create_schedule(self, mock_history, mock_emergency_cb, feeding_schedule, tolerance_secs=60):
-        with patch('schedule.BackgroundScheduler') as mock_sched:
-            mock_sched.return_value = Mock()
-            return DispensingSchedule(
-                cat_feeder_name="test_feeder",
-                history=mock_history,
-                cb_emergency_dispense=mock_emergency_cb,
-                feeding_schedule=feeding_schedule,
-                tolerance_secs=tolerance_secs,
-            )
+        return DispensingSchedule(
+            cat_feeder_name="test_feeder",
+            history=mock_history,
+            cb_emergency_dispense=mock_emergency_cb,
+            feeding_schedule=feeding_schedule,
+            tolerance_secs=tolerance_secs,
+            scheduler=Mock(),
+        )
 
     def test_matched_event_calls_register_scheduled(self, mock_history, mock_emergency_cb):
         schedule_config = [{'days': 'everyday', 'hour': 8, 'minute': 0, 'serving_size': 1}]

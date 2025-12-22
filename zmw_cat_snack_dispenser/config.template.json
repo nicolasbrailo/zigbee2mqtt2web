@@ -4,5 +4,9 @@
   "feeding_schedule": [
     {"days": "everyday", "hour": 17, "minute": 7, "serving_size": 1},
     {"days": "everyday", "hour": 17, "minute": 8, "serving_size": 1}
-  ]
+  ],
+  "telegram_on_error": true,
+  "telegram_on_success": true,
+  "telegram_day_summary": false,
+  "telegram_summary_delay_minutes": 30
 }
