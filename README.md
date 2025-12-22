@@ -41,6 +41,16 @@ If you are developing a service that won't be upstreamed to zmw:
 
 * common.mk won't work for you, as it will assume you are working on the root of the project. You will need to manager your own pipfile (or copypaste the zmw common makefile).
 
+## Managing services
+
+Install new services with `make rebuild_ui && make install_svc`. This will trigger the install_svc.sh helper script. Once installed, you can:
+
+* Use config_apply and config_merge to manage all service config files from a single place.
+* Use restart_and_log to restart a service and tail its logs.
+* Use logs.sh to tail the logs of all services in the system.
+
+All service management scripts are wrappers on top of systemd/systemctl/journalctl.
+
 
 # Supported Services
 

@@ -91,11 +91,11 @@ echo "journalctl --follow --output=json --unit '$TGT_SVC_NAME' | jq --arg basepa
 chmod +x "$TGT_SVC_RUN/logs.sh"
 cp "$SRC_ROOT/use_https_here.sh" "$TGT_SVC_RUN/use_https_here.sh"
 chmod +x "$TGT_SVC_RUN/use_https_here.sh"
-cp "$SRC_ROOT/logs.sh" "$SRC_ROOT/services_status.sh" "$SRC_ROOT/restart_all.sh" "$SVC_RUN_BASE/"
+cp "$SRC_ROOT/config_apply.py" "$SRC_ROOT/config_merge.py" "$SRC_ROOT/logs.sh" "$SRC_ROOT/services_status.sh" "$SRC_ROOT/restart_all.sh" "$SVC_RUN_BASE/"
 chmod +x "$SVC_RUN_BASE/"*.sh
 
 # Add a variable to logs.sh to let it know where the project root is, so that jq can print journal logs and strip the full path
-sed -i "2i ZMW_PROJECT_ROOT='$ZMW_PROJECT_ROOT'" "$SVC_RUN_BASE/logs.sh
+sed -i "2i ZMW_PROJECT_ROOT='$ZMW_PROJECT_ROOT'" "$SVC_RUN_BASE/logs.sh"
 
 if [ ! -f "/etc/systemd/system/$TGT_SVC_NAME.service" ]; then
   sudo ln -s "$TGT_SVC_RUN/$TGT_SVC_NAME.service" "/etc/systemd/system/$TGT_SVC_NAME.service" || true
