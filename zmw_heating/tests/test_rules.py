@@ -11,11 +11,10 @@ CFG_TEMP_IN_RANGE = """[
     {"name": "CheckTempsWithinRange", "min_temp": 5, "max_temp": 15, "sensors": ["tempSensor1", "tempSensor2", "tempSensor3"]}
 ]"""
 
-SCHED_MIN_TEMP_EMPTY_CFG = """[{{
+SCHED_MIN_TEMP_CFG = """[{{
     "name": "ScheduledMinTargetTemp",
-    "sensors": [
-        {{"name": "sensorName", "schedule": [{}]}}
-    ]
+    "sensor": "sensorName",
+    {}
 }}]"""
 
 class FakeTempSensor:
@@ -203,141 +202,65 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(state_change_saver.saved_new.request_on, False)
 
     def test_create_ScheduledMinTargetTemp(self):
-        rules = create_rules_from_config(json.loads("""[{"name": "ScheduledMinTargetTemp", "sensors": []}]"""))
+        cfg = """[{"name": "ScheduledMinTargetTemp", "sensor": "testSensor",
+                   "start": "10:00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]"""
+        rules = create_rules_from_config(json.loads(cfg))
         self.assertEqual(len(rules), 1)
         self.assertEqual(type(rules[0]), ScheduledMinTargetTemp)
+        self.assertEqual(rules[0].sensor_name, "testSensor")
 
     def test_fails_create_ScheduledMinTargetTemp(self):
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{"name": "ScheduledMinTargetTemp", "XXsensors": []}]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{"name": "ScheduledMinTargetTemp", "sensors": [{"XX": 123}]}]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{"name": "ScheduledMinTargetTemp", "sensors": [{"schedule": 123}]}]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{"name": "ScheduledMinTargetTemp", "sensors": [{"schedule": []}]}]"""))
-
-        # Empty schedule fails
+        # Missing sensor key
         self.assertRaises(ValueError, create_rules_from_config, json.loads(
-                """[{"name": "ScheduledMinTargetTemp", "sensors": [{"name": "S1", "schedule": []}]}]"""))
-
-        # Duplicated sensors to monitor need to fail
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "10:00", "end": "11:00", "target_max_temp": 23, "target_min_temp": 20, "days": "all"}]},
-                {"name": "S1", "schedule": [{"start": "10:00", "end": "11:00", "target_max_temp": 23, "target_min_temp": 20, "days": "all"}]}
-            ]
-        }]"""))
+            """[{"name": "ScheduledMinTargetTemp", "start": "10:00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]"""))
 
         # Absurd temperature fails
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "10:00", "end": "11:00", "target_max_temp": -40, "target_min_temp": 23, "days": "all"}]}
-            ]
-        }]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "10:00", "end": "11:00", "target_max_temp": 23, "target_min_temp": -40, "days": "all"}]}
-            ]
-        }]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "10:00", "end": "11:00", "target_max_temp": 123, "target_min_temp": 23, "days": "all"}]}
-            ]
-        }]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "10:00", "end": "11:00", "target_max_temp": 23, "target_min_temp": 123, "days": "all"}]}
-            ]
-        }]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "10:00", "end": "11:00", "target_max_temp": 20, "target_min_temp": 25, "days": "all"}]}
-            ]
-        }]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": "10:00", "end": "11:00", "target_max_temp": -40, "target_min_temp": 23, "days": "all"}]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": "10:00", "end": "11:00", "target_max_temp": 23, "target_min_temp": -40, "days": "all"}]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": "10:00", "end": "11:00", "target_max_temp": 123, "target_min_temp": 23, "days": "all"}]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": "10:00", "end": "11:00", "target_max_temp": 23, "target_min_temp": 123, "days": "all"}]"""))
+        # min > max
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": "10:00", "end": "11:00", "target_max_temp": 20, "target_min_temp": 25, "days": "all"}]"""))
 
         # Check missing keys
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"Xstart": "10:00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]}
-            ]
-        }]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "10:00", "Xend": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]}
-            ]
-        }]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "10:00", "end": "11:00", "Xtarget_max_temp": 25, "target_min_temp": 20, "days": "all"}]}
-            ]
-        }]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "10:00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "Xdays": "all"}]}
-            ]
-        }]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "Xstart": "10:00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": "10:00", "Xend": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": "10:00", "end": "11:00", "Xtarget_max_temp": 25, "target_min_temp": 20, "days": "all"}]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": "10:00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "Xdays": "all"}]"""))
 
         # Fail time format
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "99:00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]}
-            ]
-        }]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": ":00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]}
-            ]
-        }]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "1212", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]}
-            ]
-        }]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "12:12", "end": "1100", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]}
-            ]
-        }]"""))
-        self.assertRaises(ValueError, create_rules_from_config, json.loads("""[{
-            "name": "ScheduledMinTargetTemp",
-            "sensors": [
-                {"name": "S1", "schedule": [{"start": "12:12", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "xX"}]}
-            ]
-        }]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": "99:00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": ":00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": "1212", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": "12:12", "end": "1100", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}]"""))
+        self.assertRaises(ValueError, create_rules_from_config, json.loads(
+            """[{"name": "ScheduledMinTargetTemp", "sensor": "S1", "start": "12:12", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "xX"}]"""))
 
-
-        rules = create_rules_from_config(json.loads(SCHED_MIN_TEMP_EMPTY_CFG.format("""{"start": "10:00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"}""")))
-        self.assertEqual(len(rules[0].sensor_schedules), 1)
-        self.assertTrue("sensorName" in rules[0].sensor_schedules)
-
-        TWO_SCHEDS = """{"start": "10:00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all"},
-                        {"start": "10:00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "week"}"""
-        rules = create_rules_from_config(json.loads(SCHED_MIN_TEMP_EMPTY_CFG.format(TWO_SCHEDS)))
-        self.assertEqual(len(rules[0].sensor_schedules["sensorName"]), 2)
+        # Valid config should work
+        rules = create_rules_from_config(json.loads(SCHED_MIN_TEMP_CFG.format(
+            """"start": "10:00", "end": "11:00", "target_max_temp": 25, "target_min_temp": 20, "days": "all" """)))
+        self.assertEqual(rules[0].sensor_name, "sensorName")
 
     def test_apply_ScheduledMinTargetTemp(self):
-        SCHEDS = """{
-                "sensors": [
-                    {"name": "tempSensor1", "schedule": [
-                        {"start": "10:00", "end": "11:00", "target_max_temp": 20, "target_min_temp": 20, "days": "all"},
-                        {"start": "11:00", "end": "11:30", "target_max_temp": 25, "target_min_temp": 25, "days": "all"}
-                    ]}
-                ]}"""
+        SCHED1 = {"sensor": "tempSensor1", "start": "10:00", "end": "11:00", "target_max_temp": 20, "target_min_temp": 20, "days": "all"}
+        SCHED2 = {"sensor": "tempSensor1", "start": "11:00", "end": "11:30", "target_max_temp": 25, "target_min_temp": 25, "days": "all"}
 
         clock = FakeClock(9, 0)
         zmw = FakeZmw()
-        rules = [DefaultOff({}), ScheduledMinTargetTemp(json.loads(SCHEDS), clock)]
+        rules = [DefaultOff({}), ScheduledMinTargetTemp(SCHED1, clock), ScheduledMinTargetTemp(SCHED2, clock)]
         for rule in rules:
             rule.set_z2m(zmw)
 
@@ -427,19 +350,12 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(state_change_saver.saved_new.request_on, False)
 
     def test_apply_multiple_sensors_same_time_ScheduledMinTargetTemp(self):
-        SCHEDS = """{
-                "sensors": [
-                    {"name": "tempSensor1", "schedule": [
-                        {"start": "10:00", "end": "11:00", "target_max_temp": 20, "target_min_temp": 20, "days": "all"}
-                    ]},
-                    {"name": "tempSensor2", "schedule": [
-                        {"start": "10:00", "end": "11:00", "target_max_temp": 20, "target_min_temp": 20, "days": "all"}
-                    ]}
-                ]}"""
+        SCHED1 = {"sensor": "tempSensor1", "start": "10:00", "end": "11:00", "target_max_temp": 20, "target_min_temp": 20, "days": "all"}
+        SCHED2 = {"sensor": "tempSensor2", "start": "10:00", "end": "11:00", "target_max_temp": 20, "target_min_temp": 20, "days": "all"}
 
         clock = FakeClock(8, 0)
         zmw = FakeZmw()
-        rules = [DefaultOff({}), ScheduledMinTargetTemp(json.loads(SCHEDS), clock)]
+        rules = [DefaultOff({}), ScheduledMinTargetTemp(SCHED1, clock), ScheduledMinTargetTemp(SCHED2, clock)]
         for rule in rules:
             rule.set_z2m(zmw)
 
@@ -493,19 +409,12 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(state_change_saver.saved_new.request_on, False)
 
     def test_apply_multiple_sensors_diff_time_ScheduledMinTargetTemp(self):
-        SCHEDS = """{
-                "sensors": [
-                    {"name": "tempSensor1", "schedule": [
-                        {"start": "10:00", "end": "11:00", "target_max_temp": 20, "target_min_temp": 20, "days": "all"}
-                    ]},
-                    {"name": "tempSensor2", "schedule": [
-                        {"start": "11:00", "end": "12:00", "target_max_temp": 20, "target_min_temp": 20, "days": "all"}
-                    ]}
-                ]}"""
+        SCHED1 = {"sensor": "tempSensor1", "start": "10:00", "end": "11:00", "target_max_temp": 20, "target_min_temp": 20, "days": "all"}
+        SCHED2 = {"sensor": "tempSensor2", "start": "11:00", "end": "12:00", "target_max_temp": 20, "target_min_temp": 20, "days": "all"}
 
         clock = FakeClock(10, 0)
         zmw = FakeZmw()
-        rules = [DefaultOff({}), ScheduledMinTargetTemp(json.loads(SCHEDS), clock)]
+        rules = [DefaultOff({}), ScheduledMinTargetTemp(SCHED1, clock), ScheduledMinTargetTemp(SCHED2, clock)]
         for rule in rules:
             rule.set_z2m(zmw)
 
@@ -544,18 +453,12 @@ class RulesTest(unittest.TestCase):
 
 
     def test_rule_deactive_has_reason_ScheduledMinTargetTemp(self):
-        SCHEDS = """{"sensors": [
-                        {"name": "tempSensor1", "schedule": [
-                            {"target_max_temp": 21, "target_min_temp": 21, "start": "06:00", "end": "07:30", "days": "all"}
-                        ]},
-                        {"name": "tempSensor2", "schedule": [
-                            {"target_max_temp": 30, "target_min_temp": 30, "start": "22:22", "end": "22:22", "days": "all"}
-                        ]}
-                ]}"""
+        SCHED1 = {"sensor": "tempSensor1", "target_max_temp": 21, "target_min_temp": 21, "start": "06:00", "end": "07:30", "days": "all"}
+        SCHED2 = {"sensor": "tempSensor2", "target_max_temp": 30, "target_min_temp": 30, "start": "22:22", "end": "22:22", "days": "all"}
 
         clock = FakeClock(6, 15)
         zmw = FakeZmw()
-        rules = [DefaultOff({}), ScheduledMinTargetTemp(json.loads(SCHEDS), clock)]
+        rules = [DefaultOff({}), ScheduledMinTargetTemp(SCHED1, clock), ScheduledMinTargetTemp(SCHED2, clock)]
         for rule in rules:
             rule.set_z2m(zmw)
 
@@ -575,15 +478,11 @@ class RulesTest(unittest.TestCase):
                         f"Failed message: {state_change_saver.saved_new.reason}")
 
     def test_rule_ScheduledMinTargetTemp_ignore_non_responding_sensors(self):
-        SCHEDS = """{"sensors": [
-                        {"name": "tempSensor1", "schedule": [
-                            {"target_max_temp": 25, "target_min_temp": 20, "start": "06:00", "end": "07:30", "days": "all"}
-                        ]}
-                ]}"""
+        SCHED = {"sensor": "tempSensor1", "target_max_temp": 25, "target_min_temp": 20, "start": "06:00", "end": "07:30", "days": "all"}
 
         clock = FakeClock(6, 15)
         zmw = FakeZmw()
-        rules = [DefaultOff({}), ScheduledMinTargetTemp(json.loads(SCHEDS), clock)]
+        rules = [DefaultOff({}), ScheduledMinTargetTemp(SCHED, clock)]
         for rule in rules:
             rule.set_z2m(zmw)
 
@@ -609,15 +508,11 @@ class RulesTest(unittest.TestCase):
         self.assertTrue('tempSensor1' in state_change_saver.saved_new.reason, f"Failed message: {state_change_saver.saved_new.reason}")
 
     def test_rule_ScheduledMinTargetTemp_hysteresis(self):
-        SCHEDS = """{"sensors": [
-                        {"name": "tempSensor1", "schedule": [
-                            {"target_max_temp": 25, "target_min_temp": 20, "start": "06:00", "end": "07:30", "days": "all"}
-                        ]}
-                ]}"""
+        SCHED = {"sensor": "tempSensor1", "target_max_temp": 25, "target_min_temp": 20, "start": "06:00", "end": "07:30", "days": "all"}
 
         clock = FakeClock(6, 15)
         zmw = FakeZmw()
-        rules = [DefaultOff({}), ScheduledMinTargetTemp(json.loads(SCHEDS), clock)]
+        rules = [DefaultOff({}), ScheduledMinTargetTemp(SCHED, clock)]
         for rule in rules:
             rule.set_z2m(zmw)
 

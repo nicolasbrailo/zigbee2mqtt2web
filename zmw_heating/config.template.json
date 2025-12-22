@@ -12,19 +12,24 @@
       "sensors": ["BanioTempSensor", "EmmaTempSensor", "OliviaAQMSensor", "TVRoomAQMSensor", "BaticuartoAQMSensor"]
     },
     {
-      "name": "ScheduledMinTargetTemp",
-      "sensors": [{
-        "name": "EmmaTempSensor",
-        "schedule": [
-          {"start": "7:00", "end": "8:00", "days": "week", "target_min_temp": 19, "target_max_temp": 20},
-          {"start": "8:00", "end": "9:00", "days": "weekend", "target_min_temp": 19, "target_max_temp": 20}
-        ]},{
-        "name": "OliviaAQMSensor",
-        "schedule": [
-          {"start": "7:00", "end": "8:00", "days": "week", "target_min_temp": 19, "target_max_temp": 20},
-          {"start": "8:00", "end": "9:00", "days": "weekend", "target_min_temp": 19, "target_max_temp": 20}
-        ]}
-        ]
+      "name": "ScheduledMinTargetTemp", "sensor": "EmmaTempSensor",
+      "start": "7:00", "end": "8:00", "days": "week",
+      "target_min_temp": 19, "target_max_temp": 20
+    },
+    {
+      "name": "ScheduledMinTargetTemp", "sensor": "EmmaTempSensor",
+      "start": "8:00", "end": "9:00", "days": "weekend",
+      "target_min_temp": 19, "target_max_temp": 20
+    },
+    {
+      "name": "ScheduledMinTargetTemp", "sensor": "OliviaAQMSensor",
+      "start": "7:00", "end": "8:00", "days": "week",
+      "target_min_temp": 19, "target_max_temp": 20
+    },
+    {
+      "name": "ScheduledMinTargetTemp", "sensor": "OliviaAQMSensor",
+      "start": "8:00", "end": "9:00", "days": "weekend",
+      "target_min_temp": 19, "target_max_temp": 20
     }
   ],
 

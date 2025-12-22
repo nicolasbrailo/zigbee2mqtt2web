@@ -377,30 +377,23 @@
           </div>
         `;
       } else if (ruleName === 'ScheduledMinTargetTemp') {
-        const sensors = rule.sensors || [];
-        sensors.forEach(sensorData => {
-          const sensorName = sensorData.name;
-          const schedule = sensorData.schedule || [];
+        const sensorName = rule.sensor;
+        const start = rule.start;
+        const end = rule.end;
+        const days = rule.days;
+        const targetMin = rule.target_min_temp;
+        const targetMax = rule.target_max_temp;
 
-          schedule.forEach(schedEntry => {
-            const start = schedEntry.start;
-            const end = schedEntry.end;
-            const days = schedEntry.days;
-            const targetMin = schedEntry.target_min_temp;
-            const targetMax = schedEntry.target_max_temp;
-
-            html += `
-              <div class="rule_entry">
-                <span class="rule_name">${escapeHtml(ruleName)}</span>
-                <div class="rule_details">
-                  Sensor: ${escapeHtml(sensorName)}<br/>
-                  Schedule: ${escapeHtml(start)} - ${escapeHtml(end)} (${escapeHtml(days)})<br/>
-                  Target: ${targetMin}°C - ${targetMax}°C
-                </div>
-              </div>
-            `;
-          });
-        });
+        html += `
+          <div class="rule_entry">
+            <span class="rule_name">${escapeHtml(ruleName)}</span>
+            <div class="rule_details">
+              Sensor: ${escapeHtml(sensorName)}<br/>
+              Schedule: ${escapeHtml(start)} - ${escapeHtml(end)} (${escapeHtml(days)})<br/>
+              Target: ${targetMin}°C - ${targetMax}°C
+            </div>
+          </div>
+        `;
       } else {
         html += `
           <div class="rule_entry">

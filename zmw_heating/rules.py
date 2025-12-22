@@ -230,59 +230,38 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
                 log.error("Failed to parse SensorTimeSchedule for sensor %s", sensor_name, exc_info=True)
                 raise
 
-        @staticmethod
-        def create_from_json_obj_arr(sensor_name, scheds):
-            """Parse array of schedule entries from JSON."""
-            return [ScheduledMinTargetTemp.SensorTimeSchedule.create_from_json_obj(
-                sensor_name, sched) for sched in scheds]
-
     def __init__(self, rule, clock=None):
         self._clock = clock
         if self._clock is None:
             self._clock = datetime
         self._zmw = None
-        self._active_rule = None
-        self.sensor_schedules = {}
-        for sensor in rule['sensors']:
-            sensor_name = sensor['name']
-            if sensor_name in self.sensor_schedules:
-                raise ValueError(
-                    f"Found duplicated sensor to monitor: ScheduledMinTargetTemp "
-                    f"was asked to monitor sensor {sensor_name} twice")
+        self._is_active = False
 
-            time_scheds = (ScheduledMinTargetTemp.SensorTimeSchedule.
-                           create_from_json_obj_arr(sensor_name, sensor['schedule']))
-            if len(time_scheds) == 0:
-                raise ValueError(
-                    f"ScheduledMinTargetTemp was asked to monitor sensor "
-                    f"{sensor_name}, but its schedule is empty")
+        self.sensor_name = rule['sensor']
+        self.schedule = ScheduledMinTargetTemp.SensorTimeSchedule.create_from_json_obj(
+            self.sensor_name, rule)
 
-            self.sensor_schedules[sensor_name] = time_scheds
-            log.info("Will use rule ScheduledMinTargetTemp on sensor %s:", sensor_name)
-            for sched in time_scheds:
-                log.info("\t %s-%s (%s): target temp %s-%s",
-                         sched.start_time.strftime("%H:%M"),
-                         sched.end_time.strftime("%H:%M"),
-                         sched.days,
-                         sched.target_min_temp,
-                         sched.target_max_temp)
+        log.info("Will use rule ScheduledMinTargetTemp on sensor %s:", self.sensor_name)
+        log.info("\t %s-%s (%s): target temp %s-%s",
+                 self.schedule.start_time.strftime("%H:%M"),
+                 self.schedule.end_time.strftime("%H:%M"),
+                 self.schedule.days,
+                 self.schedule.target_min_temp,
+                 self.schedule.target_max_temp)
 
     def get_monitored_sensors(self):
-        return {s: safe_read_sensor(self._zmw, s) for s in self.sensor_schedules.keys()}
+        return {self.sensor_name: safe_read_sensor(self._zmw, self.sensor_name)}
 
     def set_z2m(self, z2m):
         self._zmw = z2m
-        found_all = True
-        for s in self.sensor_schedules:
-            try:
-                # Verify all sensors we expect are in the network
-                z2m.get_thing(s)
-            except KeyError:
-                log.error(
-                    "Rule ScheduledMinTargetTemp expects sensor '%s', "
-                    "but it's missing from the network", s)
-                found_all = False
-        return found_all
+        try:
+            z2m.get_thing(self.sensor_name)
+            return True
+        except KeyError:
+            log.error(
+                "Rule ScheduledMinTargetTemp expects sensor '%s', "
+                "but it's missing from the network", self.sensor_name)
+            return False
 
     def apply(self, todaysched):
         if todaysched.get_now_slot().allow_on != AllowOn.RULE:
@@ -292,52 +271,49 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
             # just ignore it
             return
 
-        # There was no active and applicable rule, check if a new rule applies
-        for sensor_name, scheds in self.sensor_schedules.items():
-            for sched in scheds:
-                if not sched.is_active(self._clock.now()):
-                    continue
+        sched = self.schedule
+        if not sched.is_active(self._clock.now()):
+            # Schedule not active. Check if we need to report deactivation.
+            if self._is_active:
+                self._is_active = False
+                if not todaysched.get_now_slot().request_on:
+                    reason = (f"Schedule for {self.sensor_name} finished at "
+                              f"{sched.end_time} and is no longer active")
+                    log.info("ScheduledMinTargetTemp rule stopped applying: %s", reason)
+                    todaysched.set_now_from_rule(False, reason)
+            return
 
-                temp = safe_read_sensor(self._zmw, sensor_name)
-                already_active = sched == self._active_rule
+        temp = safe_read_sensor(self._zmw, self.sensor_name)
 
-                if temp is None and not already_active:
-                    # This sensor is not responding, ignore its rules
-                    continue
-                if temp is None and already_active:
-                    reason = (f"Sensor {sensor_name} stopped responding with an "
-                              f"active rule. Heating will remain on until rule expires "
-                              f"at {sched.end_time}, or sensor updtes.")
-                    log.error(reason)
-                    todaysched.set_now_from_rule(True, reason)
-                    return
+        if temp is None and not self._is_active:
+            # This sensor is not responding, ignore its rules
+            return
+        if temp is None and self._is_active:
+            reason = (f"Sensor {self.sensor_name} stopped responding with an "
+                      f"active rule. Heating will remain on until rule expires "
+                      f"at {sched.end_time}, or sensor updates.")
+            log.error(reason)
+            todaysched.set_now_from_rule(True, reason)
+            return
 
-                if (temp < sched.target_min_temp or
-                        (already_active and temp < sched.target_max_temp)):
-                    reason = (f"Sensor {sensor_name} reports {temp}C, target is "
-                              f"{sched.target_max_temp}C between {sched.start_time} "
-                              f"and {sched.end_time}")
-                    log.info("Request heating on by ScheduledMinTargetTemp: %s", reason)
-                    todaysched.set_now_from_rule(True, reason)
-                    self._active_rule = sched
-                    return
+        if (temp < sched.target_min_temp or
+                (self._is_active and temp < sched.target_max_temp)):
+            reason = (f"Sensor {self.sensor_name} reports {temp}C, target is "
+                      f"{sched.target_max_temp}C between {sched.start_time} "
+                      f"and {sched.end_time}")
+            log.info("Request heating on by ScheduledMinTargetTemp: %s", reason)
+            todaysched.set_now_from_rule(True, reason)
+            self._is_active = True
+            return
 
-        # If we're here, no rules applied. Check if we had any active rules,
-        # and set the off reason to "rule X no longer apply"
-        if self._active_rule is not None:
-            rule = self._active_rule
-            self._active_rule = None
-            if todaysched.get_now_slot().request_on:
-                # Some other rule is active now, don't update the reason for request off
-                return
-            if rule.is_active(self._clock.now()):
-                reason = (f"Sensor {rule.sensor_name} reports above target "
-                          f"temperature of {rule.target_max_temp}C")
-            else:
-                reason = (f"Schedule for {rule.sensor_name} finished at "
-                          f"{rule.end_time} and is no longer active")
-            log.info("ScheduledMinTargetTemp rule stopped applying: %s", reason)
-            todaysched.set_now_from_rule(False, reason)
+        # Schedule is active but temp is above threshold
+        if self._is_active:
+            self._is_active = False
+            if not todaysched.get_now_slot().request_on:
+                reason = (f"Sensor {self.sensor_name} reports above target "
+                          f"temperature of {sched.target_max_temp}C")
+                log.info("ScheduledMinTargetTemp rule stopped applying: %s", reason)
+                todaysched.set_now_from_rule(False, reason)
 
 
 def create_rules_from_config(rules_cfg):
