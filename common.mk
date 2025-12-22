@@ -2,20 +2,20 @@
 # Include this file in subdirectory Makefiles with: include ../common.mk
 
 .PHONY: devrun
-devrun:
+devrun::
 	# Run the service corresponding to the active directory
 	pipenv run python3 ./$(notdir $(CURDIR)).py
 
 .PHONY: test
-test:
+test::
 	pipenv run pytest tests/* -v --cov=. --cov-report=term-missing --cov-report=html
 
 .PHONY: rebuild_ui
-rebuild_ui:
+rebuild_ui::
 	../zzmw_lib/www/babel_compile_single.sh ./www/app.js ./www/app.rel.js
 
 .PHONY: install_svc
-install_svc:
+install_svc::
 	../scripts/install_svc.sh .
 
 .PHONY: pipenv_rebuild_deps_base

@@ -1,6 +1,6 @@
 include ../common.mk
 
-rebuild_ui:
+rebuild_ui::
 	../zzmw_lib/www/babel_compile_single.sh ./www/nvr.js ./www/nvr.rel.js
 	../zzmw_lib/www/babel_compile_single.sh ./www/app.js ./www/app.rel.js
 

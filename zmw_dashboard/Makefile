@@ -1,9 +1,12 @@
 include ../common.mk
 
-devrun:
-	/usr/bin/authbind --deep pipenv run python3 ./main.py
+devrun::
+	/usr/bin/authbind --deep pipenv run python3 ./zmw_dashboard.py
 
-rebuild_ui:
+install_svc::
+	../scripts/install_svc.sh . "/usr/bin/authbind --deep pipenv"
+
+rebuild_ui::
 	cat \
 		../zmw_contactmon/www/app.js \
 		../zmw_heating/www/app.js \

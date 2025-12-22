@@ -14,6 +14,12 @@ TGT_SVC_NAME=$( basename "$TGT_SVC_SRC" )
 SVC_RUN_BASE="/home/$USER/run/baticasa"
 TGT_SVC_RUN="$SVC_RUN_BASE/$TGT_SVC_NAME"
 
+if [ -z "${2+x}" ]; then
+  EXEC_START="pipenv run python3 $TGT_SVC_SRC/$TGT_SVC_NAME.py"
+else
+  EXEC_START="$2 pipenv run python3 $TGT_SVC_SRC/$TGT_SVC_NAME.py"
+fi
+
 echo "Installing service $TGT_SVC_NAME from $TGT_SVC_SRC"
 
 function ensure_file() {
@@ -31,7 +37,7 @@ ensure_file Pipfile
 # Check if this service already exists
 if [ -f "$TGT_SVC_RUN/stop.sh" ]; then
   echo "Service $TGT_SVC_NAME already exists, stopping old service first..."
-  "$TGT_SVC_RUN/stop.sh"
+  #"$TGT_SVC_RUN/stop.sh"
 fi
 
 # Create target run dir and its virtual env
@@ -64,7 +70,7 @@ Wants=mosquitto.target
 [Service]
 ExecStartPre=/usr/bin/mkdir -m 740 -p "$TGT_SVC_RUN"
 Environment=
-ExecStart=pipenv run python3 "$TGT_SVC_SRC/$TGT_SVC_NAME.py"
+ExecStart=$EXEC_START
 WorkingDirectory=/home/$USER/run/baticasa/$TGT_SVC_NAME
 Restart=always
 RestartSec=10s
@@ -73,6 +79,10 @@ User=$USER
 [Install]
 WantedBy=multi-user.target
 EOF
+
+echo "$SVC_TMPL"
+exit 0
+asdasd
 
 read -r -d '' RESTART_AND_LOGS_TMPL <<EOF || true
   SCRIPT_DIR="\$(cd -- "\$(dirname -- "\${BASH_SOURCE[0]}")" && pwd)"
