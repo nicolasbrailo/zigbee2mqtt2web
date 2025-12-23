@@ -63,6 +63,9 @@
   width: 90%;
   margin: 4px auto;
 }
+#zmw_lights details input[type="checkbox"] {
+  width: fit-content;
+}
 /* When the lights details element is collapsed, use grid for precise row control */
 #zmw_lights details li:has(.light_details:not([open])) {
   display: grid;

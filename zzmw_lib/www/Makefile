@@ -14,6 +14,7 @@ build/zmw.js: build build/extjs/react.dom.js build/extjs/react.js js/*
 	cat build/extjs/react.js \
 			build/extjs/react.dom.js \
 			js/localStorageManager.js \
+			js/DebouncedRange.js \
 			js/VisibilityCallback.js \
 			js/z2m.js \
 		> build/zmw.big.js

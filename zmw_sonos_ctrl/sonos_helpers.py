@@ -2,6 +2,8 @@ from zzmw_lib.logs import build_logger
 
 from soco.plugins.sharelink import ShareLinkPlugin
 import soco
+import time
+import requests
 
 log = build_logger("ZmwSonosHelpers")
 
@@ -41,24 +43,36 @@ def get_all_sonos_playing_uris():
     return found
 
 def get_all_sonos_state():
-    spks = {}
+    speakers = []
+    groups = {}
+    zones = set()
     for spk in list(soco.discover()):
         playing_uri = spk.get_current_track_info().get('uri')
         transport_state = spk.get_current_transport_info().get('current_transport_state')
-        spks[spk.player_name] = {
+        speakers.append({
+                'name': spk.player_name,
                 'uri': playing_uri,
                 'transport_state': transport_state,
-                'all_groups': [g.coordinator.player_name + "[" + ", ".join([m.player_name for m in g.members]) + "]" for g in spk.all_groups],
-                'all_zones': [p.player_name for p in spk.all_zones],
                 "volume": spk.volume,
                 "is_coordinator": spk.is_coordinator,
                 "is_playing_line_in": spk.is_playing_line_in,
                 "is_playing_radio": spk.is_playing_radio,
                 "is_playing_tv": spk.is_playing_tv,
-                'get_current_media_info': spk.get_current_media_info(),
-                'get_speaker_info': spk.get_speaker_info(),
+                'current_media_info': spk.get_current_media_info(),
+                'speaker_info': spk.get_speaker_info(),
+        })
+        for grp in spk.all_groups:
+            coord_name = grp.coordinator.player_name
+            groups[coord_name] = sorted([m.player_name for m in grp.members])
+
+        for zone in spk.all_zones:
+            zones.add(zone.player_name)
+
+    return {
+        'speakers': sorted(speakers, key=lambda s: s['name']),
+        'groups': dict(sorted(groups.items())),
+        'zones': sorted(zones),
     }
-    return spks
 
 
 def sonos_debug_state(spk, log_fn):
@@ -79,6 +93,38 @@ def sonos_debug_state(spk, log_fn):
         playing_uri = None
 
     log_fn(f"State for {spk.player_name}: transport={transport_state} actions={actions} playing={playing_uri}")
+
+def sonos_reset_state(spk, log_fn):
+    """ Stops any playback and clears the queue of all speakers in the list. Ignores failures (if a speaker isn't
+    playing media, it will throw when trying to stop). Will also remove this speaker from any groups. """
+    log_fn(f"Reset config for {spk.player_name}")
+    # Attempt to unjoin any speaker groups
+    try:
+        log_fn(f"Unjoining {spk.player_name} from groups")
+        spk.unjoin()
+    except soco.exceptions.SoCoException as ex:
+        log_fn(f"Failed unjoining {spk.player_name} from groups: {str(ex)}")
+        log.warning("Failed unjoining %s from groups", spk_name, exc_info=True)
+    except requests.exceptions.Timeout:
+        log_fn(f"Failed unjoining {spk.player_name} from groups, timeout communicating with speaker")
+        log.warning("Failed unjoining %s from groups, timeout", spk_name, exc_info=True)
+    except requests.exceptions.RequestException:
+        log_fn(f"Failed unjoining {spk.player_name} from groups, error communicating with speaker")
+        log.warning("Failed unjoining %s from groups, error communicating with speaker", spk_name, exc_info=True)
+
+    try:
+        spk.stop()
+    except:
+        pass
+    try:
+        spk.clear_queue()
+    except:
+        pass
+    try:
+        spk.clear_sonos_queue()
+    except:
+        pass
+
 
 def sonos_reset_and_make_group(speakers_cfg, log_fn):
     """ Receives a map of `speaker_name=>{vol: ##}`. Will look for all speakers with the right name, reset their
@@ -101,29 +147,8 @@ def sonos_reset_and_make_group(speakers_cfg, log_fn):
         log_fn(f"Found: {found_names}")
 
     for spk_name, spk in speakers.items():
-        # Attempt to unjoin any speaker groups
-        try:
-            log_fn(f"Unjoining {spk_name} from groups")
-            spk.unjoin()
-        except soco.exceptions.SoCoException as ex:
-            log_fn(f"Failed unjoining {spk_name} from groups: {str(ex)}")
-            log.warning("Failed unjoining %s from groups", spk_name, exc_info=True)
-
-        # Stops any playback and clears the queue of all speakers in the list. Ignores failures (if a speaker isn't
-        # playing media, it will throw when trying to stop)
-        log_fn(f"Reset config for {spk_name}")
-        try:
-            spk.stop()
-        except:
-            pass
-        try:
-            spk.clear_queue()
-        except:
-            pass
-        try:
-            spk.clear_sonos_queue()
-        except:
-            pass
+        # TODO: Send all these in parallel
+        sonos_reset_state(spk, log_fn)
 
         # Try to reset volume too
         try:
@@ -179,7 +204,7 @@ def sonos_fix_spotify_uris(spotify_uri, sonos_magic_uri, log_fn):
     # 1. Play a playlist from the Sonos app (NOT from Spotify, must be a Spotify playlist but from the SONOS app)
     # 2. Use this service to dump all of the URIs of all known devices
     # 3. Hope one of the URIs matches and has the magic numbers.
-    log_fn("Built Sonos-compatible URIs. Using hardcoded `{sonos_magic_uri}`; if these don't work, start a playlist using the Sonos app, and check all the URIs using this service.")
+    log_fn(f"Built Sonos-compatible URIs. Using hardcoded `{sonos_magic_uri}`; if these don't work, start a playlist using the Sonos app, and check all the URIs using this service.")
     return soco_sharelink_uri, alt_spotify_uri
 
 def sonos_sharelink_play(spk, soco_sharelink_uri, log_fn):

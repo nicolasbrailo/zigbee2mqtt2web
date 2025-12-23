@@ -5,9 +5,11 @@ import threading
 import time
 
 from sonos_helpers import *
-
+import json
 import soco
+from flask import request
 from flask_sock import Sock
+from simple_websocket import ConnectionClosed
 
 from zzmw_lib.service_runner import service_runner
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
@@ -26,40 +28,70 @@ class ZmwSonosCtrl(ZmwMqttService):
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_url_base = www.register_www_dir(www_path)
 
-        www.serve_url('/get_sonos_play_uris', lambda: get_all_sonos_playing_uris())
+        www.serve_url('/get_sonos_play_uris', get_all_sonos_playing_uris)
         www.serve_url('/ls_speakers', lambda: list(ls_speakers().keys()))
-        www.serve_url('/speakers_world_state', get_all_sonos_state)
+        www.serve_url('/world_state', get_all_sonos_state)
+        www.serve_url('/stop_all_playback', self._stop_all, methods=['PUT'])
+        www.serve_url('/get_spotify_uri', self._get_spotify_uri)
+        www.serve_url('/volume', self._set_volume, methods=['PUT'])
 
         # Initialize WebSocket support
         self._sock = Sock(www)
-        self._sock.route('/spotify_hijack')(self._spotify_hijack)
+        self._sock.route('/spotify_hijack')(self._ws_spotify_hijack)
 
         # Cache for Spotify state
         self._spotify_context_uri = None
         self._spotify_ready = threading.Event()
 
-    def _spotify_hijack(self, ws):
-        try:
-            spotify_uri = self._get_spotify_uri(ws)
-            speakers_cfg = {"Baticocina": {"vol": 14}, "BatiDiscos": {"vol": 50}, "BatiPatio": {"vol": 15}}
-            sonos_hijack_spotify(speakers_cfg, spotify_uri, "sid=9&flags=8232&sn=6", ws.send)
-        except:
-            log.error("XXX", exc_info=True)
-        # die
-        time.sleep(1)
-        os.kill(os.getpid(), signal.SIGTERM)
-        return "HOLA"
+    def _ws_spotify_hijack(self, ws):
         # TODO: Bail out if request is in flight
-        speaker_names = list(speaker_volumes.keys())
 
-    def _get_spotify_uri(self, ws):
-        ws.send("Requesting Spotify state...")
+        try:
+            #speakers_cfg = {"Baticocina": {"vol": 14}, "BatiDiscos": {"vol": 50}, "BatiPatio": {"vol": 15}}
+            speakers_cfg = json.loads(ws.receive())
+        except ConnectionClosed:
+            log.info("WebSocket closed before receiving data")
+            return
+        except json.JSONDecodeError as ex:
+            ws.send(f"Error: Invalid request - {ex}")
+            return
+
+        log.info("User requests to hijack Spotify to %s", speakers_cfg)
+        spotify_uri = self._get_spotify_uri(ws)['spotify_uri']
+        sonos_hijack_spotify(speakers_cfg, spotify_uri, "sid=9&flags=8232&sn=6", ws.send)
+
+    def _get_spotify_uri(self, ws=None):
+        if ws is not None:
+            ws_log = ws.send
+        else:
+            ws_log = lambda msg: log.info(msg)
+        ws_log("Requesting Spotify state...")
         self._spotify_ready.clear()
         self.message_svc("ZmwSpotify", "publish_state", {})
         if not self._spotify_ready.wait(timeout=5):
-            ws.send("Error! Timeout waiting for Spotify state.")
-            return None
-        return self._spotify_context_uri
+            ws_log("Error! Timeout waiting for Spotify state.")
+            return {'spotify_uri': None}
+        return {'spotify_uri': self._spotify_context_uri}
+
+    def _stop_all(self):
+        log.info("Stop-all request: will stop Spotify and reset Sonos states")
+        self.message_svc("ZmwSpotify", "publish_state", {})
+        for _, dev in ls_speakers().items():
+            # TODO: Send all these in parallel
+            sonos_reset_state(dev, lambda msg: log.info(msg))
+            log.info("Stopped media on %s", dev.player_name)
+        return {}
+
+    def _set_volume(self):
+        vol_cfg = request.get_json()
+        devs = ls_speakers()
+        for spk_name, volume in vol_cfg.items():
+            if spk_name in devs:
+                devs[spk_name].volume = volume
+                log.info("Set %s volume to %s", spk_name, volume)
+            else:
+                log.warning("Speaker %s not found", spk_name)
+        return {}
 
     def on_service_received_message(self, subtopic, msg):
         log.info("IGNORE %s: %s", subtopic, msg)
