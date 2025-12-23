@@ -80,10 +80,6 @@ User=$USER
 WantedBy=multi-user.target
 EOF
 
-echo "$SVC_TMPL"
-exit 0
-asdasd
-
 read -r -d '' RESTART_AND_LOGS_TMPL <<EOF || true
   SCRIPT_DIR="\$(cd -- "\$(dirname -- "\${BASH_SOURCE[0]}")" && pwd)"
   sudo systemctl restart '$TGT_SVC_NAME' && "\$SCRIPT_DIR/logs.sh"
