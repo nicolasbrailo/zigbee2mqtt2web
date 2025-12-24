@@ -33,8 +33,10 @@ class ZmwMqttService(ZmwMqttBase):
         self._deps_ping = 3 * 60 + random_delay
         # Number of missed pings before marking a dep as down
         self._dep_stale_timeout = self._deps_ping * 3
-        self.subscribe_with_cb(self._global_svc_discovery_announce_topic, lambda _t, payload: self._on_service_updown(True, payload))
-        self.subscribe_with_cb(self._global_svc_discovery_leaving_topic, lambda _t, payload: self._on_service_updown(False, payload))
+        self.subscribe_with_cb(self._global_svc_discovery_announce_topic,
+                               lambda _t, payload: self._on_service_updown(True, payload))
+        self.subscribe_with_cb(self._global_svc_discovery_leaving_topic,
+                               lambda _t, payload: self._on_service_updown(False, payload))
 
         self._svc_sched = scheduler
 
@@ -123,8 +125,7 @@ class ZmwMqttService(ZmwMqttBase):
                 topic = f"{svc_meta['mqtt_topic']}/#"
                 log.info('Dependency "%s" is now running, subscribing to "%s"', name, topic)
                 self.subscribe_with_cb(topic,
-                                       lambda subtopic, payload: self.on_dep_published_message(name, subtopic, payload),
-                                       replace_if_exists=True)
+                                       lambda subtopic, payload: self.on_dep_published_message(name, subtopic, payload))
 
             svc_just_came_up = name not in self._known_services
             self._known_services[name] = svc_meta

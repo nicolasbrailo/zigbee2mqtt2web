@@ -104,10 +104,10 @@ class ZmwMqttBase(ABC):
         log.info('MQTT client [%s]:%d unsubscribed (reason %s)',
                  self._mqtt_ip, self._mqtt_port, str(reason_code))
 
-    def subscribe_with_cb(self, topic, cb, replace_if_exists=False):
+    def subscribe_with_cb(self, topic, cb):
         with self._topics_with_cb_lock:
             if topic in self._topics_with_cb:
-                raise KeyError(f"Topic {topic} already has a callback")
+                log.warning(f"Topic {topic} already has a callback, will replace it")
             self._topics_with_cb[topic] = cb
             log.info("MQTT subscribing to '%s'", topic)
             # If not subscribed this is a noop, but it will be repeated when connecting

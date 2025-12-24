@@ -4,13 +4,13 @@ import pathlib
 from flask import request
 
 from zz2m.helpers import bind_callbacks_to_z2m_actions
-from zzmw_lib.zmw_mqtt_nullsvc import ZmwMqttNullSvc
+from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 from zzmw_lib.logs import build_logger
 from zz2m.z2mproxy import Z2MProxy
 
 log = build_logger("ButtonActionService")
 
-class ButtonActionService(ZmwMqttNullSvc):
+class ButtonActionService(ZmwMqttService):
     """ Helper to implement a service that will enable buttons and scenes (consider scenes like a type of button!)
     Extend this class and
     1. Create a methode that starts with `_scene_` (eg _scene_all_off) to expose a scene
@@ -20,8 +20,8 @@ class ButtonActionService(ZmwMqttNullSvc):
     is triggered.
     Start the service with service_runner_with_www(YourClass)
     """
-    def __init__(self, cfg, www, www_path, scheduler):
-        super().__init__(cfg)
+    def __init__(self, cfg, www, www_path, scheduler, svc_deps):
+        super().__init__(cfg, svc_topic=None, scheduler=scheduler, svc_deps=svc_deps)
 
         # Set up www directory and endpoints
         self._public_url_base = www.register_www_dir(www_path)
