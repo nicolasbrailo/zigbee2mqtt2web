@@ -45,10 +45,10 @@ class SonosSpeaker extends React.Component {
     const speaker = this.props.speaker;
     const groups = this.props.groups;
     const groupCoordinator = findSpeakerGroup(speaker.name, groups);
-    const groupLabel = (groupCoordinator && groupCoordinator != speaker.name)? `[${groupCoordinator}]` : null;
     let transport = speaker.transport_state;
     if (speaker.transport_state === "PLAYING") transport = '▶';
-    if (speaker.transport_state === "STOPPED") transport = '⏹';
+    if (speaker.transport_state === "STOPPED") transport = 'Stopped';
+    if (groupCoordinator && groupCoordinator != speaker.name) transport = `Follows ${groupCoordinator}`;
     return (
       <li>
         <p>
@@ -58,9 +58,7 @@ class SonosSpeaker extends React.Component {
             checked={this.props.controlSelected}
             onChange={() => this.props.onControlToggle(speaker.name)}
           />
-          <label htmlFor={`${speaker.name}_control`}>
-            {speaker.name} {groupLabel} {transport}
-          </label>
+          <label htmlFor={`${speaker.name}_control`}>{speaker.name}</label> [{transport}]
         </p>
         Vol: {this.props.volume}
         <DebouncedRange
@@ -94,9 +92,9 @@ class SonosCtrl extends React.Component {
       spotifyUri: null,
       speakerVolumes: {},
       volumeRatios: {},
-      hijackInProgress: false,
-      hijackLogs: [],
-      hijackComplete: false,
+      wsInProgress: false,
+      wsLogs: [],
+      wsComplete: false,
     };
   }
 
@@ -109,7 +107,41 @@ class SonosCtrl extends React.Component {
     }));
   }
 
-  onSpotifyHijack() {
+  startWebSocketAction(endpoint, initialMsg, payload) {
+    this.setState({
+      wsInProgress: true,
+      wsLogs: [initialMsg],
+      wsComplete: false,
+    });
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}${this.props.api_base_path}${endpoint}`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify(payload));
+    };
+
+    ws.onmessage = (event) => {
+      this.setState(prev => ({
+        wsLogs: [...prev.wsLogs, event.data],
+      }));
+    };
+
+    ws.onclose = () => {
+      this.setState({ wsInProgress: false, wsComplete: true });
+    };
+
+    ws.onerror = (error) => {
+      this.setState(prev => ({
+        wsLogs: [...prev.wsLogs, `Error: ${error.message || 'Connection error'}`],
+        wsInProgress: false,
+        wsComplete: true,
+      }));
+    };
+  }
+
+  getSelectedSpeakers() {
     const { controlSpeakers, speakerVolumes } = this.state;
     const speakers = {};
     const speakerNames = [];
@@ -119,47 +151,29 @@ class SonosCtrl extends React.Component {
         speakerNames.push(name);
       }
     }
+    return { speakers, speakerNames };
+  }
+
+  onSpotifyHijack() {
+    const { speakers, speakerNames } = this.getSelectedSpeakers();
     if (Object.keys(speakers).length === 0) {
       showGlobalError("You need to select a set of speakers to control");
       return;
     }
-
-    const initialMsg = `Requested Spotify-Hijack to ${speakerNames.join(', ')}`;
-    this.setState({
-      hijackInProgress: true,
-      hijackLogs: [initialMsg],
-      hijackComplete: false,
-    });
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}${this.props.api_base_path}/spotify_hijack`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      ws.send(JSON.stringify(speakers));
-    };
-
-    ws.onmessage = (event) => {
-      this.setState(prev => ({
-        hijackLogs: [...prev.hijackLogs, event.data],
-      }));
-    };
-
-    ws.onclose = () => {
-      this.setState({ hijackInProgress: false, hijackComplete: true });
-    };
-
-    ws.onerror = (error) => {
-      this.setState(prev => ({
-        hijackLogs: [...prev.hijackLogs, `Error: ${error.message || 'Connection error'}`],
-        hijackInProgress: false,
-        hijackComplete: true,
-      }));
-    };
+    this.startWebSocketAction('/spotify_hijack', `Requested Spotify-Hijack to ${speakerNames.join(', ')}`, speakers);
   }
 
-  onHijackLogClose() {
-    this.setState({ hijackLogs: [], hijackComplete: false });
+  onLineInRequested() {
+    const { speakers, speakerNames } = this.getSelectedSpeakers();
+    if (Object.keys(speakers).length === 0) {
+      showGlobalError("You need to select a set of speakers to control");
+      return;
+    }
+    this.startWebSocketAction('/line_in_requested', `Requested Line-In to ${speakerNames.join(', ')}`, speakers);
+  }
+
+  onWsLogClose() {
+    this.setState({ wsLogs: [], wsComplete: false });
   }
 
   onStopAll() {
@@ -250,9 +264,15 @@ class SonosCtrl extends React.Component {
         <div id="master_ctrls" className="card">
           <button
             onClick={() => this.onSpotifyHijack()}
-            disabled={!hasSpotify || this.state.hijackInProgress}
+            disabled={!hasSpotify || this.state.wsInProgress}
           >
-            {this.state.hijackInProgress ? 'Hijacking...' : (hasSpotify ? 'Spotify Hijack' : 'Spotify Hijack (Not playing)')}
+            {this.state.wsInProgress ? 'Working...' : (hasSpotify ? 'Spotify Hijack' : 'Spotify Hijack (Not playing)')}
+          </button>
+          <button
+            onClick={() => this.onLineInRequested()}
+            disabled={this.state.wsInProgress}
+          >
+            Line in
           </button>
           <button onClick={() => this.onStopAll()}>Stop all</button>
           <div>URI: {this.state.spotifyUri || 'None'}</div>
@@ -265,15 +285,15 @@ class SonosCtrl extends React.Component {
             onChange={(e) => this.onMasterVolumeChange(e)}
           />
         </div>
-        {this.state.hijackLogs.length > 0 && (
-          <div id="hijack_log">
+        {this.state.wsLogs.length > 0 && (
+          <div id="ws_log">
             <ul>
-              {this.state.hijackLogs.map((msg, idx) => (
+              {this.state.wsLogs.map((msg, idx) => (
                 <li key={idx}>{msg}</li>
               ))}
             </ul>
-            {this.state.hijackComplete && (
-              <button onClick={() => this.onHijackLogClose()}>Close</button>
+            {this.state.wsComplete && (
+              <button onClick={() => this.onWsLogClose()}>Close</button>
             )}
           </div>
         )}
@@ -298,5 +318,3 @@ class SonosCtrl extends React.Component {
     );
   }
 }
-
-z2mStartReactApp('#app_root', SonosCtrl);

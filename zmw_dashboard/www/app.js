@@ -228,6 +228,17 @@ function ReolinkDoorbellSection(props) {
   );
 }
 
+function SonosCtrlSection(props) {
+  return (
+    <section id="sonos-ctrl-section">
+      <a className="section-badge" href={ProxiedServices.get('ZmwSonosCtrl')}><img src="/ZmwSonosCtrl/favicon.ico"/></a>
+      {React.createElement(
+        SonosCtrl,
+        SonosCtrl.buildProps('/ZmwSonosCtrl'))}
+    </section>
+  );
+}
+
 function ConfigSection(props) {
   const store = React.useMemo(() => new LocalStorageManager(), []);
   const savedTheme = store.cacheGet("ZmwDashboardConfig")?.theme || "no-theme";
@@ -328,18 +339,20 @@ function Dashboard(props) {
       <SensorsListSection />
 
       <section id="zmw_other_services">
-        { renderSvcBtn('Announce', 'ZmwSpeakerAnnounce') }
-        { renderSvcBtn('Contact', 'ZmwContactmon') }
-        { renderSvcBtn('Heating', 'ZmwHeating') }
-        { renderSvcBtn('Door', 'ZmwReolinkDoorbell') }
+        { renderSvcBtn('Shout', 'ZmwSpeakerAnnounce') }
+        { renderSvcBtn('Door', 'ZmwContactmon') }
+        { renderSvcBtn('Heat', 'ZmwHeating') }
+        { renderSvcBtn('Cams', 'ZmwReolinkDoorbell') }
+        { renderSvcBtn('Sonos', 'ZmwSonosCtrl') }
         { renderIcoBtn('⚙', '/settings.ico') }
       </section>
 
       <div ref={contentRef}>
-        {expandedSection === 'Announce' && <TTSAnnounceSection />}
-        {expandedSection === 'Contact' && <ContactMonSection />}
-        {expandedSection === 'Heating' && <MqttHeatingSection />}
-        {expandedSection === 'Door' && <ReolinkDoorbellSection />}
+        {expandedSection === 'Shout' && <TTSAnnounceSection />}
+        {expandedSection === 'Door' && <ContactMonSection />}
+        {expandedSection === 'Heat' && <MqttHeatingSection />}
+        {expandedSection === 'Cams' && <ReolinkDoorbellSection />}
+        {expandedSection === 'Sonos' && <SonosCtrlSection />}
         {expandedSection === '⚙' && <ConfigSection />}
       </div>
     </main>

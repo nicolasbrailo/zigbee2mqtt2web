@@ -34,31 +34,42 @@ class ZmwSonosCtrl(ZmwMqttService):
         www.serve_url('/stop_all_playback', self._stop_all, methods=['PUT'])
         www.serve_url('/get_spotify_uri', self._get_spotify_uri)
         www.serve_url('/volume', self._set_volume, methods=['PUT'])
+        www.serve_url('/volume_up', lambda: sonos_adjust_volume_all(5), methods=['PUT', 'GET'])
+        www.serve_url('/volume_down', lambda: sonos_adjust_volume_all(-5), methods=['PUT', 'GET'])
 
         # Initialize WebSocket support
         self._sock = Sock(www)
         self._sock.route('/spotify_hijack')(self._ws_spotify_hijack)
+        self._sock.route('/line_in_requested')(self._ws_line_in_requested)
 
         # Cache for Spotify state
         self._spotify_context_uri = None
         self._spotify_ready = threading.Event()
 
+        # Track if a hijack request is in progress
+        self._hijack_in_progress = threading.Lock()
+
     def _ws_spotify_hijack(self, ws):
-        # TODO: Bail out if request is in flight
-
+        if not self._hijack_in_progress.acquire(blocking=False):
+            ws.send("Error: A hijack request is already in progress")
+            return
         try:
-            #speakers_cfg = {"Baticocina": {"vol": 14}, "BatiDiscos": {"vol": 50}, "BatiPatio": {"vol": 15}}
-            speakers_cfg = json.loads(ws.receive())
-        except ConnectionClosed:
-            log.info("WebSocket closed before receiving data")
-            return
-        except json.JSONDecodeError as ex:
-            ws.send(f"Error: Invalid request - {ex}")
-            return
+            try:
+                # Expected speakers_cfg = {"Baticocina": {"vol": 14}, "BatiDiscos": {"vol": 50}...}
+                speakers_cfg = json.loads(ws.receive())
+            except ConnectionClosed:
+                log.info("WebSocket closed before receiving data")
+                return
+            except json.JSONDecodeError as ex:
+                ws.send(f"Error: Invalid request - {ex}")
+                return
 
-        log.info("User requests to hijack Spotify to %s", speakers_cfg)
-        spotify_uri = self._get_spotify_uri(ws)['spotify_uri']
-        sonos_hijack_spotify(speakers_cfg, spotify_uri, "sid=9&flags=8232&sn=6", ws.send)
+            log.info("User requests to hijack Spotify to %s", speakers_cfg)
+            spotify_uri = self._get_spotify_uri(ws)['spotify_uri']
+            # TODO: Read magic URI from config
+            sonos_hijack_spotify(speakers_cfg, spotify_uri, "sid=9&flags=8232&sn=6", ws.send)
+        finally:
+            self._hijack_in_progress.release()
 
     def _get_spotify_uri(self, ws=None):
         if ws is not None:
@@ -73,13 +84,13 @@ class ZmwSonosCtrl(ZmwMqttService):
             return {'spotify_uri': None}
         return {'spotify_uri': self._spotify_context_uri}
 
+    def _ws_line_in_requested(self, ws=None):
+        ws.send("HOLA")
+
     def _stop_all(self):
         log.info("Stop-all request: will stop Spotify and reset Sonos states")
         self.message_svc("ZmwSpotify", "publish_state", {})
-        for _, dev in ls_speakers().items():
-            # TODO: Send all these in parallel
-            sonos_reset_state(dev, lambda msg: log.info(msg))
-            log.info("Stopped media on %s", dev.player_name)
+        sonos_reset_state_all(ls_speakers().values(), lambda msg: log.info(msg))
         return {}
 
     def _set_volume(self):
@@ -94,7 +105,19 @@ class ZmwSonosCtrl(ZmwMqttService):
         return {}
 
     def on_service_received_message(self, subtopic, msg):
-        log.info("IGNORE %s: %s", subtopic, msg)
+        case subtopic:
+            match "volume_up":
+                log.info("MQTT request: adjust volume up")
+                sonos_adjust_volume_all(msg.get('vol', 5))
+                return
+            match "volume_down":
+                log.info("MQTT request: adjust volume down")
+                sonos_adjust_volume_all(msg.get('vol', -5))
+                return
+            match "spotify_hijack":
+                log.info("MQTT request: Spotify hijack")
+                # XXX TODO
+                return
 
     def on_dep_published_message(self, svc_name, subtopic, msg):
         """Handle messages from dependent services."""

@@ -1,5 +1,6 @@
 from zzmw_lib.logs import build_logger
 
+from concurrent.futures import ThreadPoolExecutor
 from soco.plugins.sharelink import ShareLinkPlugin
 import soco
 import time
@@ -62,6 +63,8 @@ def get_all_sonos_state():
                 'speaker_info': spk.get_speaker_info(),
         })
         for grp in spk.all_groups:
+            if grp.coordinator is None:
+                continue
             coord_name = grp.coordinator.player_name
             groups[coord_name] = sorted([m.player_name for m in grp.members])
 
@@ -125,6 +128,30 @@ def sonos_reset_state(spk, log_fn):
     except:
         pass
 
+def sonos_reset_state_all(speakers, log_fn):
+    """Reset state for all speakers in parallel."""
+    with ThreadPoolExecutor(max_workers=len(speakers)) as executor:
+        list(executor.map(lambda spk: sonos_reset_state(spk, log_fn), speakers))
+
+def sonos_adjust_volume(self, pct):
+    """Adjust volume for a speaker. direction: 5 for up %5, -8 for down 8%."""
+    try:
+        transport_state = spk.get_current_transport_info().get('current_transport_state')
+        if transport_state != 'PLAYING':
+            continue
+        current_vol = spk.volume
+        delta = max(pct, int(current_vol * pct/100.0)) * direction
+        new_vol = max(0, min(100, current_vol + delta))
+        spk.volume = new_vol
+        log.info("Volume %s %s: %s -> %s", "up" if direction > 0 else "down", name, current_vol, new_vol)
+    except Exception:
+        log.warning("Failed to adjust volume for %s", name, exc_info=True)
+
+def sonos_adjust_volume_all(pct):
+    """Adjust volume for all speakers. direction: 5 for up %5, -8 for down 8%."""
+    speakers = ls_speakers()
+    with ThreadPoolExecutor(max_workers=len(speakers)) as executor:
+        list(executor.map(lambda spk: sonos_adjust_volume(spk, pct), speakers))
 
 def sonos_reset_and_make_group(speakers_cfg, log_fn):
     """ Receives a map of `speaker_name=>{vol: ##}`. Will look for all speakers with the right name, reset their
@@ -146,11 +173,9 @@ def sonos_reset_and_make_group(speakers_cfg, log_fn):
         found_names = ", ".join(speakers.keys())
         log_fn(f"Found: {found_names}")
 
-    for spk_name, spk in speakers.items():
-        # TODO: Send all these in parallel
-        sonos_reset_state(spk, log_fn)
+    sonos_reset_state_all(speakers.values(), log_fn)
 
-        # Try to reset volume too
+    for spk_name, spk in speakers.items():
         try:
             vol = speakers_cfg[spk_name]["vol"]
             spk.volume = vol

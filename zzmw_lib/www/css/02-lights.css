@@ -1,4 +1,8 @@
 
+#zmw_lights {
+  width: 100%;
+}
+
 /* Style for room/group summary (Cocina, TVRoom, etc.) - not the nested .light_details summary */
 #zmw_lights > details > summary {
   color: var(--cfg);

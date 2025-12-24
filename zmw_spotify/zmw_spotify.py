@@ -324,6 +324,12 @@ class ZmwSpotify(ZmwMqttService):
             case "toggle_play":
                 log.info("Received toggle_play command")
                 self._with_spotify('toggle_play', self._toggle_play)
+            case "next_track":
+                log.info("Jumping to next track")
+                self._with_spotify('relative_jump', self._relative_jump_to_track, 1)
+            case "prev_track":
+                log.info("Jumping to prev track")
+                self._with_spotify('relative_jump', self._relative_jump_to_track, -1)
             case "relative_jump_to_track":
                 if 'value' not in payload:
                     log.error("relative_jump_to_track requires 'value' in payload")
@@ -337,6 +343,7 @@ class ZmwSpotify(ZmwMqttService):
                 log.info("Setting volume to %s", payload['value'])
                 self._with_spotify('set_volume', self._set_volume_pct, payload['value'])
             case _:
+                # Ignore own echo
                 pass
 
 
