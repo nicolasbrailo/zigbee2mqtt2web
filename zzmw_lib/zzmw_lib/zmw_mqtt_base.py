@@ -118,21 +118,20 @@ class ZmwMqttBase(ABC):
         if topic.startswith(self._global_svc_discovery_ping_topic):
             return self.on_service_discovery_ping()
 
-        is_json = True
         try:
             parsed_msg = json.loads(msg.payload)
-        except (TypeError, JSONDecodeError):
-            is_json = False
+        except (TypeError, json.JSONDecodeError):
+            log.warning(f"Ignoring non-json message with topic '%s'", topic)
+            return
 
         try:
-            if is_json:
-                for (t, cb) in self._topics_with_cb.items():
-                    if t[-2:] == '/#':
-                        # This topic has an mqtt wildcard, it fininshes with 'topic/#'. Don't check the wildcard.
-                        t = t[:-2]
-                    if topic.startswith(t):
-                        subtopic = topic[len(t) + len('/'):]
-                        return cb(subtopic, parsed_msg)
+            for (t, cb) in self._topics_with_cb.items():
+                if t[-2:] == '/#':
+                    # This topic has an mqtt wildcard, it fininshes with 'topic/#'. Don't check the wildcard.
+                    t = t[:-2]
+                if topic.startswith(t):
+                    subtopic = topic[len(t) + len('/'):]
+                    return cb(subtopic, parsed_msg)
             # Fall-through: received unhandled message
         except Exception as ex:  # pylint: disable=broad-except
             log.critical(
