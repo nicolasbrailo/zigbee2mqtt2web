@@ -107,13 +107,13 @@ def sonos_reset_state(spk, log_fn):
         spk.unjoin()
     except soco.exceptions.SoCoException as ex:
         log_fn(f"Failed unjoining {spk.player_name} from groups: {str(ex)}")
-        log.warning("Failed unjoining %s from groups", spk_name, exc_info=True)
+        log.warning("Failed unjoining %s from groups", spk.player_name, exc_info=True)
     except requests.exceptions.Timeout:
         log_fn(f"Failed unjoining {spk.player_name} from groups, timeout communicating with speaker")
-        log.warning("Failed unjoining %s from groups, timeout", spk_name, exc_info=True)
+        log.warning("Failed unjoining %s from groups, timeout", spk.player_name, exc_info=True)
     except requests.exceptions.RequestException:
         log_fn(f"Failed unjoining {spk.player_name} from groups, error communicating with speaker")
-        log.warning("Failed unjoining %s from groups, error communicating with speaker", spk_name, exc_info=True)
+        log.warning("Failed unjoining %s from groups, error communicating with speaker", spk.player_name, exc_info=True)
 
     try:
         spk.stop()
@@ -133,23 +133,24 @@ def sonos_reset_state_all(speakers, log_fn):
     with ThreadPoolExecutor(max_workers=len(speakers)) as executor:
         list(executor.map(lambda spk: sonos_reset_state(spk, log_fn), speakers))
 
-def sonos_adjust_volume(self, pct):
+def sonos_adjust_volume(spk, pct):
     """Adjust volume for a speaker. direction: 5 for up %5, -8 for down 8%."""
     try:
         transport_state = spk.get_current_transport_info().get('current_transport_state')
         if transport_state != 'PLAYING':
-            continue
+            return
         current_vol = spk.volume
-        delta = max(pct, int(current_vol * pct/100.0)) * direction
+        direction = 1 if pct > 0 else -1
+        min_delta = 2 # The minimum step in volume change, otherwise it will be zero when the volume is low
+        delta = max(min_delta, int(current_vol * abs(pct)/100.0)) * direction
         new_vol = max(0, min(100, current_vol + delta))
         spk.volume = new_vol
-        log.info("Volume %s %s: %s -> %s", "up" if direction > 0 else "down", name, current_vol, new_vol)
+        log.info("Volume %s %s: %s -> %s", "up" if direction > 0 else "down", spk.player_name, current_vol, new_vol)
     except Exception:
-        log.warning("Failed to adjust volume for %s", name, exc_info=True)
+        log.warning("Failed to adjust volume for %s", spk.player_name, exc_info=True)
 
-def sonos_adjust_volume_all(pct):
+def sonos_adjust_volume_all(speakers, pct):
     """Adjust volume for all speakers. direction: 5 for up %5, -8 for down 8%."""
-    speakers = ls_speakers()
     with ThreadPoolExecutor(max_workers=len(speakers)) as executor:
         list(executor.map(lambda spk: sonos_adjust_volume(spk, pct), speakers))
 

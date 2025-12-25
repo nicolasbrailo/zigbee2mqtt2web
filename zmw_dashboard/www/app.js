@@ -234,7 +234,7 @@ function SonosCtrlSection(props) {
       <a className="section-badge" href={ProxiedServices.get('ZmwSonosCtrl')}><img src="/ZmwSonosCtrl/favicon.ico"/></a>
       {React.createElement(
         SonosCtrl,
-        SonosCtrl.buildProps('/ZmwSonosCtrl'))}
+        SonosCtrl.buildProps('/ZmwSonosCtrl', ProxiedServices.get('ZmwSonosCtrl')))}
     </section>
   );
 }

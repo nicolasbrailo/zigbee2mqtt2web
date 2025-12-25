@@ -59,6 +59,7 @@ button {
 thead tr { background-color: var(--cdark); color: var(--cmed); }
 /* Make pre's look console-like */
 pre {
+  font-size: 70%;
   border-radius: 4px;
   background: black;
   color: white;

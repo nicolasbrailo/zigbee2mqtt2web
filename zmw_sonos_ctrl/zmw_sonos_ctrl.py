@@ -34,8 +34,8 @@ class ZmwSonosCtrl(ZmwMqttService):
         www.serve_url('/stop_all_playback', self._stop_all, methods=['PUT'])
         www.serve_url('/get_spotify_uri', self._get_spotify_uri)
         www.serve_url('/volume', self._set_volume, methods=['PUT'])
-        www.serve_url('/volume_up', lambda: sonos_adjust_volume_all(5), methods=['PUT', 'GET'])
-        www.serve_url('/volume_down', lambda: sonos_adjust_volume_all(-5), methods=['PUT', 'GET'])
+        www.serve_url('/volume_up', lambda: sonos_adjust_volume_all(ls_speakers().values(), 5), methods=['PUT', 'GET'])
+        www.serve_url('/volume_down', lambda: sonos_adjust_volume_all(ls_speakers().values(), -5), methods=['PUT', 'GET'])
 
         # Initialize WebSocket support
         self._sock = Sock(www)
@@ -105,16 +105,17 @@ class ZmwSonosCtrl(ZmwMqttService):
         return {}
 
     def on_service_received_message(self, subtopic, msg):
-        case subtopic:
-            match "volume_up":
+        match subtopic:
+            case "volume_up":
                 log.info("MQTT request: adjust volume up")
-                sonos_adjust_volume_all(msg.get('vol', 5))
+                # TODO: Make smarter, apply only to playing speakers
+                sonos_adjust_volume_all(ls_speakers().values(), msg.get('vol', 5))
                 return
-            match "volume_down":
+            case "volume_down":
                 log.info("MQTT request: adjust volume down")
-                sonos_adjust_volume_all(msg.get('vol', -5))
+                sonos_adjust_volume_all(ls_speakers().values(), msg.get('vol', -5))
                 return
-            match "spotify_hijack":
+            case "spotify_hijack":
                 log.info("MQTT request: Spotify hijack")
                 # XXX TODO
                 return

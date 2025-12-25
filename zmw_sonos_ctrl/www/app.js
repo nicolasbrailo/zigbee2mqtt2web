@@ -47,6 +47,7 @@ class SonosSpeaker extends React.Component {
     const groupCoordinator = findSpeakerGroup(speaker.name, groups);
     let transport = speaker.transport_state;
     if (speaker.transport_state === "PLAYING") transport = '▶';
+    if (speaker.transport_state === "PAUSED_PLAYBACK") transport = '⏸';
     if (speaker.transport_state === "STOPPED") transport = 'Stopped';
     if (groupCoordinator && groupCoordinator != speaker.name) transport = `Follows ${groupCoordinator}`;
     return (
@@ -74,10 +75,11 @@ class SonosSpeaker extends React.Component {
 }
 
 class SonosCtrl extends React.Component {
-  static buildProps(api_base_path = '') {
+  static buildProps(api_base_path = '', baseServer = '') {
     return {
       key: 'SonosCtrl',
       api_base_path: api_base_path,
+      baseServer: baseServer,
     };
   }
 
@@ -114,8 +116,15 @@ class SonosCtrl extends React.Component {
       wsComplete: false,
     });
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}${this.props.api_base_path}${endpoint}`;
+    let wsUrl;
+    if (this.props.baseServer) {
+      const wsHost = this.props.baseServer.replace(/^https?:\/\//, '');
+      const protocol = this.props.baseServer.startsWith('https:') ? 'wss:' : 'ws:';
+      wsUrl = `${protocol}//${wsHost}${endpoint}`;
+    } else {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      wsUrl = `${protocol}//${window.location.host}${this.props.api_base_path}${endpoint}`;
+    }
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
@@ -132,12 +141,8 @@ class SonosCtrl extends React.Component {
       this.setState({ wsInProgress: false, wsComplete: true });
     };
 
-    ws.onerror = (error) => {
-      this.setState(prev => ({
-        wsLogs: [...prev.wsLogs, `Error: ${error.message || 'Connection error'}`],
-        wsInProgress: false,
-        wsComplete: true,
-      }));
+    ws.onerror = () => {
+      this.setState({ wsInProgress: false, wsComplete: true });
     };
   }
 
@@ -262,6 +267,7 @@ class SonosCtrl extends React.Component {
     return (
       <div id="zmw_lights">
         <div id="master_ctrls" className="card">
+          <button onClick={() => this.fetchState()}>↻</button>
           <button
             onClick={() => this.onSpotifyHijack()}
             disabled={!hasSpotify || this.state.wsInProgress}
@@ -275,7 +281,7 @@ class SonosCtrl extends React.Component {
             Line in
           </button>
           <button onClick={() => this.onStopAll()}>Stop all</button>
-          <div>URI: {this.state.spotifyUri || 'None'}</div>
+          { /*<div>URI: {this.state.spotifyUri || 'None'}</div>*/ } 
 
           <label>Master volume</label>
           <DebouncedRange
@@ -287,11 +293,7 @@ class SonosCtrl extends React.Component {
         </div>
         {this.state.wsLogs.length > 0 && (
           <div id="ws_log">
-            <ul>
-              {this.state.wsLogs.map((msg, idx) => (
-                <li key={idx}>{msg}</li>
-              ))}
-            </ul>
+            <pre>{this.state.wsLogs.join('\n')}</pre>
             {this.state.wsComplete && (
               <button onClick={() => this.onWsLogClose()}>Close</button>
             )}
