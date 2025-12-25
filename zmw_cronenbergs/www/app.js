@@ -49,6 +49,51 @@ class CronenbergMonitor extends React.Component {
     return { forgotten, clean };
   }
 
+  renderBatterySection() {
+    const batteryThings = this.state.stats.battery_things || [];
+
+    if (batteryThings.length === 0) {
+      return null;
+    }
+
+    const critical = batteryThings.filter(t => t.battery !== null && t.battery < 15);
+    const low = batteryThings.filter(t => t.battery !== null && t.battery >= 15 && t.battery < 30);
+    const ok = batteryThings.filter(t => t.battery !== null && t.battery >= 30);
+    const unknown = batteryThings.filter(t => t.battery === null);
+
+    return (
+      <div className="battery-section">
+        <h4>Battery Levels</h4>
+        <ul className="battery-list">
+          {critical.map((thing, idx) => (
+            <li key={`critical-${idx}`} className="battery-item battery-critical">
+              <span className="battery-name">{thing.name}</span>
+              <span className="battery-level">{thing.battery}%</span>
+            </li>
+          ))}
+          {low.map((thing, idx) => (
+            <li key={`low-${idx}`} className="battery-item battery-low">
+              <span className="battery-name">{thing.name}</span>
+              <span className="battery-level">{thing.battery}%</span>
+            </li>
+          ))}
+          {ok.map((thing, idx) => (
+            <li key={`ok-${idx}`} className="battery-item battery-ok">
+              <span className="battery-name">{thing.name}</span>
+              <span className="battery-level">{thing.battery}%</span>
+            </li>
+          ))}
+          {unknown.map((thing, idx) => (
+            <li key={`unknown-${idx}`} className="battery-item battery-unknown">
+              <span className="battery-name">{thing.name}</span>
+              <span className="battery-level">?</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
   render() {
     if (!this.state.stats) {
       return ( <div className="app-loading">Loading...</div> );
@@ -66,21 +111,17 @@ class CronenbergMonitor extends React.Component {
           {vacationsMode && <p>Random light effects are active to simulate presence.</p>}
         </div>
 
+        {this.renderBatterySection()}
+
         {speakerAnnounce.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
+          <div className="announcements-section">
             <h4>Scheduled Announcements</h4>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
+            <ul className="announcements-list">
               {speakerAnnounce.map((announce, idx) => (
-                <li key={idx} style={{
-                  marginBottom: '8px',
-                  padding: '10px',
-                  backgroundColor: '#2a2a2a',
-                  borderRadius: '5px',
-                  borderLeft: '4px solid #4a90e2'
-                }}>
-                  <span style={{ color: '#4a90e2', fontWeight: 'bold' }}>{announce.time}</span>
-                  <span style={{ marginLeft: '15px', color: '#ccc' }}>{announce.msg}</span>
-                  <span style={{ marginLeft: '10px', color: '#888', fontSize: '0.85em' }}>({announce.lang}, vol: {announce.vol})</span>
+                <li key={idx} className="announcement-item">
+                  <span className="announcement-time">{announce.time}</span>
+                  <span className="announcement-msg">{announce.msg}</span>
+                  <span className="announcement-meta">({announce.lang}, vol: {announce.vol})</span>
                 </li>
               ))}
             </ul>
@@ -91,26 +132,26 @@ class CronenbergMonitor extends React.Component {
           <p>No light checks recorded yet</p>
         ) : (
           <div>
-            <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#2a2a2a', borderRadius: '5px' }}>
-              <h4 style={{ marginTop: 0 }}>Summary</h4>
-              <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
-                <div>
-                  <span style={{ color: '#ff6b6b', fontSize: '2em', fontWeight: 'bold' }}>{summary.forgotten}</span>
-                  <div style={{ color: '#888', fontSize: '0.9em' }}>Days with lights forgotten</div>
+            <div className="summary-section">
+              <h4>Summary</h4>
+              <div className="summary-stats">
+                <div className="summary-stat">
+                  <span className="summary-value forgotten">{summary.forgotten}</span>
+                  <div className="summary-label">Days with lights forgotten</div>
                 </div>
-                <div>
-                  <span style={{ color: '#51cf66', fontSize: '2em', fontWeight: 'bold' }}>{summary.clean}</span>
-                  <div style={{ color: '#888', fontSize: '0.9em' }}>Days with no lights on</div>
+                <div className="summary-stat">
+                  <span className="summary-value clean">{summary.clean}</span>
+                  <div className="summary-label">Days with no lights on</div>
                 </div>
-                <div>
-                  <span style={{ color: '#4a90e2', fontSize: '2em', fontWeight: 'bold' }}>{history.length}</span>
-                  <div style={{ color: '#888', fontSize: '0.9em' }}>Total checks (last 10 days)</div>
+                <div className="summary-stat">
+                  <span className="summary-value total">{history.length}</span>
+                  <div className="summary-label">Total checks (last 10 days)</div>
                 </div>
               </div>
             </div>
 
             <h4>Recent Checks</h4>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
+            <ul className="checks-list">
               {history.slice().reverse().map((check, idx) => this.renderCheck(check, idx))}
             </ul>
           </div>
@@ -120,31 +161,23 @@ class CronenbergMonitor extends React.Component {
   }
 
   renderCheck(check, idx) {
-    const statusColor = check.lights_forgotten ? '#ff6b6b' : '#51cf66';
+    const statusClass = check.lights_forgotten ? 'forgotten' : 'clear';
     const statusIcon = check.lights_forgotten ? '⚠️' : '✓';
     const statusText = check.lights_forgotten ? 'Lights forgotten' : 'All clear';
 
     return (
-      <li key={idx} style={{
-        marginBottom: '15px',
-        padding: '12px',
-        backgroundColor: '#2a2a2a',
-        borderRadius: '5px',
-        borderLeft: `4px solid ${statusColor}`
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-          <div>
-            <span style={{ fontSize: '1.2em' }}>{statusIcon}</span>
-            <span style={{ marginLeft: '10px', fontWeight: 'bold', color: statusColor }}>
-              {statusText}
-            </span>
+      <li key={idx} className={`check-item ${statusClass}`}>
+        <div className="check-header">
+          <div className="check-status">
+            <span className="check-icon">{statusIcon}</span>
+            <span className="check-text">{statusText}</span>
           </div>
-          <div style={{ color: '#888', fontSize: '0.9em' }}>
+          <div className="check-date">
             {this.formatDate(check.date)} at {new Date(check.timestamp).toLocaleTimeString()}
           </div>
         </div>
         {check.lights_forgotten && check.lights_left_on && check.lights_left_on.length > 0 && (
-          <div style={{ marginLeft: '30px', fontSize: '0.95em', color: '#ccc' }}>
+          <div className="check-details">
             <strong>Lights left on:</strong> {check.lights_left_on.join(', ')}
           </div>
         )}
