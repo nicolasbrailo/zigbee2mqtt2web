@@ -2,6 +2,7 @@
 import logging
 import os
 import pathlib
+import requests
 
 from spotipy.oauth2 import SpotifyOauthError
 from spotipy.oauth2 import SpotifyOAuth
@@ -203,6 +204,9 @@ class ZmwSpotify(ZmwMqttService):
 
         try:
             return func(self._spotipy, *args)
+        except requests.exceptions.RequestException as ex:
+            log.warning("Spotify request connection failed: %s", ex)
+            return None
         except SpotifyException as ex:
             if ex.http_status != 401:
                 log.error("Spotify action %s failed: %s", action_name, ex)
