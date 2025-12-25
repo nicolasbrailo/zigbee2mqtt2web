@@ -1785,9 +1785,9 @@ class SonosCtrl extends React.Component {
     this.setState({ wsLogs: [], wsComplete: false });
   }
 
-  onStopAll() {
-    mJsonPut(`${this.props.api_base_path}/stop_all_playback`);
-  }
+  onStopAll() { mJsonPut(`${this.props.api_base_path}/stop_all_playback`); }
+  onPrevTrackRq() { mJsonPut(`${this.props.api_base_path}/prev_track`); }
+  onNextTrackRq() { mJsonPut(`${this.props.api_base_path}/next_track`); }
 
   onSpeakerVolumeChange(speakerName, volume) {
     this.setState(prev => {
@@ -1886,6 +1886,8 @@ class SonosCtrl extends React.Component {
             Line in
           </button>
           <button onClick={() => this.onStopAll()}>Stop all</button>
+          <button onClick={() => this.onPrevTrackRq()}>Prev</button>
+          <button onClick={() => this.onNextTrackRq()}>Next</button>
           { /*<div>URI: {this.state.spotifyUri || 'None'}</div>*/ } 
 
           <label>Master volume</label>
@@ -1996,6 +1998,7 @@ class TTSAnnounce extends React.Component {
       type: 'get',
       success: () => {
         console.log("Sent TTS request");
+        this.setState({ ttsPhrase: "" });
         this.fetchAnnouncementHistory();
       },
       error: showGlobalError

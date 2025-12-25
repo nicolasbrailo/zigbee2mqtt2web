@@ -69,6 +69,7 @@ class TTSAnnounce extends React.Component {
       type: 'get',
       success: () => {
         console.log("Sent TTS request");
+        this.setState({ ttsPhrase: "" });
         this.fetchAnnouncementHistory();
       },
       error: showGlobalError
