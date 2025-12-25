@@ -44,13 +44,16 @@ class ZmwSonosCtrl(ZmwMqttService):
         www.serve_url('/stop_all_playback', self._stop_all, methods=['PUT'])
         www.serve_url('/get_spotify_context', self._get_spotify_context)
         www.serve_url('/volume', self._set_volume, methods=['PUT'])
-        www.serve_url('/volume_up', lambda: sonos_adjust_volume_all(ls_speakers().values(), 5), methods=['PUT', 'GET'])
-        www.serve_url('/volume_down', lambda: sonos_adjust_volume_all(ls_speakers().values(), -5), methods=['PUT', 'GET'])
+        www.serve_url('/volume_up', self._volume_up, methods=['PUT', 'GET'])
+        www.serve_url('/volume_down', self._volume_down, methods=['PUT', 'GET'])
+        www.serve_url('/next_track', self._next_track, methods=['PUT', 'GET'])
+        www.serve_url('/prev_track', self._prev_track, methods=['PUT', 'GET'])
 
         # Initialize WebSocket support
         self._sock = Sock(www)
         self._sock.route('/spotify_hijack')(self._ws_spotify_hijack)
         self._sock.route('/line_in_requested')(self._ws_line_in_requested)
+        # TODO: Add a WS endpoint to stream updates from Spotify, so it lists the playing media in the UI
 
 
     def _ws_spotify_hijack(self, ws):
@@ -65,6 +68,33 @@ class ZmwSonosCtrl(ZmwMqttService):
             return
 
         self._do_spotify_hijack(speakers_cfg, ws.send)
+
+    def _spotify_hijack_or_toggle_play(self, speakers_cfg, status_cb=None):
+        if status_cb is None:
+            status_cb = lambda msg: log.info(msg)
+
+        if not self._last_active_coord:
+            return self._do_spotify_hijack(speakers_cfg, status_cb)
+
+        try:
+            transport_state = self._last_active_coord.get_current_transport_info()['current_transport_state']
+        except soco.exceptions.SoCoException as ex:
+            log.warning("Failed to get transport state: %s", ex)
+            transport_state = None
+
+        if transport_state == 'PLAYING':
+            self._last_active_coord.pause()
+            status_cb("Paused playback")
+            log.info("Paused playback on %s", self._last_active_coord.player_name)
+            return
+        elif transport_state == 'PAUSED_PLAYBACK':
+            self._last_active_coord.play()
+            status_cb("Resumed playback")
+            log.info("Resumed playback on %s", self._last_active_coord.player_name)
+            return
+
+        # Coordinator reports stopped, or unknown state: assume the user wants to start playback again
+        self._do_spotify_hijack(speakers_cfg, status_cb)
 
     def _do_spotify_hijack(self, speakers_cfg, status_cb=None):
         """Core logic for Spotify hijack, usable from WebSocket or MQTT."""
@@ -111,15 +141,17 @@ class ZmwSonosCtrl(ZmwMqttService):
         log.info("Stop-all request: will stop Spotify and reset Sonos states")
         self.message_svc("ZmwSpotify", "stop", {})
         if self._last_active_coord:
-            # TODO: break up the coordinator group too
-            self._last_active_coord.stop()
+            sonos_reset_state_all(self._last_active_coord.group.members, lambda msg: log.info(msg))
         else:
-            log.info("No active coordinator found: sending stop command to ALL speakers")
-            sonos_reset_state_all(ls_speakers().values(), lambda msg: log.info(msg))
+            log.info("No active coordinator found: can't stop")
+            # We could also send the stop command to all speakers, but for safety let's limit this to known coordinators
+            # log.info("No active coordinator found: sending stop command to ALL speakers")
+            # sonos_reset_state_all(ls_speakers().values(), lambda msg: log.info(msg))
         return {}
 
     def _set_volume(self):
-        # TODO: apply this to coordinator group only
+        # This sets the volume of all requested speakers, even if they are not part of the coordinator
+        # group. This is because the user needs to manually select the speakers to operate on.
         vol_cfg = request.get_json()
         devs = ls_speakers()
         for spk_name, volume in vol_cfg.items():
@@ -128,6 +160,38 @@ class ZmwSonosCtrl(ZmwMqttService):
                 log.info("Set %s volume to %s", spk_name, volume)
             else:
                 log.warning("Speaker %s not found", spk_name)
+        return {}
+
+    def _volume_up(self, vol=5):
+        if self._last_active_coord:
+            sonos_adjust_volume_all(self._last_active_coord.group.members, vol)
+            log.info("Volume up on group %s", self._last_active_coord.player_name)
+        else:
+            log.info("Volume up requested, but no coordinator known")
+        return {}
+
+    def _volume_down(self, vol=5):
+        if self._last_active_coord:
+            sonos_adjust_volume_all(self._last_active_coord.group.members, -vol)
+            log.info("Volume down on group %s", self._last_active_coord.player_name)
+        else:
+            log.info("Volume down requested, but no coordinator known")
+        return {}
+
+    def _next_track(self):
+        if self._last_active_coord:
+            self._last_active_coord.next()
+            log.info("Next track on group %s", self._last_active_coord.player_name)
+        else:
+            log.info("Next track requested, but no coordinator known")
+        return {}
+
+    def _prev_track(self):
+        if self._last_active_coord:
+            self._last_active_coord.previous()
+            log.info("Previous track on group %s", self._last_active_coord.player_name)
+        else:
+            log.info("Previous track requested, but no coordinator known")
         return {}
 
     def on_service_received_message(self, subtopic, msg):
@@ -142,27 +206,19 @@ class ZmwSonosCtrl(ZmwMqttService):
     def _handle_mqtt_message(self, subtopic, msg):
         match subtopic:
             case "prev_track":
-                if self._last_active_coord:
-                    self._last_active_coord.previous()
-                    log.info("MQTT request: prev_track")
-                else:
-                    log.info("MQTT request: prev_track, but no coordinator known")
+                self._prev_track()
             case "next_track":
-                if self._last_active_coord:
-                    self._last_active_coord.next()
-                    log.info("MQTT request: next_track")
-                else:
-                    log.info("MQTT request: next_track, but no coordinator known")
+                self._next_track()
             case "volume_up":
-                log.info("MQTT request: adjust volume up")
-                # TODO: Make smarter, apply only to playing speakers
-                sonos_adjust_volume_all(ls_speakers().values(), msg.get('vol', 5))
+                self._volume_up(msg.get('vol', 5))
             case "volume_down":
-                log.info("MQTT request: adjust volume down")
-                sonos_adjust_volume_all(ls_speakers().values(), msg.get('vol', -5))
+                self._volume_down(msg.get('vol', 5))
             case "spotify_hijack":
                 log.info("MQTT request: Spotify hijack")
                 self._do_spotify_hijack(msg)
+            case "spotify_hijack_or_toggle_play":
+                log.info("MQTT request: Spotify hijack or toggle play")
+                self._spotify_hijack_or_toggle_play(msg)
 
     def on_dep_published_message(self, svc_name, subtopic, msg):
         """Handle messages from dependent services."""
