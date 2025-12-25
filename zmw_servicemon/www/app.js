@@ -1,3 +1,8 @@
+function _formatDate(timestamp) {
+  const d = new Date(timestamp);
+  return `${d.getDate()}/${d.getMonth()+1} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+
 class ServiceMonitor extends React.Component {
   static buildProps() {
     return {
@@ -179,14 +184,6 @@ class ServiceMonitor extends React.Component {
       <button onClick={() => this.clearRecentErrors()}>Clear</button>
       <button onClick={() => this.simulateError()}>Simulate error</button>
       <table>
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Service</th>
-            <th>Level</th>
-            <th>Message</th>
-          </tr>
-        </thead>
         <tbody>
           {errors.slice().reverse().map((err, idx) => {
             const priorityColors = {
@@ -196,11 +193,20 @@ class ServiceMonitor extends React.Component {
               'ERR': '#ff9900',
               'WARNING': '#ffcc00'
             };
+            const priorityText = {
+              'EMERG': 'EMRG',
+              'ALERT': 'ALRT',
+              'CRIT': 'CRIT',
+              'ERR': 'ERRR',
+              'WARNING': 'WARN',
+            };
             return (
               <tr key={idx}>
-                <td>{new Date(err.timestamp).toLocaleString()}</td>
+                <td>{_formatDate(err.timestamp)}</td>
                 <td>{err.service}</td>
-                <td style={{ color: priorityColors[err.priority_name] || '#999' }}>{err.priority_name}</td>
+                <td style={{ color: priorityColors[err.priority_name] || '#999' }}>
+                  {priorityText[err.priority_name] || err.priority_name}
+                </td>
                 <td className="journal-entry">{err.message}</td>
               </tr>
             );

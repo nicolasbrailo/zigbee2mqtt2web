@@ -98,9 +98,22 @@ button img {
   overflow-x: auto; /* Allow horizontal scroll on mobile */
 }
 #journal_errors table {
+  font-family: Consolas,Monaco,Lucida Console,Liberation Mono,monospace;
   font-size: 80%;
   width: 100%;
   min-width: 600px; /* Ensure table doesn't shrink too much, allows scroll */
+}
+#journal_errors thead,
+#journal_errors tbody {
+  display: grid;
+  grid-template-columns: max-content max-content max-content 1fr;
+}
+#journal_errors tr {
+  display: contents; /* Let cells be direct grid children for column alignment */
+}
+#journal_errors td:not(:last-child),
+#journal_errors th:not(:last-child) {
+  white-space: nowrap;
 }
 
 /* Utility classes */

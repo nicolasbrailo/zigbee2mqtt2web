@@ -13,6 +13,13 @@ test:
 		make -C $$dir test || true; \
 	done
 
+.PHONY: rebuild_all_ui
+rebuild_all_ui:
+	@echo "Running rebuild_ui on all projects..."
+	@for dir in $(LINT_DIRS); do \
+		make -C $$dir rebuild_ui || true; \
+	done
+
 .PHONY: lint
 lint:
 	@echo "Running lint on all projects..."
