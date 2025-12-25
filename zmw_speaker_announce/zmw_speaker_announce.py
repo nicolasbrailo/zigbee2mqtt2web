@@ -13,7 +13,7 @@ from zzmw_lib.logs import build_logger
 from zzmw_lib.service_runner import service_runner
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
 
-from http_asset_server import HttpAssetServer
+from https_server import HttpsServer
 from sonos_helpers import get_sonos_by_name, config_soco_logger
 from sonos_announce import sonos_announce
 from tts import get_local_path_tts
@@ -58,21 +58,29 @@ class ZmwSpeakerAnnounce(ZmwMqttService):
         if not os.path.isdir(self._tts_assets_cache_path):
             raise FileNotFoundError(f"Invalid cache path '{self._tts_assets_cache_path}'")
 
-        # Register TTS assets on main www server (works over HTTP or HTTPS)
-        www.register_www_dir(cfg['tts_assets_cache_path'], '/tts/')
+        # Create HTTPS server that proxies to the HTTP server
+        # All endpoints registered on https_www will be available on both HTTP and HTTPS
+        # Register TTS assets - Sonos uses HTTP (can't validate self-signed certs) so make sure HTTP works
+        # User recording (mic) requires HTTPS, so make sure we can serve an HTTPS page
+        self._https = HttpsServer(www, cfg)
+        self._https.mirror_http_routes(['/zmw.css', '/zmw.js'])
 
-        # Create a second HTTP-only server for Sonos (can't use HTTPS with self-signed certs)
-        self._http_asset_server = HttpAssetServer(self._tts_assets_cache_path, cfg)
-        self._http_asset_server.start()
-        self._public_tts_base = self._http_asset_server.public_tts_base
+        self._https.register_www_dir(cfg['tts_assets_cache_path'], '/tts/')
+        self._public_tts_base = f"{www.public_url_base}/tts"
         log.info("Sonos will fetch TTS assets from HTTP server: %s", self._public_tts_base)
 
-        # Register all other endpoints
-        www.register_www_dir(os.path.join(pathlib.Path(__file__).parent.resolve(), 'www'), '/')
-        www.serve_url('/announce_user_recording', self._announce_user_recording, methods=['PUT', 'POST'])
-        www.serve_url('/announce_tts', self._www_announce_tts)
-        www.serve_url('/ls_speakers', lambda: json.dumps(sorted(list(get_sonos_by_name()))))
-        www.serve_url('/announcement_history', lambda: json.dumps(list(self._announcement_history)))
+        # Register all other endpoints on both HTTP and HTTPS
+        self._https.register_www_dir(os.path.join(pathlib.Path(__file__).parent.resolve(), 'www'), '/')
+        self._https.serve_url('/announce_user_recording', self._announce_user_recording, methods=['PUT', 'POST'])
+        self._https.serve_url('/announce_tts', self._www_announce_tts)
+        self._https.serve_url('/ls_speakers', lambda: json.dumps(sorted(list(get_sonos_by_name()))))
+        self._https.serve_url('/announcement_history', lambda: json.dumps(list(self._announcement_history)))
+        self._https.serve_url('/svc_config', lambda: json.dumps({'https_server': self._https.server_url}))
+
+        # Start the HTTPS server (if certs available)
+        self._https.start()
+        if self._https.server_url:
+            log.info("HTTPS server available at: %s", self._https.server_url)
 
 
     def _record_announcement(self, phrase, lang, volume, uri):

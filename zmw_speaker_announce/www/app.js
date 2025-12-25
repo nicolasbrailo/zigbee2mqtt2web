@@ -1,8 +1,9 @@
 class TTSAnnounce extends React.Component {
-  static buildProps(api_base_path = '') {
+  static buildProps(api_base_path = '', https_server = '') {
     return {
       key: 'tts_announce',
-      api_base_path: api_base_path,
+      api_base_path,
+      https_server,
     };
   }
 
@@ -18,6 +19,7 @@ class TTSAnnounce extends React.Component {
       speakerList: null,
       announcementHistory: [],
       historyExpanded: false,
+      httpsServer: null,
     };
 
     this.recorderRef = React.createRef();
@@ -34,6 +36,7 @@ class TTSAnnounce extends React.Component {
 
   on_app_became_visible() {
     mJsonGet(`${this.props.api_base_path}/ls_speakers`, (data) => this.setState({ speakerList: data }));
+    mJsonGet(`${this.props.api_base_path}/svc_config`, (data) => this.setState({ httpsServer: data.https_server }));
     this.fetchAnnouncementHistory();
   }
 
@@ -162,7 +165,15 @@ class TTSAnnounce extends React.Component {
             <option value="en-GB">EN GB</option>
           </select>
 
-          {this.canRecordMic && (
+          {!this.canRecordMic ? (
+              this.state.httpsServer ? (
+                <button onClick={() => window.location.href = this.state.httpsServer}>
+                  OpenRecorder
+                </button>
+              ) : (
+                <button disabled>Record</button>
+              )
+          ) : (
             this.state.isRecording ? (
               <>
               <div className="card warn" style={{flex: "0 0 25%"}}>

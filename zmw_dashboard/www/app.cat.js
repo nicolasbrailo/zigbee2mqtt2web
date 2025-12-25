@@ -1695,7 +1695,7 @@ class SonosCtrl extends React.Component {
       zones: null,
       controlSpeakers: {},
       masterVolume: 50,
-      spotifyUri: null,
+      spotifyContext: null,
       speakerVolumes: {},
       volumeRatios: {},
       wsInProgress: false,
@@ -1856,8 +1856,8 @@ class SonosCtrl extends React.Component {
         volumeRatios: volumeRatios,
       });
     });
-    mJsonGet(`${this.props.api_base_path}/get_spotify_uri`, (data) => {
-      this.setState({ spotifyUri: data.spotify_uri });
+    mJsonGet(`${this.props.api_base_path}/get_spotify_context`, (data) => {
+      this.setState({ spotifyContext: data });
     });
   }
 
@@ -1866,7 +1866,8 @@ class SonosCtrl extends React.Component {
       return <div>Loading...</div>;
     }
 
-    const hasSpotify = this.state.spotifyUri != null;
+    const spotifyUri = this.state.spotifyContext?.media_info?.context?.uri;
+    const hasSpotify = spotifyUri != null;
 
     return (
       <div id="zmw_lights">
@@ -1925,10 +1926,11 @@ class SonosCtrl extends React.Component {
   }
 }
 class TTSAnnounce extends React.Component {
-  static buildProps(api_base_path = '') {
+  static buildProps(api_base_path = '', https_server = '') {
     return {
       key: 'tts_announce',
-      api_base_path: api_base_path,
+      api_base_path,
+      https_server,
     };
   }
 
@@ -1944,6 +1946,7 @@ class TTSAnnounce extends React.Component {
       speakerList: null,
       announcementHistory: [],
       historyExpanded: false,
+      httpsServer: null,
     };
 
     this.recorderRef = React.createRef();
@@ -1960,6 +1963,7 @@ class TTSAnnounce extends React.Component {
 
   on_app_became_visible() {
     mJsonGet(`${this.props.api_base_path}/ls_speakers`, (data) => this.setState({ speakerList: data }));
+    mJsonGet(`${this.props.api_base_path}/svc_config`, (data) => this.setState({ httpsServer: data.https_server }));
     this.fetchAnnouncementHistory();
   }
 
@@ -2088,7 +2092,15 @@ class TTSAnnounce extends React.Component {
             <option value="en-GB">EN GB</option>
           </select>
 
-          {this.canRecordMic && (
+          {!this.canRecordMic ? (
+              this.state.httpsServer ? (
+                <button onClick={() => window.location.href = this.state.httpsServer}>
+                  OpenRecorder
+                </button>
+              ) : (
+                <button disabled>Record</button>
+              )
+          ) : (
             this.state.isRecording ? (
               <>
               <div className="card warn" style={{flex: "0 0 25%"}}>

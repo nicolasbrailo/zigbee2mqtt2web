@@ -82,31 +82,11 @@ def _monkeypatch_service_meta(cls, wwwurl):
         cls.__abstractmethods__ = cls.__abstractmethods__ - {'get_service_meta'}
 
 
-def _get_ssl_context():
-    """
-    Look for SSL certificate files to enable HTTPS.
-
-    Searches for cert.pem and key.pem in the current directory.
-    If both exist, returns an SSL context tuple for use with make_server.
-    If not found, returns None (server will use HTTP).
-
-    Returns:
-        tuple: (cert_path, key_path) if certs exist, None otherwise
-    """
-    cert_path = os.path.join(os.getcwd(), 'cert.pem')
-    key_path = os.path.join(os.getcwd(), 'key.pem')
-    if os.path.exists(cert_path) and os.path.exists(key_path):
-        log.info("Found SSL certificates, this service will be HTTPS")
-        return (cert_path, key_path)
-    return None
-
-
 def _create_www_server(AppClass, cfg):
     """
     Create Flask app and WSGI server for a service.
 
-    Sets up the Flask application and werkzeug server with optional HTTPS support.
-    If cert.pem and key.pem exist in the working directory, HTTPS is enabled.
+    Sets up the Flask application and werkzeug HTTP server.
 
     Args:
         AppClass: Service class, used for Flask app naming
@@ -121,15 +101,12 @@ def _create_www_server(AppClass, cfg):
 
     flaskapp = Flask(AppClass.__name__)
     http_host = _get_http_host(cfg)
-    ssl_context = _get_ssl_context()
     wwwserver = make_server(http_host,
                             get_cached_port(cfg, "http_port", http_host),
                             flaskapp,
                             request_handler=_QuietRequestHandler,
-                            ssl_context=ssl_context,
                             threaded=True)
-    protocol = "https" if ssl_context else "http"
-    flaskapp.public_url_base = f"{protocol}://{http_host}:{wwwserver.server_port}"
+    flaskapp.public_url_base = f"http://{http_host}:{wwwserver.server_port}"
     log.info("Will serve www requests to %s", flaskapp.public_url_base)
     return flaskapp, wwwserver
 
