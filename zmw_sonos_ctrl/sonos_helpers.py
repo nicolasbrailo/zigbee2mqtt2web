@@ -233,11 +233,17 @@ def sonos_fix_spotify_uris(spotify_uri, sonos_magic_uri, log_fn):
     log_fn(f"Built Sonos-compatible URIs. Using hardcoded `{sonos_magic_uri}`; if these don't work, start a playlist using the Sonos app, and check all the URIs using this service.")
     return soco_sharelink_uri, alt_spotify_uri
 
-def sonos_sharelink_play(spk, soco_sharelink_uri, log_fn):
+def sonos_sharelink_play(spk, soco_sharelink_uri, track_num, log_fn):
     try:
         sharelink = ShareLinkPlugin(spk)
         sharelink.add_share_link_to_queue(soco_sharelink_uri)
-        spk.play_from_queue(0)
+        if track_num is None:
+            track_num = 0
+        if track_num > 1:
+            # Sonos/soco uses 0-based track index
+            track_num -= 1
+        spk.play_from_queue(track_num)
+        log_fn(f"ShareLink play request accepted, starting from track {track_num}")
     except soco.exceptions.SoCoException as ex:
         log_fn(f"ShareLink play request failed: {str(ex)}")
         log.error("Failed to ShareLink play Spotify URI", exc_info=True)
@@ -257,7 +263,7 @@ def sonos_wait_transport(spk, timeout, log_fn):
         time.sleep(1)
     return transport_state
 
-def sonos_hijack_spotify(speakers_cfg, spotify_uri, sonos_magic_uri, log_fn):
+def sonos_hijack_spotify(speakers_cfg, spotify_uri, track_num, sonos_magic_uri, log_fn):
     soco_sharelink_uri, alt_spotify_uri = sonos_fix_spotify_uris(spotify_uri, sonos_magic_uri, log_fn)
     if not soco_sharelink_uri and not alt_spotify_uri:
         log_fn("No Sonos compatible URIs found, can't continue")
@@ -278,21 +284,32 @@ def sonos_hijack_spotify(speakers_cfg, spotify_uri, sonos_magic_uri, log_fn):
             log_fn(f"Sonos report state={state}, not PLAYING.")
             return False
 
+    def _maybe_apply_track(spk):
+        if track_num is not None and track_num > 1:
+            try:
+                # Sonos/soco uses 0-based track index
+                spk.seek(track=track_num-1)
+            except soco.exceptions.SoCoException as ex:
+                log_fn(f"Can't jump to track {track_num}: {ex}")
+                log.error("Failed to jump to track", exc_info=True)
+
     sonos_debug_state(coord, log_fn)
 
     if soco_sharelink_uri is not None:
         log_fn(f"Trying to play Sharelink({soco_sharelink_uri})...")
-        if _try_apply(lambda: sonos_sharelink_play(coord, soco_sharelink_uri, log_fn)):
+        if _try_apply(lambda: sonos_sharelink_play(coord, soco_sharelink_uri, track_num, log_fn)):
             return coord
 
     if alt_spotify_uri is not None:
         log_fn(f"Trying alternate play with direct url {alt_spotify_uri}")
         if _try_apply(lambda: coord.play_uri(alt_spotify_uri)):
+            _maybe_apply_track(coord)
             return coord
 
     if soco_sharelink_uri is not None:
         log_fn(f"Trying altalternate play with direct sharelink url {soco_sharelink_uri}")
         if _try_apply(lambda: coord.play_uri(soco_sharelink_uri)):
+            _maybe_apply_track(coord)
             return coord
 
     log_fn("Ran out of things to try: can't hijack Spotify, sorry")

@@ -91,7 +91,7 @@ class SonosCtrl extends React.Component {
       zones: null,
       controlSpeakers: {},
       masterVolume: 50,
-      spotifyUri: null,
+      spotifyContext: null,
       speakerVolumes: {},
       volumeRatios: {},
       wsInProgress: false,
@@ -252,8 +252,8 @@ class SonosCtrl extends React.Component {
         volumeRatios: volumeRatios,
       });
     });
-    mJsonGet(`${this.props.api_base_path}/get_spotify_uri`, (data) => {
-      this.setState({ spotifyUri: data.spotify_uri });
+    mJsonGet(`${this.props.api_base_path}/get_spotify_context`, (data) => {
+      this.setState({ spotifyContext: data });
     });
   }
 
@@ -262,7 +262,8 @@ class SonosCtrl extends React.Component {
       return <div>Loading...</div>;
     }
 
-    const hasSpotify = this.state.spotifyUri != null;
+    const spotifyUri = this.state.spotifyContext?.media_info?.context?.uri;
+    const hasSpotify = spotifyUri != null;
 
     return (
       <div id="zmw_lights">
