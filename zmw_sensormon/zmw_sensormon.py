@@ -132,6 +132,11 @@ class ZmwSensormon(ZmwMqttNullSvc):
             acts = interesting_actions(thing)
             if len(acts) > 0:
                 log.info('Will monitor %s, publishes %s', thing_name, str(acts))
-                self._sensors.register_sensor(thing, acts)
+                try:
+                    self._sensors.register_sensor(thing, acts)
+                except ValueError:
+                    # This will happen if a sensor has a name we don't like. Usually will happen when a new device
+                    # is added to the network, before it gets a friendly name
+                    log.error("Can't register sensor %s: %s", thing.name, ex)
 
 service_runner(ZmwSensormon)

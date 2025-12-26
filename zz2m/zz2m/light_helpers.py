@@ -185,6 +185,52 @@ def _rgb_str_to_cie_xy(rgb):
     raise ValueError(f'Unrecognized RGB format, expected #RGB, #RRGGBB, RGB or RRGGBB, got "{rgb}"')
 
 
+def _cie_xy_to_rgb_str(xy):
+    """
+    Reverse of _rgb_to_cie_xy - converts CIE xy coordinates back to RGB.
+    Note: This conversion assumes a brightness of 1.0 (max brightness).
+    The conversion may not be perfectly reversible due to gamut limitations.
+    """
+    if xy is None:
+        return None
+
+    x = xy.get('x', 0)
+    y = xy.get('y', 0)
+
+    # Avoid division by zero
+    if y == 0:
+        return '#000000'
+
+    # Calculate XYZ from xy (assuming Y=1.0 for brightness)
+    Y = 1.0
+    X = (Y / y) * x
+    Z = (Y / y) * (1.0 - x - y)
+
+    # Convert XYZ to RGB using Wide RGB D65 conversion (inverse of forward transform)
+    r = X * 1.4628067 - Y * 0.1840623 - Z * 0.2743606
+    g = -X * 0.5217933 + Y * 1.4472381 + Z * 0.0677227
+    b = X * 0.0349342 - Y * 0.0968930 + Z * 1.2884099
+
+    # Apply reverse gamma correction
+    def reverse_gamma(c):
+        if c <= 0.0031308:
+            return 12.92 * c
+        return (1.0 + 0.055) * pow(c, 1.0 / 2.4) - 0.055
+
+    r = reverse_gamma(r)
+    g = reverse_gamma(g)
+    b = reverse_gamma(b)
+
+    # Clamp to [0, 1] and convert to 0-255
+    def clamp_and_scale(c):
+        return max(0, min(255, int(c * 255)))
+
+    r_int = clamp_and_scale(r)
+    g_int = clamp_and_scale(g)
+    b_int = clamp_and_scale(b)
+
+    return f'{r_int:02X}{g_int:02X}{b_int:02X}'
+
 
 def _monkeypatch_light(light):
     light.is_light_on = lambda: light.get('state')
@@ -243,17 +289,35 @@ def _monkeypatch_light(light):
                 meta={'type': 'numeric', 'value_min': 0, 'value_max': 255}
             ))
     if ('color_xy' in light.actions) and ('color_rgb' not in light.actions):
+        def _color_rgb_on_set(rgb):
+            xy = _rgb_str_to_cie_xy(rgb)
+            # Directly update color_xy's value, bypassing set_value() to avoid
+            # setting _needs_mqtt_propagation on color_xy (which causes a race
+            # condition when the MQTT echo arrives before broadcast_things clears the flag)
+            light.actions['color_xy'].value._set_value(xy)
+            # Mark color_xy for MQTT propagation
+            light.actions['color_xy'].value._needs_mqtt_propagation = True
+            # Clear color_rgb's flag - we don't want to send 'color_rgb' to MQTT
+            # (zigbee2mqtt doesn't understand it), only 'color_xy'
+            light.actions['color_rgb'].value._needs_mqtt_propagation = False
+
+        def _color_rgb_on_get():
+            xy = light.actions['color_xy'].value.get_value()
+            if xy is None:
+                return None
+            return _cie_xy_to_rgb_str(xy)
+
         light.actions['color_rgb'] = Zigbee2MqttAction(
             name='color_rgb',
             description='Color of this light in RGB',
             can_set=True,
-            can_get=False,
+            can_get=True,
             value=Zigbee2MqttActionValue(
                 thing_name=light.name,
                 meta={
                     'type': 'user_defined',
-                    'on_set': lambda rgb: light.actions['color_xy'].set_value(_rgb_str_to_cie_xy(rgb)),
-                    'on_get': lambda: light.actions['color_rgb'].value._current,
+                    'on_set': _color_rgb_on_set,
+                    'on_get': _color_rgb_on_get,
                 },
                 _current=None,
             ))
@@ -331,3 +395,19 @@ def turn_all_lights_off(z2m, transition_secs=None):
             light.set('transition', 0)
         z2m.broadcast_things(lights)
 
+def toggle_ensure_color(lamp, wanted_col):
+    """ Toggles a light and sets a color. If the color isn't expected, it will turn it to the right color and NOT turn off the
+    light. This is:
+        * Light was off -> turn on in right color
+        * Light was on, but wrong color -> set correct color
+        * Light was on, correct color -> turn off
+    """
+    if not lamp.is_light_on():
+        lamp.set('color_rgb', wanted_col)
+        lamp.turn_on()
+    else:
+        if lamp.get('color_rgb') != wanted_col:
+            lamp.set('color_rgb', wanted_col)
+        else:
+            lamp.turn_off()
+    lamp.set_brightness_pct(100 if lamp.is_light_on() else 0)
