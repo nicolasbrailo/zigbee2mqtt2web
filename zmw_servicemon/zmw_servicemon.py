@@ -6,7 +6,7 @@ import json
 import subprocess
 
 from ansi2html import Ansi2HTMLConverter
-from flask import abort
+from flask import abort, request
 
 from zzmw_lib.zmw_mqtt_mon import ZmwMqttServiceMonitor
 from zzmw_lib.service_runner import service_runner
@@ -29,12 +29,22 @@ class ZmwServicemon(ZmwMqttServiceMonitor):
             own_service_name="zmw_servicemon"
         )
 
+        # Store list of systemd services to monitor from config
+        self._systemd_services = cfg.get('systemd_services', [])
+
+        # Add configured systemd services to journal monitor
+        for service_name in self._systemd_services:
+            log.info("Adding configured systemd service '%s' to journal monitor", service_name)
+            self._journal_monitor.monitor_unit(service_name)
+
         super().__init__(cfg, sched)
 
         www.register_www_dir(os.path.join(pathlib.Path(__file__).parent.resolve(), 'www'))
         www.serve_url('/ls', lambda: json.dumps(dict(sorted(self.get_known_services().items())), default=str))
         www.serve_url('/system_uptime', self.system_uptime)
         www.serve_url('/systemd_status', self.systemd_status)
+        www.serve_url('/systemd_services_status', self.systemd_services_status)
+        www.serve_url('/systemd_logs', self.systemd_logs)
         www.serve_url('/recent_errors', lambda: json.dumps(self._journal_monitor.get_recent_errors(), default=str))
         www.serve_url('/recent_errors_clear', self._journal_monitor.clear_recent_errors)
         def _log_error():
@@ -61,6 +71,52 @@ class ZmwServicemon(ZmwMqttServiceMonitor):
         syslogcmd = subprocess.run(cmd.split(), stdout=subprocess.PIPE, text=True, check=True)
         conv = Ansi2HTMLConverter(inline=True, scheme='ansi2html')
         return conv.convert(syslogcmd.stdout, full=False)
+
+    def systemd_services_status(self):
+        """Get status of configured systemd services."""
+        services = []
+        for service_name in self._systemd_services:
+            result = subprocess.run(
+                ['systemctl', 'is-active', f'{service_name}.service'],
+                capture_output=True, text=True, check=False
+            )
+            is_running = result.stdout.strip() == 'active'
+            services.append({
+                'name': service_name,
+                'running': is_running,
+                'status': result.stdout.strip()
+            })
+        return json.dumps(services)
+
+    def systemd_logs(self):
+        """Get journalctl logs for a specific service."""
+        service_name = request.args.get('service')
+        if not service_name:
+            return abort(400, description="Missing 'service' parameter")
+
+        # Validate service name is in our monitored list for security
+        if service_name not in self._systemd_services:
+            return abort(403, description=f"Service '{service_name}' is not in the monitored list")
+
+        num_lines = request.args.get('n', '200')
+
+        result = subprocess.run(
+            ['journalctl', '-u', f'{service_name}.service', '-n', num_lines, '--no-pager', '-r'],
+            capture_output=True, text=True, check=False
+        )
+        conv = Ansi2HTMLConverter(inline=True, scheme='ansi2html')
+        log_content = conv.convert(result.stdout, full=False)
+        return f'''<!DOCTYPE html>
+<html>
+<head>
+    <title>Logs: {service_name}</title>
+    <link rel="stylesheet" href="/zmw.css">
+</head>
+<body>
+    <h1>{service_name} logs</h1>
+    <pre>{log_content}</pre>
+</body>
+</html>'''
 
     def on_new_svc_discovered(self, svc_name, svc_meta):
         """ Called by ZmwMqttServiceMonitor when a new service is discovered. Not guaranteed that service is alive. """

@@ -15,6 +15,7 @@ class ServiceMonitor extends React.Component {
     this.state = {
       services: null,
       systemdServicesStdout: null,
+      monitoredSystemdServices: null,
       uptimeStdout: null,
       recentErrors: null,
     };
@@ -30,6 +31,9 @@ class ServiceMonitor extends React.Component {
     });
     mJsonGet('/recent_errors', (data) => {
       this.setState({ recentErrors: data });
+    });
+    mJsonGet('/systemd_services_status', (data) => {
+      this.setState({ monitoredSystemdServices: data });
     });
     mAjax({
       url: '/systemd_status',
@@ -117,6 +121,43 @@ class ServiceMonitor extends React.Component {
                 📜 Logs
               </a>
             )}
+          </div>
+        ))}
+        </div>
+      </section>
+  }
+
+  renderMonitoredSystemdServices() {
+    if (!this.state.monitoredSystemdServices) return null;
+    if (this.state.monitoredSystemdServices.length === 0) return null;
+
+    const services = this.state.monitoredSystemdServices;
+    const total = services.length;
+    const running = services.filter(srv => srv.running).length;
+    const unhealthy = total - running;
+    let statusSummary = `${running} out of ${total} services up and running`;
+    if (unhealthy > 0) {
+      statusSummary += `, ${unhealthy} service${unhealthy > 1 ? 's' : ''} unhealthy`;
+    }
+
+    return <section id="monitored_systemd_services" className="card">
+      <h3>Monitored Systemd non-ZMW Services</h3>
+        <p>{statusSummary}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '10px', marginBottom: '20px' }}>
+        {services.map((srv) => (
+          <div key={srv.name} className="card" style={{ padding: '10px', position: 'relative', paddingBottom: '35px' }}>
+            <h4 style={{ margin: '0 0 5px 0' }}>
+              <strong>{srv.name}</strong>
+            </h4>
+
+            <div style={{ fontSize: '0.9em', color: srv.running ? "green" : "red", marginBottom: '5px' }}>
+              {srv.status}
+            </div>
+
+            <a href={`/systemd_logs?service=${encodeURIComponent(srv.name)}`} target="_blank" rel="noopener noreferrer"
+               style={{ position: 'absolute', bottom: '8px', right: '8px', fontSize: '0.8em' }}>
+              Logs
+            </a>
           </div>
         ))}
         </div>
@@ -220,6 +261,7 @@ class ServiceMonitor extends React.Component {
     return (
       <div id="ServiceMonitorContainer">
         {this.renderServices()}
+        {this.renderMonitoredSystemdServices()}
         {this.renderSystemdStatus()}
         {this.renderRecentErrors()}
       </div>
