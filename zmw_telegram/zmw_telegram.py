@@ -3,6 +3,7 @@ import json
 import pathlib
 import os
 import time
+import threading
 from collections import deque
 
 from zzmw_lib.zmw_mqtt_service import ZmwMqttService
@@ -15,6 +16,8 @@ log = build_logger("ZmwTelegram")
 
 class TelBot(TelegramLongpollBot):
     """Telegram bot wrapper that handles messages and commands."""
+
+    _CMD_BATCH_DELAY_SECS = 5
 
     def __init__(self, cfg, scheduler):
         cmds = [
@@ -32,6 +35,63 @@ class TelBot(TelegramLongpollBot):
             terminate_on_unauthorized_access=True,
             try_parse_msg_as_cmd=True,
             scheduler=scheduler)
+        self._pending_cmds = []
+        self._cmd_timer = None
+        self._cmd_lock = threading.Lock()
+        self._stfu_until = 0
+        self.add_commands([('stfu', 'Suppress messages for N minutes (default 10)', self._stfu)])
+
+    def _stfu(self, _bot, msg):
+        """Suppress outgoing messages for a specified number of minutes."""
+        minutes = 10
+        if msg['cmd_args']:
+            try:
+                minutes = int(msg['cmd_args'][0])
+            except ValueError:
+                self.send_message(msg['from']['id'], f"Invalid argument: {msg['cmd_args'][0]}")
+                return
+        self._stfu_until = time.time() + minutes * 60
+        super().send_message(msg['from']['id'], f"Messages suppressed for {minutes} minutes")
+
+    def _is_stfu_active(self):
+        return time.time() < self._stfu_until
+
+    def send_message(self, chat_id, text, disable_notifications=False):
+        if self._is_stfu_active():
+            log.info("Message skipped, stfu active: %s", text)
+            return
+        super().send_message(chat_id, text, disable_notifications)
+
+    def send_photo(self, chat_id, fpath, caption=None, disable_notifications=False):
+        if self._is_stfu_active():
+            log.info("Message skipped, stfu active: %s (caption: %s)", fpath, caption)
+            return
+        super().send_photo(chat_id, fpath, caption, disable_notifications)
+
+    def add_commands(self, cmds):
+        """Batch commands and register them after a delay.
+
+        Commands are collected and set_commands is called after 5 seconds.
+        If new commands arrive during the delay, the timer is reset.
+        """
+        with self._cmd_lock:
+            if self._cmd_timer is not None:
+                self._cmd_timer.cancel()
+            self._pending_cmds.extend(cmds)
+            self._cmd_timer = threading.Timer(self._CMD_BATCH_DELAY_SECS, self._flush_pending_commands)
+            self._cmd_timer.start()
+
+    def _flush_pending_commands(self):
+        """Called after timeout to register all pending commands."""
+        with self._cmd_lock:
+            if not self._pending_cmds:
+                return
+            cmds_to_register = self._pending_cmds
+            self._pending_cmds = []
+            self._cmd_timer = None
+        cmd_names = [cmd[0] for cmd in cmds_to_register]
+        log.info("Flushing %d batched commands to Telegram: %s", len(cmds_to_register), cmd_names)
+        super().add_commands(cmds_to_register)
 
     def _ping(self, _bot, msg):
         log.info('Received user ping, sending pong')
