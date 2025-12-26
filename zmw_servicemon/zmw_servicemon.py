@@ -4,6 +4,7 @@ import pathlib
 import os
 import json
 import subprocess
+from datetime import datetime
 
 from ansi2html import Ansi2HTMLConverter
 from flask import abort, request
@@ -55,6 +56,25 @@ class ZmwServicemon(ZmwMqttServiceMonitor):
                 log.error("Exception", exc_info=True)
             return ""
         www.serve_url('/recent_errors_test_new', _log_error)
+
+    def _is_stale(self, last_seen):
+        """Check if a service is stale (not seen in the last 5 minutes)."""
+        if not last_seen:
+            return True
+        try:
+            # last_seen format: "YYYY-MM-DD HH:mm:ss.microsec"
+            last = datetime.fromisoformat(str(last_seen).replace(" ", "T"))
+            diff_minutes = (datetime.now() - last).total_seconds() / 60
+            return diff_minutes > 5
+        except (ValueError, TypeError):
+            return True
+
+    def get_service_alerts(self):
+        alerts = []
+        for svc_name, svc_meta in self.get_known_services().items():
+            if self._is_stale(svc_meta.get('last_seen')):
+                alerts.append(f"{svc_name} seems down")
+        return alerts
 
     def system_uptime(self):
         return subprocess.run("uptime", stdout=subprocess.PIPE, text=True, check=True).stdout
