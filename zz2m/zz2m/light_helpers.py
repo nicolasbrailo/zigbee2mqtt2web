@@ -10,6 +10,10 @@ def _rgb_to_cie_xy(rgb_color):
     """
 https://github.com/PhilipsHue/PhilipsHueSDK-iOS-OSX/commit/f41091cf671e13fe8c32fcced12604cd31cceaf3
 
+NOTE: RGB values are normalized to max brightness before conversion to ensure
+better round-trip consistency. This means RGB(128, 0, 0) and RGB(255, 0, 0)
+will produce the same xy coordinates, as they represent the same chromaticity.
+
 # Conversion between RGB and xy in the CIE 1931 colorspace for hue
 The conversion between RGB and xy in the CIE 1931 colorspace is not something
 Philips invented, but we have an optimized conversion for our different light
@@ -142,6 +146,12 @@ The following links provide further useful related information
         if color_elm > 0.04045:
             return pow((color_elm + 0.055) / (1.0 + 0.055), 2.4)
         return color_elm / 12.92
+
+    # Normalize RGB to max brightness for consistent round-trips
+    # This ensures that e.g. (128, 0, 0) and (255, 0, 0) produce the same xy
+    #max_val = max(rgb_color)
+    #if max_val > 0:
+    #    rgb_color = tuple(c * 255.0 / max_val for c in rgb_color)
 
     # Convert RGB to %, then gamma correct
     rgb_gamma_pct = tuple(gamma_correct(color_elm / 255.0)
@@ -402,11 +412,15 @@ def toggle_ensure_color(lamp, wanted_col):
         * Light was on, but wrong color -> set correct color
         * Light was on, correct color -> turn off
     """
+    # The color mapping between CIE and RGB isn't bijective, going from RGB to CIE will map several RGB points to
+    # the same CIE coords. So, rgb(cie(rbg_val)) != rgb_val. To work around this, we first map the user wanted color
+    # to CIE, and then back, to check if the light reports that color.
+    cie_mapped_wanted_col = _cie_xy_to_rgb_str(_rgb_str_to_cie_xy(wanted_col))
     if not lamp.is_light_on():
         lamp.set('color_rgb', wanted_col)
         lamp.turn_on()
     else:
-        if lamp.get('color_rgb') != wanted_col:
+        if lamp.get('color_rgb') != cie_mapped_wanted_col:
             lamp.set('color_rgb', wanted_col)
         else:
             lamp.turn_off()
