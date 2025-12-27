@@ -105,7 +105,7 @@ class ZmwSpeakerAnnounce(ZmwMqttService):
         remote_path = f"{self._public_tts_base}/{local_path}"
         self._record_announcement(txt, lang, vol, remote_path)
         sonos_announce(remote_path, volume=vol, ws_api_cfg=self._cfg)
-        return "OK"
+        return {}
 
     def _announce_user_recording(self):
         """Handle user-recorded audio announcement."""
@@ -124,8 +124,7 @@ class ZmwSpeakerAnnounce(ZmwMqttService):
         log.info("Saved recording to '%s' -> '%s'. Will announce at vol=%s", mp3_path, remote_path, vol)
         self._record_announcement('<user recording>', '', vol, remote_path)
         sonos_announce(remote_path, volume=vol, ws_api_cfg=self._cfg)
-
-        return "OK"
+        return {}
 
     def on_service_received_message(self, subtopic, payload):
         match subtopic:

@@ -1095,10 +1095,8 @@ class CamViewer extends React.Component {
   onSnapRequested() {
     this.setState({ isLoading: true });
 
-    mAjax({
-      url: `${this.props.api_base_path}/snap`,
-      type: 'get',
-      success: () => {
+    mTextGet(`${this.props.api_base_path}/snap`,
+      () => {
         console.log("Snapshot captured");
         // Refresh the image by updating timestamp
         setTimeout(() => {
@@ -1108,21 +1106,18 @@ class CamViewer extends React.Component {
           });
         }, 500); // Small delay to ensure snapshot is saved
       },
-      error: (err) => {
+      (err) => {
         showGlobalError("Failed to capture snapshot: " + err);
         this.setState({ isLoading: false });
-      }
-    });
+      });
   }
 
   onRecordRequested() {
     const secs = this.state.recordDuration;
     this.setState({ isRecording: true, recordingTimeLeft: secs });
 
-    mAjax({
-      url: `${this.props.api_base_path}/record?secs=${secs}`,
-      type: 'get',
-      success: (response) => {
+    mTextGet(`${this.props.api_base_path}/record?secs=${secs}`,
+      () => {
         console.log(`Recording started for ${secs} seconds`);
         this.countdownInterval = setInterval(() => {
           this.setState((prevState) => {
@@ -1135,11 +1130,10 @@ class CamViewer extends React.Component {
           });
         }, 1000);
       },
-      error: (err) => {
+      (err) => {
         showGlobalError("Failed to start recording: " + err.response);
         this.setState({ isRecording: false, recordingTimeLeft: 0 });
-      }
-    });
+      });
   }
 
   render() {
@@ -1256,21 +1250,15 @@ function simple_dygraph_plot(html_elm_id, url) {
                       },
                   };
 
-  mAjax({
-      url: url,
-      cache: false,
-      type: 'get',
-      dataType: 'text',
-      success: function(t_csv) {
-        const label_elm = document.getElementById(html_elm_id + '_label');
-        if (label_elm) {
-          dygraph_opts['labelsDiv'] = label_elm;
-        }
-        new Dygraph(
-            document.getElementById(html_elm_id),
-            t_csv,
-            dygraph_opts);
-      }
+  mTextGet(url, (t_csv) => {
+    const label_elm = document.getElementById(html_elm_id + '_label');
+    if (label_elm) {
+      dygraph_opts['labelsDiv'] = label_elm;
+    }
+    new Dygraph(
+        document.getElementById(html_elm_id),
+        t_csv,
+        dygraph_opts);
   });
 }
 
@@ -1413,14 +1401,8 @@ class SensorsHistoryPane extends React.Component {
   }
 
   loadMetricsForSensor(sensorName) {
-    mAjax({
-      url: `/sensors/metrics/${sensorName}`,
-      cache: false,
-      type: 'get',
-      dataType: 'text',
-      success: (metricsJson) => { this.setState({ sensorMetrics: JSON.parse(metricsJson) }); },
-      error: (err) => { console.log(err); showGlobalError(err); },
-    });
+    mJsonGet(`/sensors/metrics/${sensorName}`,
+      (metrics) => { this.setState({ sensorMetrics: metrics }); });
   }
 
   renderSingleSensor(sensorName, metrics) {
@@ -1477,14 +1459,8 @@ class SensorsHistoryPane extends React.Component {
   }
 
   loadPlotsForSensorMeasuring(metric) {
-    mAjax({
-      url: `/sensors/measuring/${metric}`,
-      cache: false,
-      type: 'get',
-      dataType: 'text',
-      success: (sensorLst) => { this.setState({ sensors: JSON.parse(sensorLst) }); },
-      error: (err) => { console.log(err); showGlobalError(err); },
-    });
+    mJsonGet(`/sensors/measuring/${metric}`,
+      (sensors) => { this.setState({ sensors }); });
   }
 
   renderSingleMetric(metric, sensors) {
@@ -1993,16 +1969,13 @@ class TTSAnnounce extends React.Component {
     }));
 
     console.log(`${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}&vol=${this.state.ttsVolume}`)
-    mAjax({
-      url: `${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}&vol=${this.state.ttsVolume}`,
-      type: 'get',
-      success: () => {
+    mJsonGet(
+      `${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}&vol=${this.state.ttsVolume}`,
+      () => {
         console.log("Sent TTS request");
         this.setState({ ttsPhrase: "" });
         this.fetchAnnouncementHistory();
-      },
-      error: showGlobalError
-    });
+      });
   }
 
   async onMicRecRequested() {

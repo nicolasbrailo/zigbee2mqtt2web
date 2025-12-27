@@ -3,103 +3,104 @@ function m$(elem) {
 }
 
 function mAjax(cfg) {
-  const req = new XMLHttpRequest();
+  const method = (cfg.type || 'GET').toUpperCase();
+  const isJson = cfg.dataType?.toLowerCase() === 'json';
 
-  if (!cfg.cache && (!cfg.type || cfg.type.toLowerCase() == "get" || cfg.type.toLowerCase() == "head")) {
+  // Cache busting for GET/HEAD
+  let url = cfg.url;
+  if (!cfg.cache && (method === 'GET' || method === 'HEAD')) {
     const t = Date.now();
-    cfg.url = (cfg.url.search('\\?') == -1) ? `${cfg.url}?_=${t}` : `${cfg.url}&_=${t}`;
+    url = (url.indexOf('?') === -1) ? `${url}?_=${t}` : `${url}&_=${t}`;
   }
 
-  req.open(cfg.type, cfg.url, /*async=*/true);
+  // Build fetch options
+  const options = { method };
 
-  req.onreadystatechange = () => {
-    if (req.readyState == XMLHttpRequest.DONE) {
-      if (req.status == 200) {
-        let resp = req.responseText;
-        if (cfg.dataType && cfg.dataType.toLowerCase() == 'json') {
-          if (resp.trim().length == 0) {
-            resp = {};
-          } else {
-            resp = JSON.parse(resp);
-          }
-        }
-        // console.log(cfg.url, req, resp)
-        cfg.success(resp);
-      } else {
-        if (req.status == 0 && req.statusText.length == 0) {
-          cfg.error({
-            status: 0,
-            statusText: "Can't reach server",
-            responseText: "Server unreachable or connection aborted",
-            responseURL: req.responseUrl,
-            request: req,
-          });
-        } else {
-          cfg.error(req);
-        }
+  if (method === 'PUT' && cfg.data != null) {
+    if (isJson) {
+      if (typeof cfg.data !== 'object') {
+        const err = `mAjax: dataType for '${cfg.url}' is JSON but data is not an object/array: ${typeof cfg.data}`;
+        console.error(err, cfg);
+        cfg.error?.({
+          status: 0,
+          statusText: `Invalid JSON data for ${cfg.url}`,
+          responseText: err,
+        });
+        return;
       }
-    }
-  };
-
-
-  if (cfg.type.toLowerCase() == "put") {
-    if (cfg.dataType && cfg.dataType.toLowerCase() == 'json') {
-      req.setRequestHeader('Content-type', 'application/json');
-      let dataToSend = cfg.data;
-      if (cfg.data != null) {
-        if (typeof cfg.data === 'object') {
-          dataToSend = JSON.stringify(cfg.data);
-        } else {
-          const err = `mAjax: dataType for '${cfg.url}' is JSON but data is not an object/array: ${typeof cfg.data}`;
-          console.error(err, cfg);
-          if (cfg.error) {
-            cfg.error({
-              status: 0,
-              statusText: `Invalid JSON data for ${cfg.url}`,
-              responseText: err,
-            });
-          }
-          return req;
-        }
-      }
-      req.send(dataToSend);
+      options.headers = { 'Content-Type': 'application/json' };
+      options.body = JSON.stringify(cfg.data);
     } else {
-      req.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-      req.send(cfg.data);
+      options.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+      options.body = cfg.data;
     }
-  } else {
-    if (cfg.data) {
-      console.error("Request.data is not null for non-PUT method, not sure if valid", cfg);
-    }
-    req.send();
+  } else if (cfg.data) {
+    console.error("Request.data is not null for non-PUT method, not sure if valid", cfg);
   }
 
-  return req;
+  fetch(url, options)
+    .then(async (response) => {
+      if (!response.ok) {
+        throw {
+          status: response.status,
+          statusText: response.statusText,
+          responseText: await response.text(),
+          responseURL: response.url,
+        };
+      }
+      const text = await response.text();
+      if (isJson) {
+        return text.trim().length === 0 ? {} : JSON.parse(text);
+      }
+      return text;
+    })
+    .then(cfg.success)
+    .catch((err) => {
+      // Network error (fetch rejected) vs HTTP error (we threw above)
+      if (err instanceof TypeError) {
+        cfg.error?.({
+          status: 0,
+          statusText: "Can't reach server",
+          responseText: "Server unreachable or connection aborted",
+        });
+      } else {
+        cfg.error?.(err);
+      }
+    });
+}
+
+function mTextGet(url, success_cb, error_cb) {
+  mAjax({
+    url,
+    type: 'GET',
+    dataType: 'text',
+    success: success_cb,
+    error: error_cb || showGlobalError,
+  });
 }
 
 function mJsonGet(url, success_cb, error_cb) {
-  return mAjax({
+  mAjax({
     url,
     type: 'GET',
     dataType: 'JSON',
     success: success_cb,
-    error: error_cb? (e) => { error_cb; showGlobalError(e); } : showGlobalError,
+    error: error_cb ? (e) => { error_cb(e); showGlobalError(e); } : showGlobalError,
   });
 }
 
 function mJsonPut(url, val, success_cb, error_cb) {
-  return mAjax({
+  mAjax({
     url,
     type: 'PUT',
     dataType: 'JSON',
     data: val,
-    success: success_cb || (()=>{}),
-    error: error_cb? (e) => { error_cb; showGlobalError(e); } : showGlobalError,
+    success: success_cb || (() => {}),
+    error: error_cb ? (e) => { error_cb(e); showGlobalError(e); } : showGlobalError,
   });
 }
 
 function z2mStartReactApp(appRootSelector, appClass, apiBasePath='') {
-
   const appRef = React.createRef();
   ReactDOM.createRoot(document.querySelector(appRootSelector)).render(
     React.createElement(appClass, { ...appClass.buildProps(apiBasePath), ref: appRef })

@@ -35,20 +35,10 @@ class ServiceMonitor extends React.Component {
     mJsonGet('/systemd_services_status', (data) => {
       this.setState({ monitoredSystemdServices: data });
     });
-    mAjax({
-      url: '/systemd_status',
-      type: 'GET',
-      dataType: 'text',
-      success: (stdout) => { this.setState({ systemdServicesStdout: stdout }); },
-      error: showGlobalError,
-    });
-    mAjax({
-      url: '/system_uptime',
-      type: 'GET',
-      dataType: 'text',
-      success: (stdout) => { this.setState({ uptimeStdout: stdout }); },
-      error: showGlobalError,
-    });
+    mTextGet('/systemd_status',
+      (stdout) => { this.setState({ systemdServicesStdout: stdout }); });
+    mTextGet('/system_uptime',
+      (stdout) => { this.setState({ uptimeStdout: stdout }); });
   }
 
   isStale(lastSeen) {

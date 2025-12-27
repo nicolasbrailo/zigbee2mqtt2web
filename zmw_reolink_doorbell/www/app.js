@@ -32,10 +32,8 @@ class CamViewer extends React.Component {
   onSnapRequested() {
     this.setState({ isLoading: true });
 
-    mAjax({
-      url: `${this.props.api_base_path}/snap`,
-      type: 'get',
-      success: () => {
+    mTextGet(`${this.props.api_base_path}/snap`,
+      () => {
         console.log("Snapshot captured");
         // Refresh the image by updating timestamp
         setTimeout(() => {
@@ -45,21 +43,18 @@ class CamViewer extends React.Component {
           });
         }, 500); // Small delay to ensure snapshot is saved
       },
-      error: (err) => {
+      (err) => {
         showGlobalError("Failed to capture snapshot: " + err);
         this.setState({ isLoading: false });
-      }
-    });
+      });
   }
 
   onRecordRequested() {
     const secs = this.state.recordDuration;
     this.setState({ isRecording: true, recordingTimeLeft: secs });
 
-    mAjax({
-      url: `${this.props.api_base_path}/record?secs=${secs}`,
-      type: 'get',
-      success: (response) => {
+    mTextGet(`${this.props.api_base_path}/record?secs=${secs}`,
+      () => {
         console.log(`Recording started for ${secs} seconds`);
         this.countdownInterval = setInterval(() => {
           this.setState((prevState) => {
@@ -72,11 +67,10 @@ class CamViewer extends React.Component {
           });
         }, 1000);
       },
-      error: (err) => {
+      (err) => {
         showGlobalError("Failed to start recording: " + err.response);
         this.setState({ isRecording: false, recordingTimeLeft: 0 });
-      }
-    });
+      });
   }
 
   render() {

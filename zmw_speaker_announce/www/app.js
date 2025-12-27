@@ -64,16 +64,13 @@ class TTSAnnounce extends React.Component {
     }));
 
     console.log(`${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}&vol=${this.state.ttsVolume}`)
-    mAjax({
-      url: `${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}&vol=${this.state.ttsVolume}`,
-      type: 'get',
-      success: () => {
+    mJsonGet(
+      `${this.props.api_base_path}/announce_tts?lang=${this.state.ttsLang}&phrase=${phrase}&vol=${this.state.ttsVolume}`,
+      () => {
         console.log("Sent TTS request");
         this.setState({ ttsPhrase: "" });
         this.fetchAnnouncementHistory();
-      },
-      error: showGlobalError
-    });
+      });
   }
 
   async onMicRecRequested() {

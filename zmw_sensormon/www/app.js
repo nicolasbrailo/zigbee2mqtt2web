@@ -81,21 +81,15 @@ function simple_dygraph_plot(html_elm_id, url) {
                       },
                   };
 
-  mAjax({
-      url: url,
-      cache: false,
-      type: 'get',
-      dataType: 'text',
-      success: function(t_csv) {
-        const label_elm = document.getElementById(html_elm_id + '_label');
-        if (label_elm) {
-          dygraph_opts['labelsDiv'] = label_elm;
-        }
-        new Dygraph(
-            document.getElementById(html_elm_id),
-            t_csv,
-            dygraph_opts);
-      }
+  mTextGet(url, (t_csv) => {
+    const label_elm = document.getElementById(html_elm_id + '_label');
+    if (label_elm) {
+      dygraph_opts['labelsDiv'] = label_elm;
+    }
+    new Dygraph(
+        document.getElementById(html_elm_id),
+        t_csv,
+        dygraph_opts);
   });
 }
 
@@ -238,14 +232,8 @@ class SensorsHistoryPane extends React.Component {
   }
 
   loadMetricsForSensor(sensorName) {
-    mAjax({
-      url: `/sensors/metrics/${sensorName}`,
-      cache: false,
-      type: 'get',
-      dataType: 'text',
-      success: (metricsJson) => { this.setState({ sensorMetrics: JSON.parse(metricsJson) }); },
-      error: (err) => { console.log(err); showGlobalError(err); },
-    });
+    mJsonGet(`/sensors/metrics/${sensorName}`,
+      (metrics) => { this.setState({ sensorMetrics: metrics }); });
   }
 
   renderSingleSensor(sensorName, metrics) {
@@ -302,14 +290,8 @@ class SensorsHistoryPane extends React.Component {
   }
 
   loadPlotsForSensorMeasuring(metric) {
-    mAjax({
-      url: `/sensors/measuring/${metric}`,
-      cache: false,
-      type: 'get',
-      dataType: 'text',
-      success: (sensorLst) => { this.setState({ sensors: JSON.parse(sensorLst) }); },
-      error: (err) => { console.log(err); showGlobalError(err); },
-    });
+    mJsonGet(`/sensors/measuring/${metric}`,
+      (sensors) => { this.setState({ sensors }); });
   }
 
   renderSingleMetric(metric, sensors) {
