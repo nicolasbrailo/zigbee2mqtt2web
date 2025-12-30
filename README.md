@@ -112,6 +112,7 @@ Runs calendar-based automation tasks:
 * Checks for lights left on in the morning, turns them off, and sends a Telegram notification if any were one. Use if you want to automatically turn off lights during the week day after people have left the house.
 * Vacations mode: will randomly turn lights on and off in the late afternoon, the evining and then at night will shut every light off - to simulate as if people were wondering around the house.
 * Speaker-announce: at scheduled times, will play an announcement through the speakers, every day. Useful to remind house-inhabitants of periodic tasks.
+* Battery alerts: every week, it will check which devices have low battery, and send a Telegram reminder.
 
 ![](zmw_cronenbergs/README_screenshot.png)
 
@@ -125,7 +126,7 @@ Dashboard system that ties all other ZMW services to a mobile friendly interface
 This service integrates with all other ZMW services running in the system to
 
 * Enable quick lights control.
-* Exposes scenes ("fake" buttons created by a user-service, which perform a set of actions on other ZmwServices).
+* Exposes scenes ("fake" buttons created by a user-service, which perform a set of actions on other ZmwServices). These are grouped together with lights, so that each group of lights has a set of scenes/action-buttons assigned to it.
 * Exposes a list of sensors, by default showing temperature.
 * Speaker-announce: send an announcement through the Sonos LAN speakers in your network (user recording not supported here: running the dashboard via HTTPS with a self-signed cert is painful!)
 * Each section (lights, scenes, sensors, cameras...) can link to the main service, which exposes further functionality.
@@ -216,6 +217,54 @@ Connects to Zigbee2MQTT, discovers all light devices on the network, and exposes
 
 Reolink doorbell camera service with motion detection, recording, and event broadcasting over MQTT.
 
+![](zmw_reolink_cams/README_screenshot.png)
+
+This service connects to a Reolink doorbell camera via webhook/ONVIF, and exposes a set of functionality over MQTT and WWW:
+
+## MQTT messages
+**Methods (subscribe):**
+- `mqtt_doorbell_cam/snap` - Takes a snapshot, announces response when ready
+- `mqtt_doorbell_cam/rec` - Start doorbell cam recording (`{secs: N}`)
+
+**Announces (publish):**
+- `on_snap_ready` - Snapshot captured, will reply with the path of the captured file
+- `on_doorbell_button_pressed` - Doorbell button pressed
+- `on_motion_detected` - Camera reports motion
+- `on_motion_cleared` - Motion cleared
+- `on_motion_timeout` - Motion event timed out without camera reporting clear
+- `on_new_recording` - A new recording completed and it's available. Will broadcast local path over MQTT.
+- `on_recording_failed` - Recording failed
+- `on_reencoding_ready` - Re-encoding completed
+- `on_reencoding_failed` - Re-encoding failed
+
+## WWW Endpoints
+
+- `/doorbell` - Camera webhook endpoint
+- `/snap` - Get current snapshot (JPEG)
+- `/lastsnap` - Get last saved snapshot (JPEG)
+- `/record?secs=N` - Start recording (5-120 seconds)
+
+## NVR
+
+This service also has an NVR-like functionality. Unlike an NVR, the service doesn't record all the time: it will just start recording once the camera reports motion or doorbell-press. This means you will always miss the first few seconds of motion (but will save a lot on energy and storage).
+
+![](zmw_reolink_cams/README_screenshot2.png)
+
+## Integrations
+
+This service will integrate with ZmwDoorman to:
+
+* Send Telegram notifications when the doorbell is pressed
+* Play audio chimes over LAN speakers when the doorbell is pressed
+* Send Whatsapp messages when motion is detected
+
+And others (see the readme for ZmwDoorman for details).
+
+
+# ZmwReolinkDoorbell
+
+Reolink doorbell camera service with motion detection, recording, and event broadcasting over MQTT.
+
 ![](zmw_reolink_doorbell/README_screenshot.png)
 
 This service connects to a Reolink doorbell camera via webhook/ONVIF, and exposes a set of functionality over MQTT and WWW:
@@ -266,7 +315,13 @@ Sensor data monitoring and history service.
 
 ![](zmw_sensormon/README_screenshot.png)
 
-Monitors MQTT sensors (temperature, humidity, power, battery, contact, occupancy, etc.) and stores historical readings in a database. Integrates with Z2M out of the box. Also has an integration with ZmwShelly (see readme for this service). Provides APIs for querying sensor data, and a React component to display badges with readings for a set of sensors.
+Monitors MQTT sensors (temperature, humidity, power, battery, contact, occupancy, etc.) and stores historical readings in a database. Integrates with Z2M out of the box.
+
+* Also has an integration with ZmwShelly (see readme for this service).
+* Provides APIs for querying sensor data, and a React component to display badges with readings for a set of sensors.
+* Can create virtual metrics based on real metrics. This is useful, for example, to adjust readings from a sensor to better calibrate it, or to create feels-like metrics based on real temperature/humidity measurements. Currently support feels-like temp, with some fudging factor to better reflect human feels-like temperatures.
+* Queries outside temperature and humidity, too
+
 
 ## WWW Endpoints
 
@@ -296,6 +351,11 @@ Connects to a list of Shelly plugs defined in config.json, broadcasts stats over
 ![](zmw_shelly_plug/README_screenshot.png)
 
 This service is pretty useless on its own, but it will broadcast power consumption info over MQTT. Useful when integrated with ZmwSensors.
+
+
+# ZmwSonosCtrl
+
+// TODO
 
 
 # ZmwSpeakerAnnounce
