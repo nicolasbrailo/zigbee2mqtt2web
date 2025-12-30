@@ -1606,42 +1606,24 @@ class SensorsList extends React.Component {
 
     const basePath = this.props.api_base_path || '';
 
-    if (metrics.length === 1) {
-      // Single metric: fetch sensors that measure this metric
-      mJsonGet(`${basePath}/sensors/measuring/${metrics[0]}`, sensors => {
-        this.setState({ sensors, sensorData: {} });
-        this.loadSensorData(sensors);
-      });
-    } else {
-      // Multiple metrics: need to find all sensors that have any of these metrics
-      // Fetch sensors for each metric and combine
-      const allSensors = new Set();
-      let pending = metrics.length;
+    // Fetch all metrics in parallel using the combined endpoint
+    const allSensorData = {};
+    let pending = metrics.length;
 
-      metrics.forEach(metric => {
-        mJsonGet(`${basePath}/sensors/measuring/${metric}`, sensorLst => {
-          sensorLst.forEach(s => allSensors.add(s));
-          pending--;
-          if (pending === 0) {
-            const sensors = Array.from(allSensors).sort();
-            this.setState({ sensors, sensorData: {} });
-            this.loadSensorData(sensors);
+    metrics.forEach(metric => {
+      mJsonGet(`${basePath}/sensors/get_all/${metric}`, data => {
+        // data is {"SensorA": value, "SensorB": value, ...}
+        for (const [sensor, value] of Object.entries(data)) {
+          if (!allSensorData[sensor]) {
+            allSensorData[sensor] = {};
           }
-        });
-      });
-    }
-  }
-
-  loadSensorData(sensors) {
-    const basePath = this.props.api_base_path || '';
-    sensors.forEach(sensor => {
-      mJsonGet(`${basePath}/sensors/get/${sensor}`, data => {
-        this.setState(prevState => ({
-          sensorData: {
-            ...prevState.sensorData,
-            [sensor]: data,
-          },
-        }));
+          allSensorData[sensor][metric] = value;
+        }
+        pending--;
+        if (pending === 0) {
+          const sensors = Object.keys(allSensorData).sort();
+          this.setState({ sensors, sensorData: allSensorData });
+        }
       });
     });
   }

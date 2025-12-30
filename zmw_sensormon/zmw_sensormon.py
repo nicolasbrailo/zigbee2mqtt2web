@@ -116,6 +116,7 @@ class ZmwSensormon(ZmwMqttNullSvc):
         self._shelly_monitor = ShellyPlugMonitor(self._sensors)
         self.subscribe_with_cb('zmw_shelly_plug', self._shelly_monitor.on_message)
         www.serve_url('/sensors/get/<name>', self._get_sensor_values)
+        www.serve_url('/sensors/get_all/<metric>', self._get_all_sensor_values)
 
     def _get_sensor_values(self, name):
         """Unified endpoint to get current sensor values from any backend."""
@@ -126,6 +127,16 @@ class ZmwSensormon(ZmwMqttNullSvc):
             return self._z2m.get_thing(name).get_json_state()
         except KeyError:
             return {}
+
+    def _get_all_sensor_values(self, metric):
+        """Get current values for all sensors measuring a specific metric."""
+        sensors = self._sensors.get_known_sensors_measuring(metric)
+        result = {}
+        for sensor_name in sensors:
+            values = self._get_sensor_values(sensor_name)
+            if metric in values:
+                result[sensor_name] = values[metric]
+        return result
 
     def _on_z2m_network_discovery(self, _is_first_discovery, known_things):
         for thing_name, thing in known_things.items():
