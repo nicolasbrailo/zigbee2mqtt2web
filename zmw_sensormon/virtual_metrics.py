@@ -52,11 +52,12 @@ def _compute_feels_like(values):
     humidity = values['humidity']
 
     if temp >= 27 and humidity >= 40:
-        return _compute_heat_index(temp, humidity)
+        result = _compute_heat_index(temp, humidity)
     elif temp < 20 and humidity > 45:
-        return _compute_humid_cold_adjustment(temp, humidity)
+        result = _compute_humid_cold_adjustment(temp, humidity)
     else:
-        return temp
+        result = temp
+    return round(result, 1)
 
 
 # Virtual metrics configuration

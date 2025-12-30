@@ -16,6 +16,7 @@ function buildUrlForPeriod(period, prefix = '/history') {
 function renderSensorValues(sensorData, metrics) {
   function getUnit(metric) {
     const units = {
+      feels_like_temp: '°C',
       temperature: '°C',
       device_temperature: '°C',
       humidity: '%',

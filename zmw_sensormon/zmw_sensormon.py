@@ -8,6 +8,7 @@ from zz2m.www import Z2Mwebservice
 
 from sensors import SensorsHistory
 from virtual_metrics import get_virtual_metrics, compute_virtual_metrics
+from outside_weather import OutsideWeatherSensor
 
 import os
 import pathlib
@@ -114,11 +115,20 @@ class ZmwSensormon(ZmwMqttNullSvc):
 
         self._shelly_monitor = ShellyPlugMonitor(self._sensors)
         self.subscribe_with_cb('zmw_shelly_plug', self._shelly_monitor.on_message)
+
+        self._outside_weather = OutsideWeatherSensor(
+            self._sensors, sched,
+            latitude=cfg['outside_latitude'], longitude=cfg['outside_longitude'],
+            update_interval_seconds=300)
+
         www.serve_url('/sensors/get/<name>', self._get_sensor_values)
         www.serve_url('/sensors/get_all/<metric>', self._get_all_sensor_values)
 
     def _get_sensor_values(self, name):
         """Unified endpoint to get current sensor values from any backend."""
+        if name == OutsideWeatherSensor.SENSOR_NAME:
+            values = self._outside_weather.get_current_values()
+            return {**values, **compute_virtual_metrics(values)}
         shelly_data = self._shelly_monitor.get_current_values(name)
         if shelly_data is not None:
             return {**shelly_data, **compute_virtual_metrics(shelly_data)}
