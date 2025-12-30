@@ -151,26 +151,37 @@ class ScenesList extends React.Component {
 }
 
 
-function LightsSection(props) {
-  return (
-    <section id="lights-section">
-      <a className="section-badge" href={ProxiedServices.get('ZmwLights')}><img src="/ZmwLights/favicon.ico"/></a>
-      {React.createElement(
-        MqttLights,
-        MqttLights.buildProps('/ZmwLights'))}
-    </section>
-  );
-}
+class LightsSection extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { scenes: [] };
+  }
 
-function SceneListSection(props) {
-  return (
-    <section id="scene-list-section">
-      <a className="section-badge" href={ProxiedServices.get('Scenes')}><img src="/Scenes/favicon.ico"/></a>
-      {React.createElement(
-        ScenesList,
-        { api_base_path: '/Scenes' })}
-    </section>
-  );
+  componentDidMount() {
+    mJsonGet('/Scenes/ls_scenes', (scenes) => {
+      if (!scenes || !Array.isArray(scenes)) {
+        showGlobalError("Scenes API isn't working");
+        return;
+      }
+
+      // Convert scenes to button format: [{"SceneName": "url"}, ...]
+      const buttons = scenes.map(scene => ({
+        [scene]: `/Scenes/apply_scene?scene=${encodeURIComponent(scene)}`
+      }));
+      this.setState({ scenes: buttons });
+    });
+  }
+
+  render() {
+    return (
+      <section id="lights-section">
+        <a className="section-badge" href={ProxiedServices.get('ZmwLights')}><img src="/ZmwLights/favicon.ico"/></a>
+        {React.createElement(
+          MqttLights,
+          MqttLights.buildProps('/ZmwLights', this.state.scenes))}
+      </section>
+    );
+  }
 }
 
 function SensorsListSection(props) {
@@ -335,7 +346,6 @@ function Dashboard(props) {
     <main>
       <AlertsList />
       <LightsSection />
-      <SceneListSection />
       <SensorsListSection />
 
       <section id="zmw_other_services">

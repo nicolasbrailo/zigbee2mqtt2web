@@ -411,6 +411,7 @@ def toggle_ensure_color(lamp, wanted_col):
         * Light was off -> turn on in right color
         * Light was on, but wrong color -> set correct color
         * Light was on, correct color -> turn off
+    Returns True if lamp is on after calling this method, False otherwise
     """
     # The color mapping between CIE and RGB isn't bijective, going from RGB to CIE will map several RGB points to
     # the same CIE coords. So, rgb(cie(rbg_val)) != rgb_val. To work around this, we first map the user wanted color
@@ -425,3 +426,4 @@ def toggle_ensure_color(lamp, wanted_col):
         else:
             lamp.turn_off()
     lamp.set_brightness_pct(100 if lamp.is_light_on() else 0)
+    return lamp.is_light_on()

@@ -27,7 +27,7 @@ class ButtonActionService(ZmwMqttService):
         self._public_url_base = www.register_www_dir(www_path)
         www.serve_url('/buttons_state', self.get_buttons_state)
         www.serve_url('/ls_scenes', self.get_scenes)
-        www.serve_url('/apply_scene', self.apply_scene)
+        www.serve_url('/apply_scene', self.apply_scene, methods=['PUT'])
         www.serve_url('/trigger_action', self.trigger_action, methods=['POST'])
 
         self._unbound_callbacks = []

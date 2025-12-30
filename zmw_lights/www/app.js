@@ -288,12 +288,63 @@ class ZmwLight extends React.Component {
   }
 }
 
+class ZmwButton extends React.Component {
+  onClick() {
+    mJsonPut(this.props.url, {});
+  }
+
+  render() {
+    let displayName = this.props.name.startsWith(this.props.prefix)
+      ? this.props.name.slice(this.props.prefix.length)
+      : this.props.name;
+    displayName = displayName.replace(/_/g, ' ').trim();
+    return (
+      <button onClick={() => this.onClick()}>{displayName}</button>
+    );
+  }
+}
+
+function groupButtonsByLightPrefixes(buttons, lightPrefixes) {
+  // buttons is an array like [{"ButtonName": "url"}, ...]
+  // lightPrefixes is the list of group prefixes from lights (including "Others")
+  const groups = {};
+  const prefixList = lightPrefixes.filter(p => p !== 'Others').sort((a, b) => b.length - a.length);
+
+  for (const buttonObj of buttons) {
+    const buttonName = Object.keys(buttonObj)[0];
+    const buttonUrl = buttonObj[buttonName];
+    let assigned = false;
+
+    // Try to match button name to existing light prefixes (longest match first)
+    for (const prefix of prefixList) {
+      if (buttonName.startsWith(prefix)) {
+        if (!groups[prefix]) {
+          groups[prefix] = [];
+        }
+        groups[prefix].push({ name: buttonName, url: buttonUrl });
+        assigned = true;
+        break;
+      }
+    }
+
+    if (!assigned) {
+      if (!groups['Others']) {
+        groups['Others'] = [];
+      }
+      groups['Others'].push({ name: buttonName, url: buttonUrl });
+    }
+  }
+
+  return groups;
+}
+
 class MqttLights extends React.Component {
-  static buildProps(api_base_path = '') {
+  static buildProps(api_base_path = '', buttons = []) {
     return {
       key: 'MqttLights',
       local_storage: new LocalStorageManager(),
       api_base_path: api_base_path,
+      buttons: buttons,
     };
   }
 
@@ -308,13 +359,38 @@ class MqttLights extends React.Component {
     this.fetchLights();
   }
 
+  componentDidUpdate(prevProps) {
+    // Re-compute button groups if buttons prop changed
+    if (prevProps.buttons !== this.props.buttons && this.state.groups) {
+      const lightPrefixes = Object.keys(this.state.groups);
+      const buttonGroups = groupButtonsByLightPrefixes(this.props.buttons || [], lightPrefixes);
+      const sortedPrefixes = this.computeSortedPrefixes(this.state.groups, buttonGroups);
+      this.setState({ buttonGroups, sortedPrefixes });
+    }
+  }
+
   on_app_became_visible() {
     this.fetchLights();
   }
 
+  computeSortedPrefixes(groups, buttonGroups) {
+    const allPrefixes = new Set([
+      ...Object.keys(groups),
+      ...Object.keys(buttonGroups || {})
+    ]);
+    return Array.from(allPrefixes).sort((a, b) => {
+      if (a === 'Others') return 1;
+      if (b === 'Others') return -1;
+      return a.localeCompare(b);
+    });
+  }
+
   setLightsState(lights, meta) {
     const groups = groupLightsByPrefix(lights);
-    this.setState({ lights: lights, groups: groups, meta: meta });
+    const lightPrefixes = Object.keys(groups);
+    const buttonGroups = groupButtonsByLightPrefixes(this.props.buttons || [], lightPrefixes);
+    const sortedPrefixes = this.computeSortedPrefixes(groups, buttonGroups);
+    this.setState({ lights, groups, meta, buttonGroups, sortedPrefixes });
   }
 
   clearCache() {
@@ -356,16 +432,27 @@ class MqttLights extends React.Component {
 
     return (
       <div id="zmw_lights">
-        {Object.entries(this.state.groups).map(([prefix, lights]) => (
-          <details key={prefix}>
-            <summary>{prefix}</summary>
-            <ul>
-              {lights.map((light) => (
-                <ZmwLight key={light.thing_name} light={light} meta={this.state.meta[light.thing_name]} prefix={prefix} api_base_path={this.props.api_base_path} />
-              ))}
-            </ul>
-          </details>
-        ))}
+        {this.state.sortedPrefixes.map((prefix) => {
+          const lights = this.state.groups[prefix] || [];
+          const buttons = (this.state.buttonGroups || {})[prefix] || [];
+          return (
+            <details key={prefix}>
+              <summary>{prefix}</summary>
+              <ul>
+                {(buttons.length > 0) && (
+                  <li>
+                  {buttons.map((button) => (
+                    <ZmwButton key={button.name} name={button.name} url={button.url} prefix={prefix} />
+                  ))}
+                  </li>
+                )}
+                {lights.map((light) => (
+                  <ZmwLight key={light.thing_name} light={light} meta={this.state.meta[light.thing_name]} prefix={prefix} api_base_path={this.props.api_base_path} />
+                ))}
+              </ul>
+            </details>
+          );
+        })}
         { this.props.runningStandaloneApp && (
           <button onClick={() => this.clearCache()}>Clear cache</button>)}
       </div>
@@ -374,8 +461,8 @@ class MqttLights extends React.Component {
 }
 
 class StandaloneMqttLights extends MqttLights {
-  static buildProps(api_base_path = '') {
-    const p = super.buildProps();
+  static buildProps(api_base_path = '', buttons = []) {
+    const p = super.buildProps(api_base_path, buttons);
     p.runningStandaloneApp = true;
     return p;
   }
