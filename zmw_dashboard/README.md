@@ -7,7 +7,7 @@ Dashboard system that ties all other ZMW services to a mobile friendly interface
 This service integrates with all other ZMW services running in the system to
 
 * Enable quick lights control.
-* Exposes scenes ("fake" buttons created by a user-service, which perform a set of actions on other ZmwServices).
+* Exposes scenes ("fake" buttons created by a user-service, which perform a set of actions on other ZmwServices). These are grouped together with lights, so that each group of lights has a set of scenes/action-buttons assigned to it.
 * Exposes a list of sensors, by default showing temperature.
 * Speaker-announce: send an announcement through the Sonos LAN speakers in your network (user recording not supported here: running the dashboard via HTTPS with a self-signed cert is painful!)
 * Each section (lights, scenes, sensors, cameras...) can link to the main service, which exposes further functionality.

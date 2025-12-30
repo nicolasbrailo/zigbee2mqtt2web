@@ -181,8 +181,9 @@ def _csv(header, data):
 
 
 class SensorsHistory:
-    """ Automatically hooks up an observer to a sensor-like thing, and keeps
-    track of changes in the sensor so it can save the change history to a DB """
+    """ Keeps a historical database of sensor readings. This is a pure persistence
+    layer - it receives sensor data and stores it, but does not manage callbacks
+    or sensor objects directly. """
 
     def __init__(self, dbpath, scheduler, retention_rows=None, retention_days=None):
         self._retention_rows = retention_rows
@@ -224,39 +225,42 @@ class SensorsHistory:
         # server.add_url_rule('/sensors/force_retention_days/<retention_n>', None, self._force_retention_days)
         # server.add_url_rule('/sensors/force_retention_rows/<retention_n>', None, self._force_retention_rows)
 
-    def register_sensor(self, thing, metrics):
-        """ Will attach an observer to $thing and save a reading to a database
-        whenever $thing has an updated value """
+    def register_sensor(self, sensor_name, metrics):
+        """ Register a sensor schema in the database. Creates the table if needed,
+        or adds any missing columns to an existing table. Does not manage callbacks. """
         # Validate sensor name early to catch invalid names at registration
         try:
-            _validate_sql_identifier(thing.name, "sensor name")
+            _validate_sql_identifier(sensor_name, "sensor name")
         except ValueError as e:
             log.error("Cannot register sensor with invalid name: %s", e)
             raise
 
         # Validate all metric names early
         for metric in metrics:
-            if metric not in thing.actions:
-                raise KeyError(
-                    f'Thing {thing.name} has no metric {metric}. Available actions: '
-                    f'{thing.actions.keys()}')
             try:
                 _validate_sql_identifier(metric, "metric name")
             except ValueError as e:
-                log.error("Cannot register sensor %s with invalid metric name: %s", thing.name, e)
+                log.error("Cannot register sensor %s with invalid metric name: %s", sensor_name, e)
                 raise
 
-        # If this thing already had an observer, overwrite it. This can happen if the network drops a device
-        # and then adds it again.
-        thing.on_any_change_from_mqtt = lambda _: self._on_update(thing, metrics)
-        log.info('Registered sensor %s to sensor_history', thing.name)
+        with sqlite3.connect(self._dbpath) as conn:
+            _maybe_create_table(conn, sensor_name, metrics)
+            conn.commit()
 
-    def _on_update(self, thing, metrics):
-        #log.debug('Sensor %s has an update, will save to DB', thing.name)
-        readings = [thing.get(metric_name) for metric_name in metrics]
+        log.info('Registered sensor %s to sensor_history', sensor_name)
+
+    def save_reading(self, sensor_name, values_dict):
+        """ Save a sensor reading to the database.
+
+        Args:
+            sensor_name: Name of the sensor
+            values_dict: Dictionary of {metric_name: value}
+        """
+        metrics = list(values_dict.keys())
+        readings = list(values_dict.values())
 
         # Validate all identifiers to prevent SQL injection
-        sensor_name = _validate_sql_identifier(thing.name, "sensor name")
+        sensor_name = _validate_sql_identifier(sensor_name, "sensor name")
         validated_metrics = [_validate_sql_identifier(m, "metric name") for m in metrics]
 
         with sqlite3.connect(self._dbpath) as conn:

@@ -7,6 +7,7 @@ from zz2m.z2mproxy import Z2MProxy
 from zz2m.www import Z2Mwebservice
 
 from sensors import SensorsHistory
+from virtual_metrics import get_virtual_metrics, compute_virtual_metrics
 
 import os
 import pathlib
@@ -39,10 +40,9 @@ class ShellyAdapter:
         'temperature_c': 'device_temperature',
     }
 
-    def __init__(self, name):
+    def __init__(self, name, sensors_history):
         self.name = name
-        self.actions = {m: None for m in self.METRICS}
-        self.on_any_change_from_mqtt = None
+        self._sensors = sensors_history
         self._values = {}
 
     def get(self, metric_name):
@@ -50,13 +50,12 @@ class ShellyAdapter:
         return self._values.get(metric_name)
 
     def update(self, payload):
-        """Update internal values from a Shelly MQTT payload and notify listeners."""
+        """Update internal values from a Shelly MQTT payload and save to DB."""
         for metric in self.METRICS:
             payload_key = next((k for k, v in self.PAYLOAD_TO_METRIC.items() if v == metric), metric)
             if payload_key in payload:
                 self._values[metric] = payload[payload_key]
-        if self.on_any_change_from_mqtt:
-            self.on_any_change_from_mqtt(self)
+        self._sensors.save_reading(self.name, {m: self.get(m) for m in self.METRICS})
 
 
 class ShellyPlugMonitor:
@@ -86,14 +85,14 @@ class ShellyPlugMonitor:
             return
 
         if sensor_name not in self._known_shellies:
-            adapter = ShellyAdapter(sensor_name)
-            self._known_shellies[sensor_name] = adapter
             try:
-                self._sensors.register_sensor(adapter, ShellyAdapter.METRICS)
+                self._sensors.register_sensor(sensor_name, ShellyAdapter.METRICS)
+                self._known_shellies[sensor_name] = ShellyAdapter(sensor_name, self._sensors)
                 log.info("New shelly plug discovered: %s", sensor_name)
             except ValueError:
                 log.error("New sensor '%s' can't be registered. This may be normal if a Shelly plug has no known name yet",
                           sensor_name, exc_info=True)
+                return
 
         self._known_shellies[sensor_name].update(payload)
 
@@ -138,14 +137,24 @@ class ZmwSensormon(ZmwMqttNullSvc):
                 result[sensor_name] = values[metric]
         return result
 
+    def _on_sensor_update(self, thing):
+        """Handle sensor update: save to DB with virtual metrics."""
+        metrics = interesting_actions(thing)
+        values = {m: thing.get(m) for m in metrics}
+        virtual_values = compute_virtual_metrics(values)
+        self._sensors.save_reading(thing.name, {**values, **virtual_values})
+
     def _on_z2m_network_discovery(self, _is_first_discovery, known_things):
         for thing_name, thing in known_things.items():
             acts = interesting_actions(thing)
             if len(acts) > 0:
-                log.info('Will monitor %s, publishes %s', thing_name, str(acts))
+                virtual_metrics = get_virtual_metrics(acts)
+                all_metrics = acts + virtual_metrics
+                log.info('Will monitor %s, publishes %s (virtual: %s)', thing_name, str(acts), str(virtual_metrics))
                 try:
-                    self._sensors.register_sensor(thing, acts)
-                except ValueError:
+                    self._sensors.register_sensor(thing.name, all_metrics)
+                    thing.on_any_change_from_mqtt = self._on_sensor_update
+                except ValueError as ex:
                     # This will happen if a sensor has a name we don't like. Usually will happen when a new device
                     # is added to the network, before it gets a friendly name
                     log.error("Can't register sensor %s: %s", thing.name, ex)
