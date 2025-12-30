@@ -8,7 +8,11 @@ devrun::
 
 .PHONY: test
 test::
-	pipenv run pytest tests/* -v --cov=. --cov-report=term-missing --cov-report=html
+	@if find tests -name '*.py' 2>/dev/null | grep -q .; then \
+		pipenv run pytest tests/* -v --cov=. --cov-report=term-missing --cov-report=html; \
+	else \
+		echo "No tests found, skipping"; \
+	fi
 
 .PHONY: rebuild_ui
 rebuild_ui::

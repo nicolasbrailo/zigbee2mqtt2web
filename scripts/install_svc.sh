@@ -34,10 +34,12 @@ ensure_file "$TGT_SVC_NAME.py"
 ensure_file Pipfile.lock
 ensure_file Pipfile
 
+make -C "$TGT_SVC_SRC" test
+
 # Check if this service already exists
 if [ -f "$TGT_SVC_RUN/stop.sh" ]; then
   echo "Service $TGT_SVC_NAME already exists, stopping old service first..."
-  #"$TGT_SVC_RUN/stop.sh"
+  "$TGT_SVC_RUN/stop.sh"
 fi
 
 # Create target run dir and its virtual env
@@ -81,13 +83,18 @@ WantedBy=multi-user.target
 EOF
 
 read -r -d '' RESTART_AND_LOGS_TMPL <<EOF || true
+  set -euo pipefail
   SCRIPT_DIR="\$(cd -- "\$(dirname -- "\${BASH_SOURCE[0]}")" && pwd)"
+  # Run tests for this service on restart. Because of set -e, this will prevent restart if test fails
+  make -C "$TGT_SVC_SRC" test
   sudo systemctl restart '$TGT_SVC_NAME' && "\$SCRIPT_DIR/logs.sh"
 EOF
 
 echo "$SVC_TMPL" > "$TGT_SVC_RUN/$TGT_SVC_NAME.service"
 echo "$RESTART_AND_LOGS_TMPL" > "$TGT_SVC_RUN/restart_and_logs.sh"
 chmod +x "$TGT_SVC_RUN/restart_and_logs.sh"
+echo "make -C '$TGT_SVC_SRC' test" > "$TGT_SVC_RUN/run_unit_tests.sh"
+chmod +x "$TGT_SVC_RUN/run_unit_tests.sh"
 echo "sudo systemctl stop '$TGT_SVC_NAME'" > "$TGT_SVC_RUN/stop.sh"
 chmod +x "$TGT_SVC_RUN/stop.sh"
 echo "sudo systemctl start '$TGT_SVC_NAME'" > "$TGT_SVC_RUN/start.sh"

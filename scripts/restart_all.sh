@@ -24,6 +24,17 @@ fi
 echo "Will restart all services, Ctrl-C to cancel. Services: ${services[*]}"
 read
 
+# Run unit tests before restarting
+echo "Running unit tests..."
+for svc in "${services[@]}"; do
+    echo "Running unit tests for $svc..."
+    if ! output=$("$THIS_SCRIPT_DIR/$svc/run_unit_tests.sh" 2>&1); then
+        echo "$output"
+        echo "A service has unit test failures, cowardly refusing to restart services"
+        exit 1
+    fi
+done
+
 # Stop all services together
 echo "Stopping all services..."
 for svc in "${services[@]}"; do
