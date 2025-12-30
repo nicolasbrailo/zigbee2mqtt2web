@@ -7,6 +7,9 @@
 <link rel="manifest" href="manifest.json"/>
 <title>Baticasa</title>
 
+<!-- Start prefetching some data this app will need for sure -->
+<link rel="preload" href="/ZmwLights/get_lights" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="/Scenes/ls_scenes" as="fetch" crossorigin="anonymous">
 
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -33,6 +36,6 @@ button[data-selected="true"] {
   </div>
 </body>
 
-<script src='/zmw.js'></script>
-<script src="/app.rel.js"></script>
+<script defer src='/zmw.js'></script>
+<script defer src="/app.rel.js"></script>
 </html>

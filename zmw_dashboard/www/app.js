@@ -376,7 +376,7 @@ const store = new LocalStorageManager();
 const opts = store.cacheGet("ZmwDashboardConfig", null);
 document.documentElement.setAttribute('data-theme', opts?.theme);
 
-// Fetch prefetch data immediately - components will use cached data if available
+// Fetch prefetch data - preloaded in index.html <head> so response may already be cached
 fetch('/prefetch')
   .then(r => r.json())
   .then(data => PrefetchCache.set(data))

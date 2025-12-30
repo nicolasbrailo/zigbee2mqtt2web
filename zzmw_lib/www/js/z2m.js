@@ -6,9 +6,9 @@ function mAjax(cfg) {
   const method = (cfg.type || 'GET').toUpperCase();
   const isJson = cfg.dataType?.toLowerCase() === 'json';
 
-  // Cache busting for GET/HEAD
+  // Cache busting for GET/HEAD (only when explicitly requested)
   let url = cfg.url;
-  if (!cfg.cache && (method === 'GET' || method === 'HEAD')) {
+  if (cfg.cache === true && (method === 'GET' || method === 'HEAD')) {
     const t = Date.now();
     url = (url.indexOf('?') === -1) ? `${url}?_=${t}` : `${url}&_=${t}`;
   }

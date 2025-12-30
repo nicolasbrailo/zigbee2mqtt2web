@@ -96,10 +96,21 @@ def _create_www_server(AppClass, cfg):
         tuple: (flaskapp, wwwserver) where flaskapp has public_url_base set
     """
     class _QuietRequestHandler(WSGIRequestHandler):
+        protocol_version = "HTTP/1.1"
+
         def log_date_time_string(self):
             return ""
 
     flaskapp = Flask(AppClass.__name__)
+    flaskapp.config['SEND_FILE_MAX_AGE_DEFAULT'] = 7 * 86400 # N days cache for static files
+
+    @flaskapp.after_request
+    def set_default_cache_headers(response):
+        # If no Cache-Control set (dynamic responses), prevent caching
+        if 'Cache-Control' not in response.headers:
+            response.headers['Cache-Control'] = 'no-store'
+        return response
+
     http_host = _get_http_host(cfg)
     wwwserver = make_server(http_host,
                             get_cached_port(cfg, "http_port", http_host),
