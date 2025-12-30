@@ -1254,7 +1254,7 @@ class CamViewer extends React.Component {
     );
   }
 }
-const INTERESTING_PLOT_METRICS = ['temperature', 'humidity', 'pm25', 'voc_index'];
+const INTERESTING_PLOT_METRICS = ['temperature', 'feels_like_temp', 'humidity'];
 
 function buildUrlForPeriod(period, prefix = '/history') {
   if (!period || period == 'all') return '';

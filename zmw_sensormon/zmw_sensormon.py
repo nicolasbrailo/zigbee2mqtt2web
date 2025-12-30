@@ -121,9 +121,10 @@ class ZmwSensormon(ZmwMqttNullSvc):
         """Unified endpoint to get current sensor values from any backend."""
         shelly_data = self._shelly_monitor.get_current_values(name)
         if shelly_data is not None:
-            return shelly_data
+            return {**shelly_data, **compute_virtual_metrics(shelly_data)}
         try:
-            return self._z2m.get_thing(name).get_json_state()
+            values = self._z2m.get_thing(name).get_json_state()
+            return {**values, **compute_virtual_metrics(values)}
         except KeyError:
             return {}
 
