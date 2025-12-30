@@ -2,13 +2,12 @@ build:
 	mkdir -p build/npm
 	mkdir -p build/extjs
 
-.PHONY: css
-css: build/zmw.css
-build/zmw.css: ./css/* build
-	./build/npm/node_modules/.bin/uglifycss ./css/* > build/zmw.css
-
-.PHONY: js
+.PHONY: js css
 js: build/zmw.js
+	cp build/zmw.js ./zmw.js
+css: build/zmw.css
+	cp build/zmw.css ./zmw.css
+
 build/zmw.js: build build/extjs/react.dom.js build/extjs/react.js js/*
 	@# Order is important (eg we need to define react before zmw)
 	cat build/extjs/react.js \
@@ -19,6 +18,9 @@ build/zmw.js: build build/extjs/react.dom.js build/extjs/react.js js/*
 			js/z2m.js \
 		> build/zmw.big.js
 	./babel_compile_single.sh build/zmw.big.js build/zmw.js
+
+build/zmw.css: ./css/* build
+	./build/npm/node_modules/.bin/uglifycss ./css/* > build/zmw.css
 
 build/extjs/react.js:
 	wget -O "$@.unsafe" https://unpkg.com/react@18.3.1/umd/react.production.min.js
