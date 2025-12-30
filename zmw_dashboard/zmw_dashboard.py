@@ -45,15 +45,6 @@ class ZmwDashboard(ZmwMqttServiceMonitor):
         self._svc_proxy = None
         self._www = www
 
-        # Endpoints to prefetch for the dashboard init batch request
-        self._prefetch_endpoints = [
-            "/svc_alerts",
-            "/ZmwLights/get_lights",
-            "/Scenes/ls_scenes",
-            "/ZmwSensormon/sensors/measuring/temperature",
-            "/ZmwLights/z2m/get_known_things_hash",
-        ]
-
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         self._public_www_base = self._www.register_www_dir(www_path, '/')
         # We'll call www.setup_complete when the service is ready, otherwise we'll try to setup routes after
@@ -83,61 +74,10 @@ class ZmwDashboard(ZmwMqttServiceMonitor):
         log.info("Proxy routes registered, starting dashboard www")
         self._www.serve_url('/get_proxied_services', self._svc_proxy.get_proxied_services)
         self._www.serve_url('/get_user_defined_links', self._get_user_defined_links)
-        self._www.serve_url('/prefetch', self.get_prefetch_data)
         self._www.setup_complete()
 
     def _get_user_defined_links(self):
         return self._user_defined_links
-
-    def _fetch_prefetch_endpoint(self, endpoint):
-        """Fetch a single prefetch endpoint."""
-        # Handle local endpoint
-        if endpoint == "/svc_alerts":
-            return self.get_service_alerts()
-
-        # Parse proxied endpoint: /ServiceName/path/to/resource
-        parts = endpoint.split('/', 2)  # ['', 'ServiceName', 'path/to/resource']
-        if len(parts) < 3:
-            log.warning("Invalid prefetch endpoint format: %s", endpoint)
-            return None
-
-        service_name = parts[1]
-        path = '/' + parts[2]
-
-        services = self._svc_proxy.get_proxied_services()
-        if service_name not in services:
-            log.warning("Prefetch endpoint references unknown service: %s", service_name)
-            return None
-
-        service_url = services[service_name]
-        try:
-            resp = requests.get(f"{service_url}{path}", timeout=2, verify=False)
-            if resp.status_code == 200:
-                return resp.json()
-            log.debug("Prefetch %s returned status %d", endpoint, resp.status_code)
-        except Exception:  # pylint: disable=broad-exception-caught
-            log.debug("Failed to prefetch %s", endpoint, exc_info=True)
-        return None
-
-    def get_prefetch_data(self):
-        """Fetch all prefetch endpoints concurrently and return as a dict."""
-        if self._svc_proxy is None:
-            return {}
-
-        result = {}
-        with ThreadPoolExecutor(max_workers=len(self._prefetch_endpoints)) as executor:
-            futures = {executor.submit(self._fetch_prefetch_endpoint, ep): ep
-                       for ep in self._prefetch_endpoints}
-            for future in as_completed(futures):
-                endpoint = futures[future]
-                try:
-                    data = future.result()
-                    if data is not None:
-                        result[endpoint] = data
-                except Exception:  # pylint: disable=broad-exception-caught
-                    result[endpoint] = None
-                    log.debug("Failed to get prefetch result for %s", endpoint, exc_info=True)
-        return result
 
     def _fetch_service_alerts(self, svc_name, svc_url):
         """Fetch alerts from a single service."""

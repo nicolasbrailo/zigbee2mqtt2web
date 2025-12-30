@@ -1,33 +1,3 @@
-// Prefetch cache - intercepts mJsonGet calls to return cached data
-const PrefetchCache = {
-  _data: null,
-
-  set(data) {
-    this._data = data;
-  },
-
-  get(url) {
-    console.log("PREFETCH", url);
-    if (!this._data) return null;
-    return this._data[url];
-  },
-
-  has(url) {
-    return this._data && url in this._data;
-  }
-};
-
-// Wrap mJsonGet to check prefetch cache first
-const _originalMJsonGet = mJsonGet;
-mJsonGet = function(url, callback) {
-  if (PrefetchCache.has(url)) {
-    // Return cached data immediately (async to match expected behavior)
-    setTimeout(() => callback(PrefetchCache.get(url)), 0);
-    return;
-  }
-  _originalMJsonGet(url, callback);
-};
-
 const ProxiedServices = {
   CACHE_KEY: 'proxied_services',
   _services: null,
@@ -375,12 +345,6 @@ Dashboard.buildProps = () => ({ key: 'dashboard' });
 const store = new LocalStorageManager();
 const opts = store.cacheGet("ZmwDashboardConfig", null);
 document.documentElement.setAttribute('data-theme', opts?.theme);
-
-// Fetch prefetch data - preloaded in index.html <head> so response may already be cached
-fetch('/prefetch')
-  .then(r => r.json())
-  .then(data => PrefetchCache.set(data))
-  .catch(() => {}); // Ignore errors, components will fetch individually
 
 ProxiedServices.init(() => {}); // Fetch in background for badge links
 z2mStartReactApp('#app_root', Dashboard);
