@@ -11,6 +11,7 @@ from zzmw_lib.logs import build_logger
 from zzmw_lib.service_runner import service_runner
 
 from pytelegrambot import TelegramLongpollBot
+import requests.exceptions
 
 log = build_logger("ZmwTelegram")
 
@@ -51,7 +52,10 @@ class TelBot(TelegramLongpollBot):
                 self.send_message(msg['from']['id'], f"Invalid argument: {msg['cmd_args'][0]}")
                 return
         self._stfu_until = time.time() + minutes * 60
-        super().send_message(msg['from']['id'], f"Messages suppressed for {minutes} minutes")
+        try:
+            super().send_message(msg['from']['id'], f"Messages suppressed for {minutes} minutes")
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            log.warning("Can't connect to Telegram server: %s", e)
 
     def _is_stfu_active(self):
         return time.time() < self._stfu_until
@@ -60,13 +64,19 @@ class TelBot(TelegramLongpollBot):
         if self._is_stfu_active():
             log.info("Message skipped, stfu active: %s", text)
             return
-        super().send_message(chat_id, text, disable_notifications)
+        try:
+            super().send_message(chat_id, text, disable_notifications)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            log.warning("Can't connect to Telegram server: %s", e)
 
     def send_photo(self, chat_id, fpath, caption=None, disable_notifications=False):
         if self._is_stfu_active():
             log.info("Message skipped, stfu active: %s (caption: %s)", fpath, caption)
             return
-        super().send_photo(chat_id, fpath, caption, disable_notifications)
+        try:
+            super().send_photo(chat_id, fpath, caption, disable_notifications)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            log.warning("Can't connect to Telegram server: %s", e)
 
     def add_commands(self, cmds):
         """Batch commands and register them after a delay.
@@ -91,7 +101,10 @@ class TelBot(TelegramLongpollBot):
             self._cmd_timer = None
         cmd_names = [cmd[0] for cmd in cmds_to_register]
         log.info("Flushing %d batched commands to Telegram: %s", len(cmds_to_register), cmd_names)
-        super().add_commands(cmds_to_register)
+        try:
+            super().add_commands(cmds_to_register)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            log.warning("Can't connect to Telegram server: %s", e)
 
     def _ping(self, _bot, msg):
         log.info('Received user ping, sending pong')
