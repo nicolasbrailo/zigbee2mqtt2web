@@ -2,8 +2,10 @@
 import os
 import socket
 import time
+from .logs import build_logger
+from .runtime_state_cache import runtime_state_cache_get, runtime_state_cache_set
 
-from zzmw_lib.runtime_state_cache import runtime_state_cache_get, runtime_state_cache_set
+log = build_logger("ServiceRunner")
 
 
 def get_lan_ip():
@@ -74,10 +76,12 @@ def get_cached_port(cfg, key, host):
         if is_port_available(host, cached):
             return cached
         # Give it a bit of extra time, our previous instance may still be holding to the port
-        log.info("Cached port %s is not available, will wait to see if it gets freed up", cached)
-        time.sleep(1)
-        if is_port_available(host, cached):
-            return cached
+        for i in range(1, 5):
+            log.info("Cached port %s is not available, will wait to see if it gets freed up...", cached)
+            time.sleep(1)
+            if is_port_available(host, cached):
+                log.info("Using cached port %s", cached)
+                return cached
         log.info("Cached port %s is not available anymore, will select random port", cached)
 
     for port in range(4201, 4300):
