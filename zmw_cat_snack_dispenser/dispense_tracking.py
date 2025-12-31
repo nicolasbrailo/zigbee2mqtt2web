@@ -57,13 +57,21 @@ class DispenseTracking:
             return
 
         if cat_feeder.get('portions_per_day') == self._last_portions_per_day:
-            # Unit bcasted a message, but it's not dispensing food
+            # Unit bcasted a message, but it's not dispensing food. Keep weight in sync
+            # in case it resets separately from portions (e.g., during day change).
+            self._last_weight_per_day = cat_feeder.get('weight_per_day')
             return
 
         portions_dispensed = cat_feeder.get('portions_per_day') - self._last_portions_per_day
         self._last_portions_per_day += portions_dispensed
         weight_dispensed = cat_feeder.get('weight_per_day') - self._last_weight_per_day
-        self._last_weight_per_day += weight_dispensed
+        self._last_weight_per_day = cat_feeder.get('weight_per_day')
+
+        # Sanity check: negative weight indicates a missed day reset
+        if weight_dispensed < 0:
+            log.warning("Detected negative weight_dispensed (%s), likely missed day reset. "
+                        "Resetting weight tracking.", weight_dispensed)
+            weight_dispensed = None
 
         if cat_feeder.get('feeding_source') == 'remote':
             # Someone requested dispensing over Z2M. If it's us, ACK the request in the history. If it's not us,

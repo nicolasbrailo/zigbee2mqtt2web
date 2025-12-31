@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from zzmw_lib.logs import build_logger
+from zzmw_lib.runtime_state_cache import runtime_state_cache_get, runtime_state_cache_set
 
 log = build_logger("NotificationManager")
 
@@ -19,12 +20,11 @@ class NotificationManager:
         self._telegram_day_summary = cfg["telegram_day_summary"]
         self._summary_delay_minutes = cfg.get("telegram_summary_delay_minutes", 5)
 
-        # Daily tracking
-        self._today_dispense_count = 0
-        self._today_portions_dispensed = 0
-        self._today_errors = 0
-        self._today_date = datetime.now().date()
-        self._dispense_events = []  # List of (timestamp, portions, error) tuples
+        # State persistence key
+        self._state_key = f"notification_manager_{feeder_name}"
+
+        # Daily tracking - load from cache or initialize fresh
+        self._load_state()
 
         # Schedule daily summary if enabled
         if self._telegram_day_summary and feeding_schedule:
@@ -58,6 +58,45 @@ class NotificationManager:
             minute=summary_minute,
         )
 
+    def _load_state(self):
+        """Load daily statistics from cache, or initialize fresh if not available or stale."""
+        cached = runtime_state_cache_get(self._state_key)
+        today = datetime.now().date()
+        today_str = today.isoformat()
+
+        if cached and cached.get("date") == today_str:
+            self._today_dispense_count = cached.get("dispense_count", 0)
+            self._today_portions_dispensed = cached.get("portions_dispensed", 0)
+            self._today_errors = cached.get("errors", 0)
+            self._today_date = today
+            # Restore events with timestamps parsed back to datetime
+            self._dispense_events = [
+                (datetime.fromisoformat(e[0]), e[1], e[2])
+                for e in cached.get("events", [])
+            ]
+            log.info("Restored state from cache: %d dispenses, %d portions",
+                     self._today_dispense_count, self._today_portions_dispensed)
+        else:
+            self._today_dispense_count = 0
+            self._today_portions_dispensed = 0
+            self._today_errors = 0
+            self._today_date = today
+            self._dispense_events = []
+
+    def _save_state(self):
+        """Save current daily statistics to cache."""
+        state = {
+            "date": self._today_date.isoformat(),
+            "dispense_count": self._today_dispense_count,
+            "portions_dispensed": self._today_portions_dispensed,
+            "errors": self._today_errors,
+            "events": [
+                (e[0].isoformat(), e[1], e[2])
+                for e in self._dispense_events
+            ]
+        }
+        runtime_state_cache_set(self._state_key, state)
+
     def _reset_daily_stats_if_needed(self):
         """Reset daily statistics if the date has changed."""
         today = datetime.now().date()
@@ -67,6 +106,7 @@ class NotificationManager:
             self._today_errors = 0
             self._today_date = today
             self._dispense_events = []
+            self._save_state()
 
     def notify_dispense_event(self, source, error, portions_dispensed):
         """Handle a dispense event notification."""
@@ -79,6 +119,7 @@ class NotificationManager:
         if error is not None:
             self._today_errors += 1
         self._dispense_events.append((datetime.now(), portions_dispensed, error))
+        self._save_state()
 
         # Build the message
         msg = self._build_dispense_message(source, error, portions_dispensed)

@@ -214,3 +214,34 @@ class TestCheckDispensing:
 
         assert tracker._last_portions_per_day == 7
         assert tracker._last_weight_per_day == 280
+
+    def test_syncs_weight_when_portions_unchanged(self, mock_history, mock_schedule):
+        """Weight should sync even when portions unchanged (e.g., weight resets separately during day change)."""
+        tracker = DispenseTracking(mock_history, mock_schedule)
+        tracker._last_portions_per_day = 0
+        tracker._last_weight_per_day = 42  # Stale weight from previous day
+
+        # Weight reset but portions already 0
+        cat_feeder = self.make_cat_feeder(portions_per_day=0, weight_per_day=0)
+        tracker.check_dispensing(cat_feeder)
+
+        # Weight should be synced even though no dispense occurred
+        assert tracker._last_weight_per_day == 0
+        mock_history.register_dispense.assert_not_called()
+
+    def test_negative_weight_dispensed_triggers_sanity_check(self, mock_history, mock_schedule):
+        """Negative weight_dispensed should be caught and set to None."""
+        tracker = DispenseTracking(mock_history, mock_schedule)
+        tracker._last_portions_per_day = 0
+        tracker._last_weight_per_day = 42  # Stale from missed day reset
+
+        # First dispense of new day - would calculate negative weight without sanity check
+        cat_feeder = self.make_cat_feeder(
+            portions_per_day=2, weight_per_day=14, feeding_source='manual'
+        )
+        tracker.check_dispensing(cat_feeder)
+
+        # Should register with None for weight due to sanity check
+        mock_history.register_dispense.assert_called_once_with('Unit button', 2, None)
+        # Weight should still be synced to current value
+        assert tracker._last_weight_per_day == 14
