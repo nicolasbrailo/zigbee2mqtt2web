@@ -6,6 +6,8 @@ import json
 from json import JSONDecodeError
 
 from zzmw_lib.logs import build_logger
+from zz2m.thing_extras import ThingExtras
+
 log = build_logger("Z2M")
 
 _Z2M_IGNORE_ACTIONS = ['update']
@@ -72,6 +74,7 @@ class Zigbee2MqttThing:
     description: str
     thing_type: str
     actions: ActionDict
+    extras: ThingExtras = None
     is_zigbee_mqtt: bool = True
     # Will print extra verbose logs for each MQTT action
     debug_mqtt_actions: bool = False
@@ -224,6 +227,7 @@ class Zigbee2MqttThing:
             if val is not None:
                 state.update(val)
         state['thing_name'] = self.name
+        state['extras'] = self.extras.get_all()
         return state
 
     def make_mqtt_status_update(self):
@@ -728,4 +732,5 @@ def parse_from_zigbee2mqtt(thing_id, thing, known_aliases=None):
         description=definition.get('description', None),
         thing_type=thing_type,
         actions=actions,
+        extras=ThingExtras(name),
     )

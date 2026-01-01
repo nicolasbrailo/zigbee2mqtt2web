@@ -32,7 +32,7 @@ class Z2MProxy:
         self._z2m_subtopic_cbs = []
         self._init_subtopics()
 
-        self._aliases = {} #TODO cfg['mqtt_device_aliases']
+        self._aliases = {} # Can be used to set up aliases to things if needed
         self._last_device_id = 0
         self._z2m_devices_discovered = False
         self._cb_on_z2m_network_discovery = cb_on_z2m_network_discovery
@@ -187,6 +187,11 @@ class Z2MProxy:
         self._z2m_subtopic_cbs.append((f'{thing.name}/set', thing.on_mqtt_update))
         self._z2m_subtopic_cbs.append((f'{thing.address}/set', thing.on_mqtt_update))
 
+        # We're never unsubscribing if the thing goes away, but the entire service will never forget unreg'ed things either
+        # so it's fine. It'd require a bit of refactoring to properly track registered objects, and since this should very
+        # rarely happen, we can ask the user to reboot the services when the network changes.
+        self._mqtt.subscribe_with_cb(thing.extras.get_mqtt_topic(), thing.extras.on_mqtt_update)
+
     def _reg_to_ignore(self, thing):
         """ Messages for this thing will be explicitlly ignored. This is needed because we register for the root mqtt
         topic, so we get all of the messages that z2m sends, but we want to ignore some of them. Some day, we can 
@@ -254,12 +259,14 @@ class Z2MProxy:
         Notify the bridge that a thing has been updated, and it's time to have
         its state propagated to MQTT-land. Function accepts either a thing or a
         name as input (if a thing is received, no checks are done to verify it's
-        a valid a known thing
+        a valid and known thing).
         """
         if isinstance(thing_or_name, str):
             thing = self.get_thing(thing_or_name)
         else:
             thing = thing_or_name
+
+        # Broadcast regular zigbee2mqtt values
         topic = f'{self._z2m_topic}/{thing.real_name}/set'
         status = thing.make_mqtt_status_update()
         if len(status.keys()) != 0:
@@ -270,7 +277,10 @@ class Z2MProxy:
                 f'(an alias for {thing.real_name})' if thing.real_name != thing.name else '',
                 topic,
                 status)
-        else:
-            log.debug('Thing %s has no updates to bcast', thing.name)
 
-
+        # Broadcast extras (virtual metrics)
+        extras_status = thing.extras.make_mqtt_status_update()
+        if len(extras_status.keys()) != 0:
+            self._mqtt.broadcast(thing.extras.get_mqtt_topic(), extras_status)
+            # Some sensors can be quite spammy, so this will be a very spammy log too
+            # log.debug('Thing bcasting extras: %s %s', thing.extras.get_mqtt_topic(), extras_status)
