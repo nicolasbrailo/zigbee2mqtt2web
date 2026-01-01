@@ -56,6 +56,16 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
             for s in r.get_monitored_sensors().keys():
                 wanted_things.add(s)
 
+        # Register for updates
+        self._thing = create_virtual_thing(
+            name="Weather",
+            description="Outside weather from Open-Meteo",
+            thing_type="sensor",
+            manufacturer="Open-Meteo"
+        )
+        self._z2m.register_virtual_thing(self._thing)
+
+
         self._z2m = Z2MProxy(cfg, self, sched,
                              cb_on_z2m_network_discovery=self._on_z2m_network_discovery,
                              cb_is_device_interesting=lambda t: t.name in wanted_things)

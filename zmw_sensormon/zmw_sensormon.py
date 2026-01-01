@@ -117,7 +117,7 @@ class ZmwSensormon(ZmwMqttNullSvc):
         self.subscribe_with_cb('zmw_shelly_plug', self._shelly_monitor.on_message)
 
         self._outside_weather = OutsideWeatherSensor(
-            self._sensors, sched,
+            self._sensors, self._z2m, sched,
             latitude=cfg['outside_latitude'], longitude=cfg['outside_longitude'],
             update_interval_seconds=300)
 
@@ -126,15 +126,17 @@ class ZmwSensormon(ZmwMqttNullSvc):
 
     def _get_sensor_values(self, name):
         """Unified endpoint to get current sensor values from any backend."""
-        if name == OutsideWeatherSensor.SENSOR_NAME:
-            values = self._outside_weather.get_current_values()
-            return {**values, **compute_virtual_metrics(values)}
+        # Check Shelly devices first (they're not in z2m)
         shelly_data = self._shelly_monitor.get_current_values(name)
         if shelly_data is not None:
             return {**shelly_data, **compute_virtual_metrics(shelly_data)}
+
+        # Try z2m (includes both zigbee things and virtual things like OutsideWeather)
         try:
-            values = self._z2m.get_thing(name).get_json_state()
-            return {**values, **compute_virtual_metrics(values)}
+            vals = self._z2m.get_thing(name).get_json_state()
+            # Some values may come as extras; flatten them
+            vals.update(vals['extras'])
+            return vals
         except KeyError:
             return {}
 

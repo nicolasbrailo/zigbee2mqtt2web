@@ -72,6 +72,19 @@ def _thing_put(z2m, thing_name):
         log.warn('User request error %s', ex, exc_info=True)
         return str(ex), 400
 
+def _thing_get(z2m, thing_name):
+    try:
+        return z2m.get_thing(thing_name).get_json_state()
+    except KeyError as ex:
+        log.warn('User requested non-existing thing. %s', ex, exc_info=True)
+        return f"Thing doesn't exist: {ex}", 404
+    except AttributeError as ex:
+        log.warn('User requested non-existing action for existing thing. %s', ex, exc_info=True)
+        return str(ex), 415
+    except RuntimeError as ex:
+        log.warn('User request error %s', ex, exc_info=True)
+        return str(ex), 400
+
 class Z2Mwebservice:
     def __init__(self, www, z2m):
         www.serve_url('/z2m/get_known_things_hash', z2m.get_known_things_hash)
@@ -79,4 +92,4 @@ class Z2Mwebservice:
         www.serve_url('/z2m/get_world', z2m.get_world_state)
         www.serve_url('/z2m/meta/<thing_name>', _safe_jsonify(z2m.get_thing_meta))
         www.serve_url('/z2m/set/<thing_name>', lambda thing_name: _thing_put(z2m, thing_name), ['PUT', 'POST'])
-        www.serve_url('/z2m/get/<thing_name>', lambda thing_name: z2m.get_thing(thing_name).get_json_state())
+        www.serve_url('/z2m/get/<thing_name>', lambda thing_name: _thing_get(z2m, thing_name))

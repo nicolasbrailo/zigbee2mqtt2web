@@ -194,7 +194,7 @@ class Z2MProxy:
 
     def _reg_to_ignore(self, thing):
         """ Messages for this thing will be explicitlly ignored. This is needed because we register for the root mqtt
-        topic, so we get all of the messages that z2m sends, but we want to ignore some of them. Some day, we can 
+        topic, so we get all of the messages that z2m sends, but we want to ignore some of them. Some day, we can
         register only to interesting messages. """
         def _ignore_msg(_topic, _payload):
             pass
@@ -206,6 +206,24 @@ class Z2MProxy:
         self._z2m_subtopic_cbs.append((f'{thing.real_name}/set', _ignore_msg))
         self._z2m_subtopic_cbs.append((f'{thing.name}/set', _ignore_msg))
         self._z2m_subtopic_cbs.append((f'{thing.address}/set', _ignore_msg))
+
+    def register_virtual_thing(self, thing):
+        """Register a virtual (non-zigbee) thing.
+
+        Virtual things are not backed by zigbee2mqtt devices. They only have extras,
+        and are used for external data sources like weather APIs.
+
+        Args:
+            thing: A thing created with create_virtual_thing()
+        """
+        if thing.name in self._known_things:
+            log.error("Virtual thing %s is already registered or duplicates a name, ignoring new registration", thing.name)
+            return
+
+        self._known_things[thing.name] = thing
+        # Subscribe to extras topic so other services' broadcasts update our local state
+        self._mqtt.subscribe_with_cb(thing.extras.get_mqtt_topic(), thing.extras.on_mqtt_update)
+        log.info("Registered virtual thing: %s", thing.name)
 
     def get_known_things_hash(self):
         """ Returns a 32 bit hash of the names of all known things, to let clients determine if the

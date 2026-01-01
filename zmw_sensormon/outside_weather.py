@@ -6,6 +6,7 @@ import urllib.request
 import urllib.error
 
 from zzmw_lib.logs import build_logger
+from zz2m.thing import create_virtual_thing
 from virtual_metrics import get_virtual_metrics, compute_virtual_metrics
 
 log = build_logger("OutsideWeather")
@@ -15,37 +16,45 @@ class OutsideWeatherSensor:
     """Fetches outside weather data from Open-Meteo and records to sensor history."""
 
     METRICS = ['temperature', 'humidity']
-    SENSOR_NAME = 'Outside'
+    SENSOR_NAME = 'Weather'
 
-    def __init__(self, sensors_history, scheduler, latitude, longitude, update_interval_seconds=300):
+    def __init__(self, sensors_history, z2m, scheduler, latitude, longitude, update_interval_seconds=300):
         """Initialize the outside weather sensor.
 
         Args:
             sensors_history: SensorsHistory instance to save readings
+            z2m: Z2MProxy instance for thing management
             scheduler: Scheduler for periodic updates
             latitude: Location latitude
             longitude: Location longitude
             update_interval_seconds: How often to fetch new data (default: 5 minutes)
         """
         self._sensors = sensors_history
+        self._z2m = z2m
         self._scheduler = scheduler
-        self._latitude = latitude
-        self._longitude = longitude
-        self.update_interval_seconds = update_interval_seconds
-        self._values = {}
 
         self._api_url = (
             f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}"
             "&current=temperature_2m,relative_humidity_2m"
         )
 
+        # Create and register virtual thing
+        self._thing = create_virtual_thing(
+            name=self.SENSOR_NAME,
+            description="Outside weather from Open-Meteo",
+            thing_type="sensor",
+            manufacturer="Open-Meteo"
+        )
+        z2m.register_virtual_thing(self._thing)
+
+        # Register with sensors history
         virtual_metrics = get_virtual_metrics(self.METRICS)
         all_metrics = self.METRICS + virtual_metrics
         self._sensors.register_sensor(self.SENSOR_NAME, all_metrics)
         log.info("Registered outside weather sensor at (%.4f, %.4f), updating every %ds (virtual: %s)",
                  latitude, longitude, update_interval_seconds, virtual_metrics)
 
-        # Schedule periodic updates using APScheduler's add_job
+        # Schedule periodic updates
         self._scheduler.add_job(
             func=self._trigger_async_update,
             trigger="interval",
@@ -54,13 +63,9 @@ class OutsideWeatherSensor:
         # Fetch immediately on startup
         self._trigger_async_update()
 
-    def get(self, metric_name):
-        """Return the current value for a metric."""
-        return self._values.get(metric_name)
-
-    def get_current_values(self):
-        """Return all current values."""
-        return {metric: self.get(metric) for metric in self.METRICS}
+    def get_thing(self):
+        """Return the virtual thing for this sensor."""
+        return self._thing
 
     def _trigger_async_update(self):
         """Trigger an async fetch in a background thread."""
@@ -74,22 +79,30 @@ class OutsideWeatherSensor:
                 raw_response = response.read().decode()
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
             log.warning("Can't reach Open-Meteo service: %s", e)
-            self._values = {metric: None for metric in self.METRICS}
-            self._sensors.save_reading(self.SENSOR_NAME, self._values)
+            values = {metric: None for metric in self.METRICS}
+            self._sensors.save_reading(self.SENSOR_NAME, values)
             return
 
         try:
             data = json.loads(raw_response)
             current = data['current']
-            self._values = {
+            values = {
                 'temperature': current['temperature_2m'],
                 'humidity': current['relative_humidity_2m'],
             }
         except (json.JSONDecodeError, KeyError, TypeError) as e:
             log.error("Failed to parse Open-Meteo response: %s (response: %s)", e, raw_response)
-            self._values = {metric: None for metric in self.METRICS}
-            self._sensors.save_reading(self.SENSOR_NAME, self._values)
+            values = {metric: None for metric in self.METRICS}
+            self._sensors.save_reading(self.SENSOR_NAME, values)
             return
 
-        virtual_values = compute_virtual_metrics(self._values)
-        self._sensors.save_reading(self.SENSOR_NAME, {**self._values, **virtual_values})
+        # Set values on thing.extras
+        for metric, value in values.items():
+            self._thing.extras.set(metric, value)
+
+        # Compute and set virtual metrics
+        virtual_values = compute_virtual_metrics(values, self._thing)
+
+        # Save to history and broadcast
+        self._sensors.save_reading(self.SENSOR_NAME, {**values, **virtual_values})
+        self._z2m.broadcast_thing(self._thing)

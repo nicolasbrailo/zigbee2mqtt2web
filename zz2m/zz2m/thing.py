@@ -734,3 +734,34 @@ def parse_from_zigbee2mqtt(thing_id, thing, known_aliases=None):
         actions=actions,
         extras=ThingExtras(name),
     )
+
+
+def create_virtual_thing(name, description, thing_type, manufacturer):
+    """Create a virtual thing (non-zigbee) that can be registered with Z2MProxy.
+
+    Virtual things have no zigbee actions - all their values are stored in extras.
+    They can be used for external data sources like weather APIs.
+
+    Args:
+        name: Unique name for the thing
+        description: Optional description
+        thing_type: Optional type (e.g., 'sensor', 'weather')
+        manufacturer: Optional manufacturer/source name
+
+    Returns:
+        A Zigbee2MqttThing with is_zigbee_mqtt=False
+    """
+    return Zigbee2MqttThing(
+        thing_id=-1,  # Virtual things don't have zigbee IDs
+        address=f'virtual:{name}',
+        name=name,
+        real_name=name,
+        broken=False,
+        manufacturer=manufacturer,
+        model=None,
+        description=description,
+        thing_type=thing_type,
+        actions=ActionDict(),
+        extras=ThingExtras(name),
+        is_zigbee_mqtt=False,
+    )
