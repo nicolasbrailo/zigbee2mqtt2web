@@ -627,3 +627,61 @@ class TestHistoryRegistration:
         ds._ensure_dispense_registered(8, 0, 1)
 
         mock_history.register_missed_scheduled_dispense.assert_called_once_with(8, 0, 60)
+
+
+class TestEarlyEventBug:
+    """Tests for bug where early events still trigger emergency dispense."""
+
+    @pytest.fixture
+    def mock_history(self):
+        return Mock()
+
+    @pytest.fixture
+    def mock_emergency_cb(self):
+        return Mock()
+
+    def create_schedule(self, mock_history, mock_emergency_cb, feeding_schedule, tolerance_secs=60):
+        return DispensingSchedule(
+            cat_feeder_name="test_feeder",
+            history=mock_history,
+            cb_emergency_dispense=mock_emergency_cb,
+            feeding_schedule=feeding_schedule,
+            tolerance_secs=tolerance_secs,
+            scheduler=Mock(),
+        )
+
+    def test_early_event_should_not_trigger_emergency_dispense(self, mock_history, mock_emergency_cb):
+        """
+        If an event triggers just BEFORE the scheduled time (e.g., 20:29 for a 20:30 schedule),
+        it should be matched to the schedule and prevent subsequent emergency dispenses.
+
+        The fix uses a sentinel value (None) in _pending_check_timers to signal that the
+        schedule was already fulfilled before the scheduled time.
+        """
+        schedule_config = [{'days': 'everyday', 'hour': 20, 'minute': 30, 'serving_size': 1}]
+        ds = self.create_schedule(mock_history, mock_emergency_cb, schedule_config, tolerance_secs=120)
+
+        # Step 1: Event fires at 20:29 (1 minute early, within 120s tolerance)
+        with patch('schedule.datetime') as mock_dt:
+            mock_dt.now.return_value = datetime(2024, 1, 15, 20, 29, 0)
+            ds.register_schedule_triggered(portions_dispensed=1, weight_dispensed=50)
+
+        # Verify the event was correctly matched
+        mock_history.register_scheduled_dispense_on_time.assert_called_once_with(1, 50)
+
+        # Verify sentinel was set (None means "pre-fulfilled")
+        assert (20, 30) in ds._pending_check_timers
+        assert ds._pending_check_timers[(20, 30)] is None
+
+        # Step 2: At 20:30, the scheduler triggers _start_fulfillment_check
+        # It should detect the sentinel and skip timer creation
+        with patch('schedule.threading.Timer') as mock_timer:
+            ds._start_fulfillment_check(20, 30, 1)
+            # Timer should NOT be created because sentinel was detected
+            mock_timer.assert_not_called()
+
+        # Sentinel should be cleaned up
+        assert (20, 30) not in ds._pending_check_timers
+
+        # No emergency dispense should be triggered
+        mock_emergency_cb.assert_not_called()

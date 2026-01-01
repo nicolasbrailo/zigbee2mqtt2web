@@ -80,7 +80,8 @@ class DispensingSchedule:
         self._cb_emergency_dispense = cb_emergency_dispense
         self._feeding_schedule = feeding_schedule
         self._tolerance_secs = tolerance_secs
-        self._pending_check_timers = {}  # key: (hour, minute), value: Timer
+        self._pending_check_timers = {}  # key: (hour, minute), value: Timer or None (sentinel for pre-fulfilled)
+        self._timers_lock = threading.Lock()
 
         self._scheduler = scheduler
         for schedule in self._feeding_schedule:
@@ -104,16 +105,22 @@ class DispensingSchedule:
         was fulfilled after tolerance_secs. """
         key = (scheduled_hour, scheduled_minute)
 
-        # Cancel any existing timer for this slot (shouldn't happen, but just in case)
-        if key in self._pending_check_timers:
-            self._pending_check_timers[key].cancel()
+        with self._timers_lock:
+            if key in self._pending_check_timers:
+                if self._pending_check_timers[key] is None:
+                    # Sentinel: event was already fulfilled before scheduled time (early trigger)
+                    # This can happen if there are small differences in clock between the unit and the server
+                    del self._pending_check_timers[key]
+                    return
+                # Cancel any existing timer for this slot (shouldn't happen, but just in case)
+                self._pending_check_timers[key].cancel()
 
-        self._pending_check_timers[key] = threading.Timer(
-            self._tolerance_secs,
-            self._ensure_dispense_registered,
-            args=[scheduled_hour, scheduled_minute, serving_size]
-        )
-        self._pending_check_timers[key].start()
+            self._pending_check_timers[key] = threading.Timer(
+                self._tolerance_secs,
+                self._ensure_dispense_registered,
+                args=[scheduled_hour, scheduled_minute, serving_size]
+            )
+            self._pending_check_timers[key].start()
 
     def register_schedule_triggered(self, portions_dispensed, weight_dispensed):
         """ Called when the unit reports a dispensing event that triggered on schedule.
@@ -144,9 +151,16 @@ class DispensingSchedule:
         else:
             # Cancel pending check timer since event was fulfilled
             key = (closest_schedule['hour'], closest_schedule['minute'])
-            if key in self._pending_check_timers:
-                self._pending_check_timers[key].cancel()
-                del self._pending_check_timers[key]
+            with self._timers_lock:
+                if key in self._pending_check_timers:
+                    timer = self._pending_check_timers[key]
+                    if timer is not None:
+                        timer.cancel()
+                    del self._pending_check_timers[key]
+                else:
+                    # No timer yet - event triggered before scheduled time
+                    # Set sentinel so _start_fulfillment_check knows to skip
+                    self._pending_check_timers[key] = None
             self._snack_history.register_scheduled_dispense_on_time(portions_dispensed, weight_dispensed)
 
     def _ensure_dispense_registered(self, scheduled_hour, scheduled_minute, serving_size):
@@ -156,8 +170,9 @@ class DispensingSchedule:
         key = (scheduled_hour, scheduled_minute)
 
         # Clean up the timer reference (it has already fired)
-        if key in self._pending_check_timers:
-            del self._pending_check_timers[key]
+        with self._timers_lock:
+            if key in self._pending_check_timers:
+                del self._pending_check_timers[key]
 
         # Event was not fulfilled
         self._snack_history.register_missed_scheduled_dispense(scheduled_hour, scheduled_minute, self._tolerance_secs)
