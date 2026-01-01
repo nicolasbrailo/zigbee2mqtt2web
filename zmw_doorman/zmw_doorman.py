@@ -8,6 +8,7 @@ from zzmw_lib.zmw_mqtt_service import ZmwMqttServiceNoCommands
 from zzmw_lib.logs import build_logger
 
 from door_open_scene import DoorOpenScene
+from door_stats import DoorStats
 
 log = build_logger("ZmwDoorman")
 
@@ -29,8 +30,10 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
         self._telegram_cmd_door_snap = 'door_snap'
 
         self._door_open_scene = DoorOpenScene(cfg, self, sched)
+        self._door_stats = DoorStats(sched)
 
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
+        www.serve_url('/stats', self._door_stats.get_stats)
         self._public_url_base = www.register_www_dir(www_path)
 
 
@@ -76,6 +79,9 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
         if self._cfg["doorbell_contact_sensor"] in msg_topic:
             if msg["entering_non_normal"] == True:
                 self._door_open_scene.maybe_start()
+                self._door_stats.record_door_open()
+            else:
+                self._door_stats.record_door_close()
 
     def on_telegram_cmd(self, cmd, _msg):
         """Handle Telegram commands."""
@@ -110,6 +116,7 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
 
         log.info("Received camera snap, sending over Telegram")
         self.message_svc("ZmwTelegram", "send_photo", {'path': msg['snap_path']})
+        self._door_stats.record_snap(msg['snap_path'])
         self._waiting_on_telegram_snap = None
 
     def on_doorbell_button_pressed(self, msg):
@@ -120,14 +127,17 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
                             'vol': self._cfg.get("doorbell_announce_volume", "default"),
                             'public_www': url})
 
-        if not 'snap_path' in msg:
+        snap_path = msg.get('snap_path')
+        self._door_stats.record_doorbell_press(snap_path)
+
+        if snap_path is None:
             log.warning("Doorbell button pressed but no snap available")
         else:
             log.info("Send visitor snap from doorbell camera")
             self.message_svc("ZmwWhatsapp", "send_photo",
-                             {'path': msg['snap_path'], 'msg': "RING!"})
+                             {'path': snap_path, 'msg': "RING!"})
             self.message_svc("ZmwTelegram", "send_photo",
-                             {'path': msg['snap_path'], 'msg': "RING!"})
+                             {'path': snap_path, 'msg': "RING!"})
 
     def on_door_motion_detected(self, msg):
         """Handle door motion detection event."""
@@ -135,13 +145,18 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
         self.message_svc("ZmwWhatsapp", "send_photo",
                          {'path': msg['path_to_img'], 'msg': "Motion detected"})
         self._door_open_scene.pet_timer()
+        self._door_stats.record_motion_start()
+        if 'path_to_img' in msg:
+            self._door_stats.record_snap(msg['path_to_img'])
 
     def on_door_motion_cleared(self):
         """Handle door motion cleared event."""
         log.info("Door reports motion event cleared")
+        self._door_stats.record_motion_end()
 
     def on_door_motion_timeout(self):
         """Handle door motion timeout event."""
         log.warning("Motion event timedout, no vacancy reported")
+        self._door_stats.record_motion_end()
 
 service_runner(ZmwDoorman)
