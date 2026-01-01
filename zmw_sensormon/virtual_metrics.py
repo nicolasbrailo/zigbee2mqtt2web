@@ -90,11 +90,12 @@ def get_virtual_metrics(sensor_metrics):
     return virtual
 
 
-def compute_virtual_metrics(values):
+def compute_virtual_metrics(values, thing=None):
     """Compute all applicable virtual metrics from sensor values.
 
     Args:
         values: Dict of {metric: value} from the sensor
+        thing: Thing to compute and broadcast extras
 
     Returns:
         Dict of {virtual_metric: computed_value}
@@ -106,7 +107,10 @@ def compute_virtual_metrics(values):
         # Check if all required metrics are present and not None
         if all(values.get(r) is not None for r in required):
             try:
-                result[metric_name] = config['compute'](values)
+                computed = config['compute'](values)
+                result[metric_name] = computed
+                if thing is not None:
+                    thing.extras.set(metric_name, computed)
             except Exception as e:
                 log.error("Error computing virtual metric '%s': %s", metric_name, e)
 

@@ -152,8 +152,10 @@ class ZmwSensormon(ZmwMqttNullSvc):
         """Handle sensor update: save to DB with virtual metrics."""
         metrics = interesting_actions(thing)
         values = {m: thing.get(m) for m in metrics}
-        virtual_values = compute_virtual_metrics(values)
+        virtual_values = compute_virtual_metrics(values, thing)
         self._sensors.save_reading(thing.name, {**values, **virtual_values})
+        if virtual_values:
+            self._z2m.broadcast_thing(thing)
 
     def _on_z2m_network_discovery(self, _is_first_discovery, known_things):
         for thing_name, thing in known_things.items():
