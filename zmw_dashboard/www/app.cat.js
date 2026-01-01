@@ -1241,11 +1241,12 @@ class StandaloneMqttLights extends MqttLights {
   }
 }
 class CamViewer extends React.Component {
-  static buildProps(api_base_path = '', svc_full_url = '') {
+  static buildProps(api_base_path = '', svc_full_url = '', cam_host = '') {
     return {
-      key: 'cam_viewer',
+      key: `cam_viewer_${cam_host}`,
       api_base_path,
       svc_full_url,
+      cam_host,
     };
   }
 
@@ -1257,11 +1258,50 @@ class CamViewer extends React.Component {
       isRecording: false,
       recordDuration: 20,
       recordingTimeLeft: 0,
+      cameras: [],
+      selectedCamera: props.cam_host || '',
+      camerasLoading: !props.cam_host,
+      imageError: false,
     };
     this.countdownInterval = null;
 
     this.onSnapRequested = this.onSnapRequested.bind(this);
     this.onRecordRequested = this.onRecordRequested.bind(this);
+    this.onCameraSelected = this.onCameraSelected.bind(this);
+    this.onImageError = this.onImageError.bind(this);
+  }
+
+  componentDidMount() {
+    if (!this.props.cam_host) {
+      this.fetchCameras();
+    }
+  }
+
+  fetchCameras() {
+    mJsonGet(`${this.props.api_base_path}/ls_cams`,
+      (cameras) => {
+        this.setState({
+          cameras: cameras,
+          camerasLoading: false,
+          selectedCamera: cameras.length > 0 ? cameras[0] : '',
+        });
+      },
+      (err) => {
+        showGlobalError("Failed to fetch cameras: " + err);
+        this.setState({ camerasLoading: false });
+      });
+  }
+
+  onCameraSelected(e) {
+    this.setState({
+      selectedCamera: e.target.value,
+      imageTimestamp: Date.now(),
+      imageError: false,
+    });
+  }
+
+  onImageError() {
+    this.setState({ imageError: true });
   }
 
   on_app_became_visible() {
@@ -1273,15 +1313,17 @@ class CamViewer extends React.Component {
 
   onSnapRequested() {
     this.setState({ isLoading: true });
+    const cam_host = this.state.selectedCamera || this.props.cam_host;
 
-    mTextGet(`${this.props.api_base_path}/snap`,
+    mTextGet(`${this.props.api_base_path}/snap/${cam_host}`,
       () => {
         console.log("Snapshot captured");
         // Refresh the image by updating timestamp
         setTimeout(() => {
           this.setState({
             imageTimestamp: Date.now(),
-            isLoading: false
+            isLoading: false,
+            imageError: false,
           });
         }, 500); // Small delay to ensure snapshot is saved
       },
@@ -1293,9 +1335,10 @@ class CamViewer extends React.Component {
 
   onRecordRequested() {
     const secs = this.state.recordDuration;
+    const cam_host = this.state.selectedCamera || this.props.cam_host;
     this.setState({ isRecording: true, recordingTimeLeft: secs });
 
-    mTextGet(`${this.props.api_base_path}/record?secs=${secs}`,
+    mTextGet(`${this.props.api_base_path}/record/${cam_host}?secs=${secs}`,
       () => {
         console.log(`Recording started for ${secs} seconds`);
         this.countdownInterval = setInterval(() => {
@@ -1316,8 +1359,41 @@ class CamViewer extends React.Component {
   }
 
   render() {
+    const { api_base_path, svc_full_url } = this.props;
+    const { selectedCamera, cameras, camerasLoading, imageError } = this.state;
+    const cam_host = selectedCamera || this.props.cam_host;
+    const lastSnapUrl = cam_host ? `${api_base_path}/lastsnap/${cam_host}?t=${this.state.imageTimestamp}` : '';
+    const imgSrc = imageError ? `${api_base_path}/no-snap.png` : lastSnapUrl;
+    const showCameraSelector = !this.props.cam_host && cameras.length > 0;
+
+    if (camerasLoading) {
+      return (
+        <section id="zwm_reolink_doorcam">
+          <p>Loading cameras...</p>
+        </section>
+      );
+    }
+
+    if (!cam_host) {
+      return (
+        <section id="zwm_reolink_doorcam">
+          <p>No cameras available</p>
+        </section>
+      );
+    }
+
     return (
       <section id="zwm_reolink_doorcam">
+        {showCameraSelector && (
+          <div>
+            <label>Camera: </label>
+            <select value={selectedCamera} onChange={this.onCameraSelected}>
+              {cameras.map(cam => (
+                <option key={cam} value={cam}>{cam}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <button onClick={this.onSnapRequested} disabled={this.state.isLoading || this.state.isRecording}>
             {this.state.isLoading ? "Capturing..." : "Take New Snapshot"}
@@ -1325,7 +1401,7 @@ class CamViewer extends React.Component {
           <button onClick={this.onRecordRequested} disabled={this.state.isRecording || this.state.isLoading}>
             {this.state.isRecording ? `Recording (${this.state.recordingTimeLeft}s)...` : `Record Video (${this.state.recordDuration}s)`}
           </button>
-          <button onClick={() => window.location.href=`${this.props.svc_full_url}/nvr`}>View Recordings</button>
+          <button onClick={() => window.location.href=`${svc_full_url}/nvr`}>View Recordings</button>
           <input
             type="range"
             min="10"
@@ -1336,11 +1412,12 @@ class CamViewer extends React.Component {
           />
         </div>
 
-        <a href={`${this.props.api_base_path}/lastsnap?t=${this.state.imageTimestamp}`}>
+        <a href={lastSnapUrl}>
         <img
           className="img-always-on-screen quite-round"
-          src={`${this.props.api_base_path}/lastsnap?t=${this.state.imageTimestamp}`}
-          alt="Last doorbell snap"
+          src={imgSrc}
+          alt={`Last snap from ${cam_host}`}
+          onError={this.onImageError}
         /></a>
       </section>
     );

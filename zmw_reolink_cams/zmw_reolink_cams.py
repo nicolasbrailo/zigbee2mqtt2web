@@ -110,6 +110,7 @@ class ZmwReolinkCams(ZmwMqttService):
         self.nvr = Nvr(cfg['rec_path'], cfg.get('snap_path_on_movement'), www)
 
         # Register Flask routes
+        www.serve_url('/ls_cams', self._get_online_cams)
         www.serve_url('/snap/<cam_host>', self._get_snap_for_cam)
         www.serve_url('/lastsnap/<cam_host>', self._get_last_snap_for_cam)
         www.serve_url('/record/<cam_host>', self._record_for_cam)
@@ -140,6 +141,13 @@ class ZmwReolinkCams(ZmwMqttService):
             if cam.failed_to_connect():
                 alerts.append(f"Doorbell {cam_host} is not connected")
         return alerts
+
+    def _get_online_cams(self):
+        cams = []
+        for cam_host, cam in self.cams.items():
+            if not cam.failed_to_connect():
+                cams.append(cam_host)
+        return cams
 
     def _get_snap_for_cam(self, cam_host):
         """Get a new snapshot from specific camera"""
