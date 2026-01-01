@@ -11,6 +11,8 @@ Connects to Zigbee2MQTT, discovers all light devices on the network, and exposes
 * An extended configuration panel is shown for lights that support extra settings. Currently supported: RGB, colour temperature, light effects.
 * Backend service contains random patches to work around/normalize behaviour of a few different lights, eg adding support for RGB methods where only CIE XY is supported. Don't try to pick black colour for your lights.
 * Backend provides a hash for the known lights. This lets the frontend query copious amount of metadata per light, and cache it, without risk of showing a stale network to the user.
+* Switches support: because switches behave very closely to lights, this service will also offer an endpoint to query switches.
+* User-defined actions: users may specify a set of actions when creating the react component. By providing a map of {label => url}, the lights service will render this in its matching group. This can be used to set up scenes, or any other quick action.
 
 ## WWW Endpoints
 

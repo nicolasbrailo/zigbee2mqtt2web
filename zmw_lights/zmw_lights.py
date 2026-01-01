@@ -16,33 +16,55 @@ class ZmwLights(ZmwMqttNullSvc):
     def __init__(self, cfg, www, sched):
         super().__init__(cfg)
         self._lights = []
+        self._switches = []
 
         # Set up www directory and endpoints
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         www.register_www_dir(www_path)
         www.serve_url('/get_lights', lambda: [l.get_json_state() for l in self._lights])
+        www.serve_url('/get_switches', lambda: [s.get_json_state() for s in self._switches])
 
         self._z2m = Z2MProxy(cfg, self, sched,
                              cb_on_z2m_network_discovery=self._on_z2m_network_discovery,
-                             cb_is_device_interesting=lambda t: t.thing_type == 'light')
+                             cb_is_device_interesting=lambda t: t.thing_type in ('light', 'switch'))
         self._z2mw = Z2Mwebservice(www, self._z2m)
 
 
     def _on_z2m_network_discovery(self, is_first_discovery, known_things):
-        log.info("Z2M network discovered, there are %d lights", len(known_things))
-        old_light_names = {light.name for light in self._lights}
-        self._lights = self._z2m.get_all_registered_things()
-        new_light_names = {light.name for light in self._lights}
+        all_things = self._z2m.get_all_registered_things()
+        new_lights = [t for t in all_things if t.thing_type == 'light']
+        new_switches = [t for t in all_things if t.thing_type == 'switch']
 
-        if not is_first_discovery and old_light_names != new_light_names:
-            added = new_light_names - old_light_names
-            removed = old_light_names - new_light_names
-            if added:
-                log.warning("New lights discovered: %s", ', '.join(added))
-            if removed:
-                log.warning("Lights no longer available: %s", ', '.join(removed))
+        log.info("Z2M network discovered, there are %d lights and %d switches",
+                 len(new_lights), len(new_switches))
+
+        old_light_names = {light.name for light in self._lights}
+        new_light_names = {light.name for light in new_lights}
+        old_switch_names = {switch.name for switch in self._switches}
+        new_switch_names = {switch.name for switch in new_switches}
+
+        if not is_first_discovery:
+            if old_light_names != new_light_names:
+                added = new_light_names - old_light_names
+                removed = old_light_names - new_light_names
+                if added:
+                    log.warning("New lights discovered: %s", ', '.join(added))
+                if removed:
+                    log.warning("Lights no longer available: %s", ', '.join(removed))
+            if old_switch_names != new_switch_names:
+                added = new_switch_names - old_switch_names
+                removed = old_switch_names - new_switch_names
+                if added:
+                    log.warning("New switches discovered: %s", ', '.join(added))
+                if removed:
+                    log.warning("Switches no longer available: %s", ', '.join(removed))
+
+        self._lights = new_lights
+        self._switches = new_switches
 
         for light in self._lights:
             log.info("Discovered light %s", light.name)
+        for switch in self._switches:
+            log.info("Discovered switch %s", switch.name)
 
 service_runner(ZmwLights)

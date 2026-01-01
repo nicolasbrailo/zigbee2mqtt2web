@@ -701,12 +701,12 @@ function filterMeta(meta) {
   return filtered;
 }
 
-async function getLightsMeta(api_base_path, lights) {
-  // Fetch metadata for all lights in parallel
-  const metaPromises = lights.map((light) => {
+async function getThingsMeta(api_base_path, things) {
+  // Fetch metadata for all things in parallel
+  const metaPromises = things.map((thing) => {
     return new Promise((resolve) => {
-      mJsonGet(`${api_base_path}/z2m/meta/${light.thing_name}`, (meta) => {
-        resolve({ name: light.thing_name, meta: filterMeta(meta) });
+      mJsonGet(`${api_base_path}/z2m/meta/${thing.thing_name}`, (meta) => {
+        resolve({ name: thing.thing_name, meta: filterMeta(meta) });
       });
     });
   });
@@ -778,25 +778,65 @@ function getPrefixGroups(lightNames) {
   return groups;
 }
 
-function groupLightsByPrefix(lights) {
-  const lightNames = lights.map(light => light.thing_name);
-  const groupsByName = getPrefixGroups(lightNames);
+function groupThingsByPrefix(things) {
+  // things = [{ name: 'X', type: 'light'|'button'|'switch', ... }, ...]
+  const names = things.map(t => t.name);
+  const prefixGroups = getPrefixGroups(names);
 
-  // Convert name groups to light object groups
-  const lightsByName = {};
-  for (const light of lights) {
-    lightsByName[light.thing_name] = light;
+  const thingsByName = {};
+  for (const thing of things) {
+    thingsByName[thing.name] = thing;
   }
 
   const groups = {};
-  const sortedPrefixes = Object.keys(groupsByName).sort((a, b) => a.localeCompare(b));
+  const sortedPrefixes = Object.keys(prefixGroups).sort((a, b) => {
+    if (a === 'Others') return 1;
+    if (b === 'Others') return -1;
+    return a.localeCompare(b);
+  });
+
   for (const prefix of sortedPrefixes) {
-    groups[prefix] = groupsByName[prefix]
-      .map(name => lightsByName[name])
-      .sort((a, b) => a.thing_name.localeCompare(b.thing_name));
+    groups[prefix] = prefixGroups[prefix]
+      .map(name => thingsByName[name])
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   return groups;
+}
+
+function normalizeThings(lights, switches, buttons) {
+  const things = [];
+
+  // Add lights
+  for (const light of lights) {
+    things.push({
+      name: light.thing_name,
+      type: 'light',
+      data: light,
+    });
+  }
+
+  // Add switches
+  for (const sw of switches) {
+    things.push({
+      name: sw.thing_name,
+      type: 'switch',
+      data: sw,
+    });
+  }
+
+  // Add buttons
+  for (const buttonObj of buttons) {
+    const buttonName = Object.keys(buttonObj)[0];
+    const buttonUrl = buttonObj[buttonName];
+    things.push({
+      name: buttonName,
+      type: 'button',
+      data: { name: buttonName, url: buttonUrl },
+    });
+  }
+
+  return things;
 }
 
 class ZmwLight extends React.Component {
@@ -985,38 +1025,46 @@ class ZmwButton extends React.Component {
   }
 }
 
-function groupButtonsByLightPrefixes(buttons, lightPrefixes) {
-  // buttons is an array like [{"ButtonName": "url"}, ...]
-  // lightPrefixes is the list of group prefixes from lights (including "Others")
-  const groups = {};
-  const prefixList = lightPrefixes.filter(p => p !== 'Others').sort((a, b) => b.length - a.length);
+class ZmwSwitch extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      state: props.switch.state,
+    };
+  }
 
-  for (const buttonObj of buttons) {
-    const buttonName = Object.keys(buttonObj)[0];
-    const buttonUrl = buttonObj[buttonName];
-    let assigned = false;
-
-    // Try to match button name to existing light prefixes (longest match first)
-    for (const prefix of prefixList) {
-      if (buttonName.startsWith(prefix)) {
-        if (!groups[prefix]) {
-          groups[prefix] = [];
-        }
-        groups[prefix].push({ name: buttonName, url: buttonUrl });
-        assigned = true;
-        break;
-      }
-    }
-
-    if (!assigned) {
-      if (!groups['Others']) {
-        groups['Others'] = [];
-      }
-      groups['Others'].push({ name: buttonName, url: buttonUrl });
+  componentDidUpdate(prevProps) {
+    if (prevProps.switch !== this.props.switch) {
+      this.setState({
+        state: this.props.switch.state,
+      });
     }
   }
 
-  return groups;
+  onStateChange(e) {
+    const v = e.target.checked;
+    this.setState({ state: v });
+    mJsonPut(`${this.props.api_base_path}/z2m/set/${this.props.switch.thing_name}`, {state: v});
+  }
+
+  render() {
+    const sw = this.props.switch;
+    const displayName = sw.thing_name.startsWith(this.props.prefix)
+      ? sw.thing_name.slice(this.props.prefix.length)
+      : sw.thing_name;
+    return (
+      <li>
+        <input
+          id={`${sw.thing_name}_switch_is_on`}
+          type="checkbox"
+          value="true"
+          checked={this.state.state}
+          onChange={(e) => this.onStateChange(e)}
+        />
+        <label htmlFor={`${sw.thing_name}_switch_is_on`}>{displayName}</label>
+      </li>
+    );
+  }
 }
 
 class MqttLights extends React.Component {
@@ -1031,104 +1079,148 @@ class MqttLights extends React.Component {
 
   constructor(props) {
     super(props);
+    // Compute initial groups from buttons (available immediately via props)
+    const initialThings = normalizeThings([], [], props.buttons || []);
+    const initialGroups = groupThingsByPrefix(initialThings);
     this.state = {
-      lights: null,
+      lights: [],
+      switches: [],
+      meta: {},
+      groups: initialGroups,
+      sortedPrefixes: Object.keys(initialGroups),
+      loading: true,
     };
   }
 
   async componentDidMount() {
-    this.fetchLights();
+    this.fetchThings();
   }
 
   componentDidUpdate(prevProps) {
-    // Re-compute button groups if buttons prop changed
-    if (prevProps.buttons !== this.props.buttons && this.state.groups) {
-      const lightPrefixes = Object.keys(this.state.groups);
-      const buttonGroups = groupButtonsByLightPrefixes(this.props.buttons || [], lightPrefixes);
-      const sortedPrefixes = this.computeSortedPrefixes(this.state.groups, buttonGroups);
-      this.setState({ buttonGroups, sortedPrefixes });
+    // Re-compute groups if buttons prop changed
+    if (prevProps.buttons !== this.props.buttons) {
+      this.recomputeGroups();
     }
   }
 
   on_app_became_visible() {
-    this.fetchLights();
+    this.fetchThings();
   }
 
-  computeSortedPrefixes(groups, buttonGroups) {
-    const allPrefixes = new Set([
-      ...Object.keys(groups),
-      ...Object.keys(buttonGroups || {})
-    ]);
-    return Array.from(allPrefixes).sort((a, b) => {
-      if (a === 'Others') return 1;
-      if (b === 'Others') return -1;
-      return a.localeCompare(b);
-    });
-  }
-
-  setLightsState(lights, meta) {
-    const groups = groupLightsByPrefix(lights);
-    const lightPrefixes = Object.keys(groups);
-    const buttonGroups = groupButtonsByLightPrefixes(this.props.buttons || [], lightPrefixes);
-    const sortedPrefixes = this.computeSortedPrefixes(groups, buttonGroups);
-    this.setState({ lights, groups, meta, buttonGroups, sortedPrefixes });
+  recomputeGroups() {
+    const allThings = normalizeThings(
+      this.state.lights,
+      this.state.switches,
+      this.props.buttons || []
+    );
+    const groups = groupThingsByPrefix(allThings);
+    this.setState({ groups, sortedPrefixes: Object.keys(groups) });
   }
 
   clearCache() {
     const storage = this.props.local_storage;
-    storage.remove('zmw_lights_hash');
-    storage.remove('lights_meta');
-    this.fetchLights();
+    storage.remove('zmw_things_hash');
+    storage.remove('things_meta');
+    this.fetchThings();
   }
 
-  fetchLights() {
+  async fetchAndUpdateThings(type, endpoint) {
     const storage = this.props.local_storage;
-    const cachedHash = storage.get('zmw_lights_hash', null);
 
-    // Always fetch lights state
-    mJsonGet(`${this.props.api_base_path}/get_lights`, async (lights) => {
-      // Check hash to decide if we need to fetch metadata
-      mJsonGet(`${this.props.api_base_path}/z2m/get_known_things_hash`, async (serverHash) => {
-        const cachedMeta = storage.cacheGet('lights_meta');
+    return new Promise(resolve => {
+      mJsonGet(`${this.props.api_base_path}${endpoint}`, async (things) => {
+        // Fetch metadata for these things
+        const cachedHash = storage.get('zmw_things_hash', null);
+        const cachedMeta = storage.cacheGet('things_meta') || {};
 
-        if (cachedHash && cachedHash === serverHash && cachedMeta) {
-          // Hash matches and we have cached metadata, use it
-          this.setLightsState(lights, cachedMeta);
-          return;
+        // Check if we need fresh metadata
+        const serverHashPromise = new Promise(r =>
+          mJsonGet(`${this.props.api_base_path}/z2m/get_known_things_hash`, r)
+        );
+        const serverHash = await serverHashPromise;
+
+        let metaForThings = {};
+        if (cachedHash && cachedHash === serverHash) {
+          // Use cached metadata for known things
+          for (const thing of things) {
+            if (cachedMeta[thing.thing_name]) {
+              metaForThings[thing.thing_name] = cachedMeta[thing.thing_name];
+            }
+          }
+          // Fetch metadata for any things not in cache
+          const uncachedThings = things.filter(t => !cachedMeta[t.thing_name]);
+          if (uncachedThings.length > 0) {
+            const freshMeta = await getThingsMeta(this.props.api_base_path, uncachedThings);
+            metaForThings = { ...metaForThings, ...freshMeta };
+          }
+        } else {
+          // Hash changed, fetch all metadata fresh
+          metaForThings = await getThingsMeta(this.props.api_base_path, things);
+          storage.save('zmw_things_hash', serverHash);
         }
 
-        // Hash doesn't match or no cache, fetch metadata
-        const metaByName = await getLightsMeta(this.props.api_base_path, lights);
-        storage.save('zmw_lights_hash', serverHash);
-        storage.cacheSave('lights_meta', metaByName);
-        this.setLightsState(lights, metaByName);
+        // Merge into cached metadata
+        const newCachedMeta = { ...cachedMeta, ...metaForThings };
+        storage.cacheSave('things_meta', newCachedMeta);
+
+        // Update state with new things and merged metadata
+        this.setState(prevState => {
+          const newState = {
+            [type]: things,
+            meta: { ...prevState.meta, ...metaForThings },
+          };
+          // Recompute groups with updated data
+          const lights = type === 'lights' ? things : prevState.lights;
+          const switches = type === 'switches' ? things : prevState.switches;
+          const allThings = normalizeThings(lights, switches, this.props.buttons || []);
+          const groups = groupThingsByPrefix(allThings);
+          newState.groups = groups;
+          newState.sortedPrefixes = Object.keys(groups);
+          newState.loading = false;
+          return newState;
+        });
+
+        resolve(things);
       });
     });
   }
 
+  fetchThings() {
+    // Fetch lights and switches independently - UI updates as each arrives
+    this.fetchAndUpdateThings('lights', '/get_lights');
+    this.fetchAndUpdateThings('switches', '/get_switches');
+  }
+
   render() {
-    if (!this.state.lights) {
+    // Show loading only if we have no content yet
+    const hasContent = this.state.sortedPrefixes.length > 0;
+    if (this.state.loading && !hasContent) {
       return ( <div className="app-loading">Loading...</div> );
     }
 
     return (
       <div id="zmw_lights">
         {this.state.sortedPrefixes.map((prefix) => {
-          const lights = this.state.groups[prefix] || [];
-          const buttons = (this.state.buttonGroups || {})[prefix] || [];
+          const things = this.state.groups[prefix] || [];
+          const buttons = things.filter(t => t.type === 'button');
+          const switches = things.filter(t => t.type === 'switch');
+          const lights = things.filter(t => t.type === 'light');
           return (
             <details key={prefix}>
               <summary>{prefix}</summary>
               <ul>
                 {(buttons.length > 0) && (
                   <li>
-                  {buttons.map((button) => (
-                    <ZmwButton key={button.name} name={button.name} url={button.url} prefix={prefix} />
+                  {buttons.map((t) => (
+                    <ZmwButton key={t.name} name={t.data.name} url={t.data.url} prefix={prefix} />
                   ))}
                   </li>
                 )}
-                {lights.map((light) => (
-                  <ZmwLight key={light.thing_name} light={light} meta={this.state.meta[light.thing_name]} prefix={prefix} api_base_path={this.props.api_base_path} />
+                {switches.map((t) => (
+                  <ZmwSwitch key={t.name} switch={t.data} prefix={prefix} api_base_path={this.props.api_base_path} />
+                ))}
+                {lights.map((t) => (
+                  <ZmwLight key={t.name} light={t.data} meta={this.state.meta[t.name]} prefix={prefix} api_base_path={this.props.api_base_path} />
                 ))}
               </ul>
             </details>
@@ -1272,6 +1364,7 @@ function buildUrlForPeriod(period, prefix = '/history') {
 function renderSensorValues(sensorData, metrics) {
   function getUnit(metric) {
     const units = {
+      feels_like_temp: '°C',
       temperature: '°C',
       device_temperature: '°C',
       humidity: '%',
