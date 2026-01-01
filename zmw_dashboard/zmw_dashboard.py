@@ -35,7 +35,7 @@ class ZmwDashboard(ZmwMqttServiceMonitor):
     def __init__(self, cfg, www, sched):
         # These are the minimum dep list that we know we'll need; there may be more, and we'll proxy all known
         # services, but we need at least these to have a healthy service running.
-        min_deps = ["ZmwLights", "ZmwSpeakerAnnounce", "ZmwContactmon", "ZmwHeating", "ZmwReolinkDoorbell",
+        min_deps = ["ZmwLights", "ZmwSpeakerAnnounce", "ZmwContactmon", "ZmwHeating", "ZmwReolinkCams",
                     "ZmwSensormon"]
         super().__init__(cfg, sched, svc_deps=min_deps)
 
