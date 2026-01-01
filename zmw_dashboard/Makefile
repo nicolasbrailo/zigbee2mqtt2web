@@ -4,7 +4,7 @@ devrun::
 	/usr/bin/authbind --deep pipenv run python3 ./zmw_dashboard.py
 
 install_svc::
-	../scripts/install_svc.sh . "/usr/bin/authbind --deep pipenv"
+	../scripts/install_svc.sh . "/usr/bin/authbind --deep "
 
 rebuild_ui::
 	cat \
