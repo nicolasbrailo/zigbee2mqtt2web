@@ -5,6 +5,14 @@ from datetime import datetime, timedelta
 from history import DispensingHistory
 
 
+@pytest.fixture(autouse=True)
+def mock_runtime_state_cache():
+    """Mock the runtime state cache to prevent state restoration during tests."""
+    with patch('history.runtime_state_cache_get', return_value=None), \
+         patch('history.runtime_state_cache_set'):
+        yield
+
+
 class TestGetHistory:
     """Tests for get_history method."""
 

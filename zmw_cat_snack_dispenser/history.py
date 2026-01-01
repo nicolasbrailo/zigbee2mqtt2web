@@ -3,20 +3,63 @@ from datetime import datetime
 import threading
 
 from zzmw_lib.logs import build_logger
+from zzmw_lib.runtime_state_cache import runtime_state_cache_get, runtime_state_cache_set
 
 log = build_logger("DispensingHistory")
 
 class DispensingHistory:
     def __init__(self, cat_feeder_name, history_len, cb_on_dispense):
         self._cat_feeder_name = cat_feeder_name
+        self._history_len = history_len
         self._feed_history = deque(maxlen=history_len)
         self._last_dispense_request_id = 0
         self._dispense_ack_timeout = 5
         self._pending_dispense_timeout_job = None
         self._notify_dispense_event = cb_on_dispense
 
+        self._state_key = f"dispensing_history_{cat_feeder_name}"
+        self._load_state()
+
     def get_history(self):
         return list(self._feed_history)
+
+    def _load_state(self):
+        """Load history from cache."""
+        cached = runtime_state_cache_get(self._state_key)
+        if not cached:
+            return
+
+        self._last_dispense_request_id = cached.get("last_dispense_request_id", 0)
+        history_entries = cached.get("feed_history", [])
+
+        for entry in history_entries:
+            # Deserialize datetime fields
+            restored = dict(entry)
+            if restored.get("time_requested"):
+                restored["time_requested"] = datetime.fromisoformat(restored["time_requested"])
+            if restored.get("time_acknowledged"):
+                restored["time_acknowledged"] = datetime.fromisoformat(restored["time_acknowledged"])
+            self._feed_history.append(restored)
+
+        log.info("Restored %d history entries from cache", len(self._feed_history))
+
+    def _save_state(self):
+        """Save history to cache."""
+        serialized_history = []
+        for entry in self._feed_history:
+            serialized = dict(entry)
+            # Serialize datetime fields
+            if serialized.get("time_requested"):
+                serialized["time_requested"] = serialized["time_requested"].isoformat()
+            if serialized.get("time_acknowledged"):
+                serialized["time_acknowledged"] = serialized["time_acknowledged"].isoformat()
+            serialized_history.append(serialized)
+
+        state = {
+            "last_dispense_request_id": self._last_dispense_request_id,
+            "feed_history": serialized_history,
+        }
+        runtime_state_cache_set(self._state_key, state)
 
     def register_request(self, source, serving_size):
         """ Call when a feeding request is triggered, to append to history and start a timer that will monitor that
@@ -47,6 +90,7 @@ class DispensingHistory:
                     break
                 # if we go can't find an entry to match it to, there isn't much we can do other than log
 
+            self._save_state()
             log.error("'%s' failed to acknowledge dispensing event %s, make sure unit is responding",
                       self._cat_feeder_name, event_id)
             self._pending_dispense_timeout_job = None
@@ -90,6 +134,7 @@ class DispensingHistory:
             unacked_entry['time_acknowledged'] = datetime.now()
             unacked_entry['portions_dispensed'] = portions_dispensed
             unacked_entry['weight_dispensed'] = weight_dispensed
+            self._save_state()
             log.info("'%s' acknowledged dispensing event %s, dispensed %s portions",
                       self._cat_feeder_name, unacked_entry['dispense_event_id'], portions_dispensed)
             self._notify_dispense_event(source=unacked_entry['source'],
@@ -135,6 +180,7 @@ class DispensingHistory:
                           error=error)
         self._feed_history[-1]['unit_acknowledged'] = True
         self._feed_history[-1]['time_acknowledged'] = datetime.now()
+        self._save_state()
         self._notify_dispense_event(source, error, portions_dispensed)
 
     def register_error(self, source, msg):
@@ -163,3 +209,4 @@ class DispensingHistory:
             "start_portions_per_day": None,
             "start_weight_per_day": None,
         })
+        self._save_state()

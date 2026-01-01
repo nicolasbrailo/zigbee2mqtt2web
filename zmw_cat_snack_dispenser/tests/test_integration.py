@@ -13,6 +13,14 @@ from history import DispensingHistory
 from schedule import DispensingSchedule
 
 
+@pytest.fixture(autouse=True)
+def mock_runtime_state_cache():
+    """Mock the runtime state cache to prevent state restoration during tests."""
+    with patch('history.runtime_state_cache_get', return_value=None), \
+         patch('history.runtime_state_cache_set'):
+        yield
+
+
 class IntegrationTestBase:
     """Base class with helpers for integration tests."""
 
