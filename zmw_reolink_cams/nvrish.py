@@ -1,8 +1,9 @@
-"""NVR-ish web interface for camera recordings."""
+"""NVR-ish web interface for camera recordings and snapshots."""
 import os
 from datetime import datetime, timedelta
 from flask import send_from_directory, jsonify, redirect, request
 from ffmpeg_helper import gen_thumbnail_from_video
+
 
 def _get_cams(base_path):
     if not os.path.exists(base_path) or not os.path.isdir(base_path):
@@ -21,6 +22,7 @@ def _format_file_size(sz):
     if sz < 1024 * 1024:
         return f"{sz / 1024:.0f} KB"
     return f"{sz / (1024 * 1024):.0f} MB"
+
 
 def _get_cam_recordings(base_path, cam, days=None):
     path = os.path.join(base_path, cam)
@@ -46,17 +48,38 @@ def _get_cam_recordings(base_path, cam, days=None):
     return path, recs
 
 
+def _get_cam_snapshots(base_path, cam):
+    """Get all snapshots for a camera, sorted newest first."""
+    if base_path is None:
+        return None, None
+
+    path = os.path.join(base_path, cam)
+    if not os.path.exists(path) or not os.path.isdir(path):
+        return None, None
+
+    snaps = []
+    for fname in os.listdir(path):
+        if fname.endswith('.jpg'):
+            fpath = os.path.join(path, fname)
+            ftime = os.path.getmtime(fpath)
+            snaps.append((fname, fpath, ftime))
+    snaps.sort(key=lambda x: x[2], reverse=True)
+    return path, snaps
+
 
 class Nvr:
-    """Web interface for browsing and viewing camera recordings."""
-    def __init__(self, nvr_path, flask_app):
+    """Web interface for browsing and viewing camera recordings and snapshots."""
+    def __init__(self, nvr_path, snap_path, flask_app):
         self._nvr_path = nvr_path
+        self._snap_path = snap_path
 
         # Redirect /nvr to the React app
         flask_app.add_url_rule('/nvr', None, lambda: redirect('/nvr.html'))
         flask_app.add_url_rule('/nvr/api/cameras', None, self._api_list_cams)
         flask_app.add_url_rule('/nvr/api/<cam>/recordings', None, self._api_list_recordings)
+        flask_app.add_url_rule('/nvr/api/<cam>/snapshots', None, self._api_list_snapshots)
         flask_app.add_url_rule('/nvr/<cam>/get_recording/<file>', None, self._get_recording)
+        flask_app.add_url_rule('/nvr/<cam>/get_snapshot/<file>', None, self._get_snapshot)
 
     def _api_list_cams(self):
         """Return JSON list of available cameras."""
@@ -94,6 +117,23 @@ class Nvr:
 
         return jsonify({'recordings': recordings})
 
+    def _api_list_snapshots(self, cam):
+        """Return JSON list of snapshots for a camera."""
+        path, snaps = _get_cam_snapshots(self._snap_path, cam)
+
+        if path is None:
+            return jsonify({'snapshots': []})
+
+        snapshots = []
+        for (fname, _, ftime) in snaps:
+            snapshots.append({
+                'filename': fname,
+                'timestamp': ftime,
+                'url': f'/nvr/{cam}/get_snapshot/{fname}'
+            })
+
+        return jsonify({'snapshots': snapshots})
+
     def _get_recording(self, cam, file):
         path = os.path.join(self._nvr_path, cam)
         if not os.path.exists(path) or not os.path.isdir(path):
@@ -102,5 +142,20 @@ class Nvr:
         fpath = os.path.join(path, file)
         if not os.path.exists(fpath) or not os.path.isfile(fpath):
             return f"Can't get unknown recording {file} for unknown cam {cam}", 404
+
+        return send_from_directory(path, file)
+
+    def _get_snapshot(self, cam, file):
+        """Serve a snapshot file."""
+        if self._snap_path is None:
+            return "Snapshots not configured", 404
+
+        path = os.path.join(self._snap_path, cam)
+        if not os.path.exists(path) or not os.path.isdir(path):
+            return f"Can't get snapshot for unknown cam {cam}", 404
+
+        fpath = os.path.join(path, file)
+        if not os.path.exists(fpath) or not os.path.isfile(fpath):
+            return f"Can't get unknown snapshot {file} for cam {cam}", 404
 
         return send_from_directory(path, file)

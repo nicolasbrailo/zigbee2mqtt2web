@@ -2,6 +2,7 @@
   "cam_host": "10.0.0.20",
   "cam_user": "admin",
   "cam_pass": "",
+  "is_doorbell": true,
 
   "COMMENT": "Watchdog for cam subscription",
   "cam_subscription_check_interval_secs": 60,
@@ -11,7 +12,7 @@
   "cam_movement_active_watchdog": 60,
 
   "COMMENT_snap_path_on_movement": "If set, will save a single snapshot of the camera whenever movement is detected",
-  "snap_path_on_movement": "/home/batman/src/BatiCasa/web_assets/doorbell_snap.jpg",
+  "snap_path_on_movement": "/home/batman/src/BatiCasa/web_assets/cam_snaps",
 
   "COMMENT": "Record a clip when movement is reported",
   "rec_on_movement": true,

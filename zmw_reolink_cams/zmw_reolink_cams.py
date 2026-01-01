@@ -1,4 +1,4 @@
-"""MQTT doorbell camera service with motion detection and recording."""
+"""MQTT camera service with motion detection and recording."""
 import os
 import pathlib
 import time
@@ -14,15 +14,17 @@ from nvrish import Nvr
 
 log = build_logger("ZmwReolinkCams")
 
-class ZmwReolinkDoorbellCam(ReolinkDoorbell):
+
+class ZmwReolinkCam(ReolinkDoorbell):
     """ Link Reolink events to mqtt b-casts """
 
     def __init__(self, cfg, webhook_url, mqtt, scheduler):
         super().__init__(cfg, webhook_url, scheduler)
         self._mqtt = mqtt
+        self._is_doorbell_cam = cfg.get('is_doorbell', False)
 
     def on_doorbell_button_pressed(self, cam_host, snap_path, full_cam_msg):
-        self._mqtt.on_doorbell_pressed()
+        self._mqtt.on_doorbell_pressed(cam_host)
         self._mqtt.publish_own_svc_message("on_doorbell_button_pressed", {
             'event': 'on_doorbell_button_pressed',
             'cam_host': cam_host,
@@ -82,89 +84,121 @@ class ZmwReolinkDoorbellCam(ReolinkDoorbell):
             'path': path,
         })
 
-class ZmwReolinkCam(ZmwMqttService):
-    """ Bridge between Zmw services and a Reolink cam """
+
+class ZmwReolinkCams(ZmwMqttService):
+    """ Bridge between Zmw services and multiple Reolink cams """
     DOORBELL_ALERT_DURATION_SECS = 60
 
     def __init__(self, cfg, www, sched):
-        super().__init__(cfg, "zmw_reolink_doorbell", scheduler=sched)
-        self._doorbell_pressed_at = None
+        super().__init__(cfg, "zmw_reolink_cams", scheduler=sched)
+        self._doorbell_pressed_at = {}  # cam_host -> timestamp
 
-        # Initialize camera and NVR
-        self.cam = ZmwReolinkDoorbellCam(cfg, webhook_url=f"{www.public_url_base}/doorbell", mqtt=self, scheduler=sched)
-        self.nvr = Nvr(cfg['rec_path'], www)
+        # Initialize cameras from config array
+        self.cams = {}
+        for cam_cfg in cfg['cameras']:
+            cam_host = cam_cfg['cam_host']
+            merged_cfg = dict(cfg)
+            merged_cfg.update(cam_cfg)
+            webhook_url = f"{www.public_url_base}/cam/{cam_host}"
+            cam = ZmwReolinkCam(merged_cfg, webhook_url=webhook_url, mqtt=self, scheduler=sched)
+            self.cams[cam_host] = cam
+
+            # Register webhook endpoint for this camera
+            www.serve_url(f'/cam/{cam_host}', cam.on_cam_webhook, methods=['GET', 'POST'])
+
+        # Initialize NVR
+        self.nvr = Nvr(cfg['rec_path'], cfg.get('snap_path_on_movement'), www)
 
         # Register Flask routes
-        www.serve_url('/doorbell', self.cam.on_cam_webhook, methods=['GET', 'POST'])
-        www.serve_url('/snap', self._get_snap)
-        www.serve_url('/lastsnap', self._get_last_snap)
-        www.serve_url('/record', self._record)
+        www.serve_url('/snap/<cam_host>', self._get_snap_for_cam)
+        www.serve_url('/lastsnap/<cam_host>', self._get_last_snap_for_cam)
+        www.serve_url('/record/<cam_host>', self._record_for_cam)
 
         # Register www directory
         wwwdir = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         www.register_www_dir(wwwdir)
 
-        # Connect to camera (starts background tasks)
-        self.cam.connect()
+        # Connect to all cameras
+        for cam_host, cam in self.cams.items():
+            log.info("Connecting to camera %s...", cam_host)
+            cam.connect_bg()
 
-    def on_doorbell_pressed(self):
-        """Record when the doorbell was pressed"""
-        self._doorbell_pressed_at = time.time()
+    def on_doorbell_pressed(self, cam_host):
+        """Record when a doorbell was pressed"""
+        self._doorbell_pressed_at[cam_host] = time.time()
 
     def get_service_alerts(self):
-        """Return alert if doorbell was pressed within the last 60 seconds"""
-        if self._doorbell_pressed_at is None:
-            return []
-        elapsed = time.time() - self._doorbell_pressed_at
-        if elapsed < self.DOORBELL_ALERT_DURATION_SECS:
-            secs_ago = int(elapsed)
-            return [f"Doorbell pressed {secs_ago} seconds ago"]
-        return []
+        """Return alerts for any doorbell pressed within the last 60 seconds"""
+        alerts = []
+        now = time.time()
+        for cam_host, pressed_at in self._doorbell_pressed_at.items():
+            elapsed = now - pressed_at
+            if elapsed < self.DOORBELL_ALERT_DURATION_SECS:
+                secs_ago = int(elapsed)
+                alerts.append(f"Doorbell {cam_host} pressed {secs_ago} seconds ago")
+        for cam_host, cam in self.cams.items():
+            if cam.failed_to_connect():
+                alerts.append(f"Doorbell {cam_host} is not connected")
+        return alerts
 
-    def _get_snap(self):
-        """Get a new snapshot from camera"""
-        snap_path = self.cam.get_snapshot()
+    def _get_snap_for_cam(self, cam_host):
+        """Get a new snapshot from specific camera"""
+        if cam_host not in self.cams:
+            return jsonify({'error': f'Unknown camera {cam_host}'}), 404
+        snap_path = self.cams[cam_host].get_snapshot()
         if snap_path is None:
             return jsonify({'error': 'Failed to get snapshot from camera'}), 500
         return send_file(snap_path, mimetype='image/jpeg')
 
-    def _get_last_snap(self):
-        """Get the last saved snapshot"""
-        snap_path = self.cam.get_last_snapshot_path()
+    def _get_last_snap_for_cam(self, cam_host):
+        """Get the last saved snapshot from specific camera"""
+        if cam_host not in self.cams:
+            return jsonify({'error': f'Unknown camera {cam_host}'}), 404
+        snap_path = self.cams[cam_host].get_last_snapshot_path()
         if snap_path is None:
             return jsonify({'error': 'No snapshot available'}), 404
         return send_file(snap_path, mimetype='image/jpeg')
 
-    def _record(self):
-        """Start video recording with duration validation"""
+    def _record_for_cam(self, cam_host):
+        """Start video recording on specific camera"""
+        if cam_host not in self.cams:
+            return jsonify({'error': f'Unknown camera {cam_host}'}), 404
         try:
             secs = request.args.get('secs', type=int)
             if secs is None or secs < 5 or secs > 120:
                 return jsonify({'error': f'Invalid duration {secs}, must be [5, 120]'}), 400
 
-            self.cam.start_recording(secs)
-            return jsonify({'status': 'ok', 'duration': secs})
+            self.cams[cam_host].start_recording(secs)
+            return jsonify({'status': 'ok', 'duration': secs, 'cam_host': cam_host})
         except ValueError:
             return jsonify({'error': 'Invalid secs parameter'}), 400
 
     def stop(self):
         """Cleanup on shutdown"""
-        log.info("Stopping doorbell service: disconnect from camera...")
-        self.cam.disconnect()
+        log.info("Stopping camera service: disconnecting from cameras...")
+        for cam_host, cam in self.cams.items():
+            log.info("Disconnecting from camera %s...", cam_host)
+            cam.disconnect()
         super().stop()
 
     def on_service_received_message(self, subtopic, payload):
         """Handle MQTT messages for snapshot and recording commands."""
+        cam_host = payload.get('cam_host')
+        cam = self.cams.get(cam_host)
+        if cam is None:
+            log.warning("Received message for unknown camera: %s", cam_host)
+            return
+
         match subtopic:
             case "snap":
                 self.publish_own_svc_message("on_snap_ready", {
                     'event': 'on_snap_ready',
-                    'cam_host': self.cam.get_cam_host(),
-                    'snap_path': self.cam.get_snapshot(),
+                    'cam_host': cam.get_cam_host(),
+                    'snap_path': cam.get_snapshot(),
                 })
             case "rec":
-                self.cam.start_recording(payload.get('secs', None))
+                cam.start_recording(payload.get('secs', None) if payload else None)
             case _:
                 pass
 
-service_runner(ZmwReolinkCam)
+service_runner(ZmwReolinkCams)

@@ -2,6 +2,7 @@ function NVRViewer(props) {
   const [cameras, setCameras] = React.useState([]);
   const [selectedCam, setSelectedCam] = React.useState(null);
   const [recordings, setRecordings] = React.useState([]);
+  const [snapshots, setSnapshots] = React.useState([]);
   const [days, setDays] = React.useState(3);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -19,10 +20,12 @@ function NVRViewer(props) {
   }, []);
 
   React.useEffect(() => {
-    // Fetch recordings when camera or days changes
+    // Fetch recordings and snapshots when camera or days changes
     if (!selectedCam) return;
 
     setIsLoading(true);
+
+    // Fetch recordings
     mJsonGet(`${props.api_base_path}/nvr/api/${selectedCam}/recordings?days=${days}`,
       (data) => {
         setRecordings(data.recordings);
@@ -30,6 +33,16 @@ function NVRViewer(props) {
       },
       (err) => {
         setIsLoading(false);
+      }
+    );
+
+    // Fetch snapshots
+    mJsonGet(`${props.api_base_path}/nvr/api/${selectedCam}/snapshots`,
+      (data) => {
+        setSnapshots(data.snapshots || []);
+      },
+      (err) => {
+        setSnapshots([]);
       }
     );
   }, [selectedCam, days]);
@@ -45,6 +58,26 @@ function NVRViewer(props) {
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const monthName = monthNames[month - 1] || `Month ${month}`;
       return `${monthName} - ${day.toString().padStart(2, '0')} - ${hr.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    } catch (e) {
+      return filename;
+    }
+  };
+
+  const formatSnapshotFilename = (filename) => {
+    try {
+      // Expected format: snap_YYYYMMDD_HHMMSS.jpg
+      const dateStr = filename.replace('snap_', '').split('.')[0];
+      const parts = dateStr.split('_');
+      const datePart = parts[0];
+      const timePart = parts[1];
+      const month = parseInt(datePart.substring(4, 6));
+      const day = parseInt(datePart.substring(6, 8));
+      const hr = parseInt(timePart.substring(0, 2));
+      const minute = parseInt(timePart.substring(2, 4));
+      const sec = parseInt(timePart.substring(4, 6));
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const monthName = monthNames[month - 1] || `Month ${month}`;
+      return `${monthName} ${day} - ${hr.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
     } catch (e) {
       return filename;
     }
@@ -87,22 +120,47 @@ function NVRViewer(props) {
       </details>
 
       {isLoading ? (
-        <p>Loading recordings...</p>
-      ) : recordings.length === 0 ? (
-        <p>No recordings found for the selected period</p>
+        <p>Loading...</p>
       ) : (
-        <div className="gallery">
-          {recordings.map((rec, idx) => (
-            <figure key={idx}>
-              <a href={rec.video_url} target="_blank">
-                <img src={rec.thumbnail_url || 'thumbnail-gen-failed'} alt={rec.filename}/>
-                <figcaption>
-                  {formatFilename(rec.filename)} ({rec.size})
-                </figcaption>
-              </a>
-            </figure>
-          ))}
-        </div>
+        <>
+          {snapshots.length > 0 && (
+            <details open>
+              <summary>Recent Snapshots ({snapshots.length})</summary>
+              <div className="gallery snapshots">
+                {snapshots.map((snap, idx) => (
+                  <figure key={idx}>
+                    <a href={snap.url} target="_blank">
+                      <img src={snap.url} alt={snap.filename}/>
+                      <figcaption>
+                        {formatSnapshotFilename(snap.filename)}
+                      </figcaption>
+                    </a>
+                  </figure>
+                ))}
+              </div>
+            </details>
+          )}
+
+          <details open>
+            <summary>Recordings ({recordings.length})</summary>
+            {recordings.length === 0 ? (
+              <p>No recordings found for the selected period</p>
+            ) : (
+              <div className="gallery">
+                {recordings.map((rec, idx) => (
+                  <figure key={idx}>
+                    <a href={rec.video_url} target="_blank">
+                      <img src={rec.thumbnail_url || 'thumbnail-gen-failed'} alt={rec.filename}/>
+                      <figcaption>
+                        {formatFilename(rec.filename)} ({rec.size})
+                      </figcaption>
+                    </a>
+                  </figure>
+                ))}
+              </div>
+            )}
+          </details>
+        </>
       )}
     </section>
   );

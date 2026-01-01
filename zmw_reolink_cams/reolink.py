@@ -3,15 +3,19 @@
 import asyncio
 import time
 import logging
+import aiohttp
 
 from abc import ABC, abstractmethod
 
 from flask import request as FlaskRequest
-from threading import Lock
+from threading import Lock, Thread
 
 from rtsp import Rtsp
+from snap_on_movement import SnapOnMovement
 
 from zzmw_lib.logs import build_logger
+
+import reolink_aio
 from reolink_aio.api import Host as ReolinkDoorbellHost
 from reolink_aio.exceptions import ReolinkError, SubscriptionError
 from reolink_aio.helpers import parse_reolink_onvif_event
@@ -26,9 +30,12 @@ logging.getLogger("reolink_aio.helpers").setLevel(logging.ERROR)
 
 
 async def _connect_to_cam(cam_host, cam_user, cam_pass, webhook_url, rtsp_cbs,
-                          rec_path, rec_retention_days, rec_default_duration_secs, scheduler):
-    log.info("Connecting to doorbell at %s...", cam_host)
-    cam = ReolinkDoorbellHost(cam_host, cam_user, cam_pass, use_https=True)
+                          rec_path, rec_retention_days, rec_default_duration_secs, scheduler,
+                          is_doorbell):
+    log.info("Connecting to camera at %s...", cam_host)
+    cam = ReolinkDoorbellHost(cam_host, cam_user, cam_pass, use_https=True,
+                              # We assume all cams are LAN based, so make the timeout quite small
+                              timeout=3)
 
     # Fetch all cam state, or throw on failure
     await cam.get_host_data()
@@ -45,20 +52,21 @@ async def _connect_to_cam(cam_host, cam_user, cam_pass, webhook_url, rtsp_cbs,
             log.warning("Failed to cleanup old subscriptions for cam %s (continuing): %s", cam_host, e)
 
         try:
+            log.info('Subscribe camera to announce callback "%s"', webhook_url)
             await cam.subscribe(webhook_url)
         except ReolinkError:
             log.error("Failed to subscribe to cam %s events", cam_host, exc_info=True)
             # subscribe failure is critical, re-raising
             raise
 
-    log.info("Connected to doorbell %s %s model %s - firmware %s",
+    log.info("Connected to camera %s %s model %s - firmware %s",
              cam_host,
              cam.camera_name(0),
              cam.camera_model(0),
              cam.camera_sw_version(0))
 
-    if not cam.is_doorbell(0):
-        log.error("Something is wrong, %s reports it isn't a doorbell!", cam_host)
+    if is_doorbell and not cam.is_doorbell(0):
+        log.error("Camera %s is configured as doorbell but reports it isn't one!", cam_host)
 
     # RTSP failure is non-critical, recording will be disabled
     try:
@@ -82,8 +90,8 @@ class ReolinkDoorbell(ABC):
         self._cam_host = cfg['cam_host']
         self._cam_user = cfg['cam_user']
         self._cam_pass = cfg['cam_pass']
+        self._is_doorbell = cfg.get('is_doorbell', False)
 
-         # Single cam supported, should add an endpoint identifier to support multiple cams
         self._webhook_url = webhook_url
         self._cfg = cfg
 
@@ -94,17 +102,16 @@ class ReolinkDoorbell(ABC):
         self._motion_evt_job = None
 
         self.rtsp = None
-        self._snap_path_on_movement = None
-        if 'snap_path_on_movement' in cfg:
-            self._snap_path_on_movement = cfg['snap_path_on_movement']
-            self._last_snap = self._snap_path_on_movement
-        self._rec_on_movement = cfg['rec_on_movement'] if 'rec_on_movement' in cfg else False
+        self._snap_manager = SnapOnMovement(cfg)
+
+        self._rec_on_movement = cfg.get('rec_on_movement', False)
         self._rec_path = cfg['rec_path']
         self._rec_retention_days = int(cfg['rec_retention_days'])
         self._rec_default_duration_secs = int(cfg['rec_default_duration_secs'])
 
         self._scheduler = scheduler
-        self._runner = asyncio.get_event_loop()
+        self._runner = asyncio.new_event_loop()
+        self._runner_thread = None
         self._announce_lock = Lock()
 
         self._cam_subscription_watchdog = self._scheduler.add_job(
@@ -112,57 +119,90 @@ class ReolinkDoorbell(ABC):
             trigger="interval",
             seconds=cfg['cam_subscription_check_interval_secs'])
 
+    def _start_runner_thread(self):
+        """Start the event loop running in a background thread."""
+        def _run_loop():
+            asyncio.set_event_loop(self._runner)
+            self._runner.run_forever()
+
+        self._runner_thread = Thread(target=_run_loop, daemon=True)
+        self._runner_thread.start()
+
+    def _run_async(self, coro):
+        """Schedule a coroutine on the event loop and wait for result."""
+        future = asyncio.run_coroutine_threadsafe(coro, self._runner)
+        return future.result()
+
     def get_cam_host(self):
         """Get camera host address."""
         return self._cam_host
 
-    def connect(self):
-        """ Logs in and subscribes to camera events """
-        log.info('Expect doorbell to announce back to "%s"', self._webhook_url)
+    def connect_bg(self):
+        """ Logs in and subscribes to camera events (non-blocking) """
         self._should_be_connected = True
-        try:
-            camtask = _connect_to_cam(self._cam_host, self._cam_user, self._cam_pass, self._webhook_url, self,
-                                      self._rec_path, self._rec_retention_days, self._rec_default_duration_secs,
-                                      self._scheduler)
-            self._cam, self.rtsp = self._runner.run_until_complete(camtask)
-        except ReolinkError:
-            log.error("Failed to reconnect to cam %s, will retry later", self._cam_host, exc_info=True)
+        if self._runner_thread is None:
+            self._start_runner_thread()
+
+        camtask = _connect_to_cam(self._cam_host, self._cam_user, self._cam_pass, self._webhook_url, self,
+                                  self._rec_path, self._rec_retention_days, self._rec_default_duration_secs,
+                                  self._scheduler, self._is_doorbell)
+
+        def on_done(future):
+            try:
+                self._cam, self.rtsp = future.result()
+            except (reolink_aio.exceptions.LoginError, reolink_aio.exceptions.ReolinkTimeoutError) as e:
+                log.error("Can't connect to camera %s, please check host is up and config is correct: %s", self._cam_host, e)
+            except ReolinkError:
+                log.error("Failed to connect to cam %s, will retry later", self._cam_host, exc_info=True)
+
+        future = asyncio.run_coroutine_threadsafe(camtask, self._runner)
+        future.add_done_callback(on_done)
+
+    def failed_to_connect(self):
+        return self._should_be_connected and not self._cam
 
     def __del__(self):
         self.disconnect()
 
     def disconnect(self):
         """ Logs out and tries to cleanup subscriptions to events in the camera """
-        if not self._should_be_connected:
+        if not self._should_be_connected or not self._cam:
             # Constructor failed or already disconnected
             return
 
         async def _async_deinit():
-            log.info("Disconnecting from doorbell at %s...", self._cam_host)
+            log.info("Disconnecting from camera at %s...", self._cam_host)
             try:
                 await self._cam.unsubscribe()
+                log.info("Unsubscribed camera %s from callbacks", self._cam_host)
             except ReolinkError:
                 log.warning("Failed to unsubscribe during disconnect from %s", self._cam_host, exc_info=True)
             try:
                 await self._cam.logout()
+                log.info("Logged out camera %s", self._cam_host)
             except ReolinkError:
                 log.warning("Failed to logout during disconnect from %s", self._cam_host, exc_info=True)
+
         self._should_be_connected = False
         self._cam_subscription_watchdog.remove()
-        self._runner.run_until_complete(_async_deinit())
+        self._run_async(_async_deinit())
+        log.info("Camera %s now disconnected", self._cam_host)
+        self._runner.call_soon_threadsafe(self._runner.stop)
+        self._runner_thread.join()
         self._runner.close()
         self._cam = None
 
     def _check_cam_subscription(self):
-        if not self._should_be_connected:
+        if not self._should_be_connected or not self._cam:
             # Not init'd yet or subscription not required
             return
 
         def _reconnect():
             try:
                 camtask = _connect_to_cam(self._cam_host, self._cam_user, self._cam_pass, self._webhook_url, self,
-                                          self._rec_path, self._rec_retention_days, self._rec_default_duration_secs)
-                self._cam, self.rtsp = self._runner.run_until_complete(camtask)
+                                          self._rec_path, self._rec_retention_days, self._rec_default_duration_secs,
+                                          self._scheduler, self._is_doorbell)
+                self._cam, self.rtsp = self._run_async(camtask)
             except ReolinkError:
                 log.error("Failed to reconnect to cam %s, will retry later", self._cam_host, exc_info=True)
 
@@ -212,7 +252,7 @@ class ReolinkDoorbell(ABC):
             log.error("Error checking for cam %s subscription, will force renew", self._cam_host, exc_info=True)
 
         if must_renew:
-            self._runner.run_until_complete(_renew_async())
+            self._run_async(_renew_async())
 
     def on_cam_webhook(self):
         """Handle incoming webhook notifications from camera."""
@@ -241,6 +281,7 @@ class ReolinkDoorbell(ABC):
         # msg should look something like this: {
         #   'Motion': False, 'MotionAlarm': False, 'Visitor': False, 'FaceDetect': False,
         #   'PeopleDetect': False, 'VehicleDetect': False, 'DogCatDetect': False}
+        # Note: 'Visitor' key is only present for doorbell cameras
 
         def debounce(msg, key, key_must_exist=True):
             if key not in msg:
@@ -259,7 +300,9 @@ class ReolinkDoorbell(ABC):
             self._debounce_msg[f'{key}_last_true'] = time.time()
             return debounced_active
 
-        if debounce(msg, 'Visitor'):
+        if debounce(msg, 'Visitor', key_must_exist=self._is_doorbell):
+            if not self._is_doorbell:
+                log.error("Something weird is going on, non-doorbell '%s' reports doorbell button press", self._cam_host)
             log.info("Doorbell cam %s says someone pressed the visitor button", self._cam_host)
             self.on_doorbell_button_pressed(self._cam_host, self.get_snapshot(), msg)
 
@@ -270,7 +313,7 @@ class ReolinkDoorbell(ABC):
                     self.rtsp.pet_timer()
                 break
 
-        if msg['PeopleDetect'] and not msg['Motion'] and not msg['MotionAlarm']:
+        if msg.get('PeopleDetect') and not msg['Motion'] and not msg['MotionAlarm']:
             log.debug("Ignoring camera %s event: people detect outside alarm zone.", self._cam_host)
             return
 
@@ -305,13 +348,13 @@ class ReolinkDoorbell(ABC):
 
     def _motion_check_active(self):
         try:
-            state_updated = self._runner.run_until_complete(self._cam.get_ai_state_all_ch())
+            state_updated = self._run_async(self._cam.get_ai_state_all_ch())
         except ReolinkError as e:
             log.warning("Failed to poll AI state for cam %s: %s", self._cam_host, e)
             state_updated = False
 
         if state_updated and self._cam.motion_detected(0):
-            log.info("Doorbell cam %s motion timeout, but motion still active. Waiting more.", self._cam_host)
+            log.info("Camera %s motion timeout, but motion still active. Waiting more.", self._cam_host)
             self._motion_evt_job = self._scheduler.add_job(
                 func=self._motion_check_active,
                 trigger="interval",
@@ -319,9 +362,9 @@ class ReolinkDoorbell(ABC):
             return
 
         if not state_updated:
-            log.info("Doorbell cam %s motion timeout, polling state failed", self._cam_host)
+            log.info("Camera %s motion timeout, polling state failed", self._cam_host)
         elif not self._cam.motion_detected(0):
-            log.info("Doorbell cam %s motion timeout, and motion not active: event lost?", self._cam_host)
+            log.info("Camera %s motion timeout, and motion not active: event lost?", self._cam_host)
 
         self._motion_evt_job = None
         # Timeout may be more than the watchdog, if the WD was reset at any point
@@ -330,47 +373,36 @@ class ReolinkDoorbell(ABC):
 
     def _on_motion_detected(self, motion_level, cam_msg):
         """ Motion detect event fired. Higher motion level means more confidence. """
-        log.info("Doorbell cam %s says someone is at the door", self._cam_host)
-
-        if self._snap_path_on_movement is not None:
-            try:
-                self.get_snapshot(self._snap_path_on_movement)
-            except Exception:  # pylint: disable=broad-except
-                log.error("Failed to save doorbell snapshot", exc_info=True)
-                return
-
+        log.info("Camera %s detected motion (level %d)", self._cam_host, motion_level)
+        snap_path = self.get_snapshot()
         if self._rec_on_movement:
             self.start_recording()
-        self.on_motion_detected(self._cam_host, self._snap_path_on_movement, motion_level, cam_msg)
+        self.on_motion_detected(self._cam_host, snap_path, motion_level, cam_msg)
 
-    def get_snapshot(self, fpath=None):
-        """ Save a snapshot of the camera feed to fpath """
-        fpath = self._snap_path_on_movement if fpath is None else fpath
-        if fpath is None:
-            log.info("Cam %s has no path to save a snapshot, skipping", self._cam_host)
+    def get_snapshot(self):
+        """ Capture a snapshot from camera and save it via snap_manager """
+        if not self._cam:
+            log.warning("Requested snapshot from %s, but camera is offline", self._cam_host)
             return None
 
-        log.info("Cam %s will save snapshot to %s", self._cam_host, fpath)
+        if not self._snap_manager.is_enabled():
+            return None
+
         try:
-            snapshot_data = self._runner.run_until_complete(self._cam.get_snapshot(0))
-            if snapshot_data is None:
-                log.error("Cam %s returned empty snapshot", self._cam_host)
-                return None
-            with open(fpath, 'wb') as fp:
-                fp.write(snapshot_data)
+            snapshot_data = self._run_async(self._cam.get_snapshot(0))
         except ReolinkError:
             log.error("Failed to get snapshot from cam %s", self._cam_host, exc_info=True)
             return None
-        except IOError:
-            log.error("Failed to write snapshot to %s", fpath, exc_info=True)
-            return None
 
-        self._last_snap = fpath
-        return fpath
+        return self._snap_manager.save_snapshot(snapshot_data)
 
     def get_last_snapshot_path(self):
         """Get path to the last saved snapshot."""
-        return self._last_snap
+        return self._snap_manager.get_last_snap()
+
+    def get_snap_manager(self):
+        """Get the snapshot manager for this camera."""
+        return self._snap_manager
 
     def start_recording(self, duration_secs=None):
         """Start RTSP recording for specified duration."""
