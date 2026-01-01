@@ -1,5 +1,5 @@
 # Auto-discover all subdirectories with Makefiles
-LINT_DIRS := $(patsubst %/Makefile,%,$(wildcard */Makefile))
+DIRS_WITH_MKFILE := $(patsubst %/Makefile,%,$(wildcard */Makefile))
 TEST_DIRS := $(patsubst %/tests,%,$(wildcard */tests))
 
 .PHONY: systemdeps
@@ -13,20 +13,27 @@ test:
 		make -C $$dir test || true; \
 	done
 
+.PHONY: install_all_services
+install_all_services:
+	@echo "This will reset and restart all services, if you're sure you want this uncomment this target in the Makefile"
+	@for dir in $(DIRS_WITH_MKFILE); do \
+		make -C $$dir install_svc ; \
+	done
+
 .PHONY: rebuild_all_ui
 rebuild_all_ui:
 	@echo "Running rebuild_ui on all projects..."
-	@for dir in $(LINT_DIRS); do \
+	@for dir in $(DIRS_WITH_MKFILE); do \
 		make -C $$dir rebuild_ui || true; \
 	done
 
 .PHONY: lint
 lint:
 	@echo "Running lint on all projects..."
-	@for dir in $(LINT_DIRS); do \
+	@for dir in $(DIRS_WITH_MKFILE); do \
 		make -C $$dir lint || true; \
 	done
-	@for dir in $(LINT_DIRS); do \
+	@for dir in $(DIRS_WITH_MKFILE); do \
 		if [ -f $$dir/lint ]; then \
 			score=$$(grep "rated at" $$dir/lint | tail -1); \
 			if [ -n "$$score" ]; then \
@@ -37,7 +44,7 @@ lint:
 
 .PHONY: cat-lints
 cat-lints:
-	@for dir in $(LINT_DIRS); do \
+	@for dir in $(DIRS_WITH_MKFILE); do \
 		if [ -f $$dir/lint ]; then \
 			echo "==================== $$dir ===================="; \
 			cat $$dir/lint; \

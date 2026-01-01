@@ -19,6 +19,14 @@ Who should use this? If you:
 
 You may find this project useful.
 
+## New setup
+
+* Clone the repo
+* make systemdeps
+* Install mosquitto and zigbee2mqtt (check out scripts/install_*.sh)
+* make install_all_services
+* Good luck.
+
 ## Architecture and Creating a new service
 
 ZMW is pretty simple:
