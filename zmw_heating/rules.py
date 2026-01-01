@@ -14,10 +14,8 @@ MIN_REASONABLE_T = -5
 # T above this will be assumed to be a reading error and ignored
 MAX_REASONABLE_T = 45
 
-METRIC_TEMP = 'temperature'
-
-def safe_read_sensor(zmw, sensor):
-    """Read sensor temp, return None if unavailable or invalid."""
+def safe_read_sensor(zmw, sensor, metric):
+    """Read sensor metric, return None if unavailable or invalid."""
     if zmw is None:
         log.debug("Attempted to read sensor %s, but z2m not set yet", sensor)
         return None
@@ -28,32 +26,36 @@ def safe_read_sensor(zmw, sensor):
         log.debug("Sensor %s is not known, ignoring this tick().", sensor)
         return None
 
-    if METRIC_TEMP not in thing.actions:
-        log.debug("Sensor %s isn't monitoring %s, ignoring this tick()", sensor, METRIC_TEMP)
+    # Try reading from thing.actions first
+    if metric in thing.actions:
+        val = thing.get(metric)
+    elif metric in thing.extras:
+        val = thing.extras.get(metric)
+    else:
+        log.debug("Sensor %s isn't monitoring %s, ignoring this tick()", sensor, metric)
         return None
 
-    temp = thing.get(METRIC_TEMP)
     try:
-        float(temp)
+        float(val)
     except (ValueError, TypeError):
-        log.debug("Sensor %s returned temp=%s, which isn't a number. Ignoring.", sensor, temp)
+        log.debug("Sensor %s returned %s=%s, which isn't a number. Ignoring.", sensor, metric, val)
         return None
 
-    temp = float(temp)
-    if temp > MAX_REASONABLE_T:
+    val = float(val)
+    if val > MAX_REASONABLE_T:
         log.debug(
-            "Sensor %s returned temp=%s, which is probably a reading error "
+            "Sensor %s returned %s=%s, which is probably a reading error "
             "(expected less than %s). Ignoring.",
-            sensor, temp, MAX_REASONABLE_T)
+            sensor, metric, val, MAX_REASONABLE_T)
         return None
-    if temp < MIN_REASONABLE_T:
+    if val < MIN_REASONABLE_T:
         log.debug(
-            "Sensor %s returned temp=%s, which is probably a reading error "
+            "Sensor %s returned %s=%s, which is probably a reading error "
             "(expected less than %s). Ignoring.",
-            sensor, temp, MIN_REASONABLE_T)
+            sensor, metric, val, MIN_REASONABLE_T)
         return None
 
-    return temp
+    return val
 
 class MqttHeatingRule(ABC):
     @abstractmethod
@@ -119,7 +121,7 @@ class CheckTempsWithinRange(MqttHeatingRule):
         log.info("\t- turn on if temp < %d", self.min_temp)
 
     def get_monitored_sensors(self):
-        return {s: safe_read_sensor(self._zmw, s) for s in self.sensors_to_monitor}
+        return {s: safe_read_sensor(self._zmw, s, 'temperature') for s in self.sensors_to_monitor}
 
     def set_z2m(self, z2m):
         self._zmw = z2m
@@ -137,7 +139,7 @@ class CheckTempsWithinRange(MqttHeatingRule):
         more_than_max = []
         less_than_min = []
         for sensor in self.sensors_to_monitor:
-            temp = safe_read_sensor(self._zmw, sensor)
+            temp = safe_read_sensor(self._zmw, sensor, 'temperature')
             if temp is None:
                 continue
             if temp > self.max_temp:
@@ -250,7 +252,7 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
                  self.schedule.target_max_temp)
 
     def get_monitored_sensors(self):
-        return {self.sensor_name: safe_read_sensor(self._zmw, self.sensor_name)}
+        return {self.sensor_name: safe_read_sensor(self._zmw, self.sensor_name, 'temperature')}
 
     def set_z2m(self, z2m):
         self._zmw = z2m
@@ -283,7 +285,7 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
                     todaysched.set_now_from_rule(False, reason)
             return
 
-        temp = safe_read_sensor(self._zmw, self.sensor_name)
+        temp = safe_read_sensor(self._zmw, self.sensor_name, 'temperature')
 
         if temp is None and not self._is_active:
             # This sensor is not responding, ignore its rules
