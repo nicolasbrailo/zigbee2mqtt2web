@@ -21,9 +21,13 @@ class SnapOnMovement:
                 - snap_count_on_movement: Maximum snapshots to keep per camera (default 10)
         """
         self._cam_host = cfg['cam_host']
-        self._max_snaps = cfg.get('snap_count_on_movement', 10)
+        self._snaps_enabled = cfg.get('snap_on_movement_enabled')
+        self._max_snaps = cfg.get('snap_history_len', 10)
         self._snap_dir = None
         self._last_snap = None
+        if not self._snaps_enabled:
+            log.info("Cam %s: will not save snapshots on movement.", self._cam_host)
+            return
 
         base_path = cfg.get('snap_path_on_movement')
         if base_path is None:

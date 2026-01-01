@@ -3,12 +3,18 @@
     "cam_host": "10.0.0.20",
     "cam_user": "admin",
     "cam_pass": "",
-    "is_doorbell": true
+    "is_doorbell": true,
+    "video_on_movement": true,
+    "snap_on_movement_enabled": true,
+    "snap_history_len": 20
   },{
     "cam_host": "10.0.0.56",
     "cam_user": "admin",
     "cam_pass": "qwepoi",
-    "is_doorbell": false
+    "is_doorbell": false,
+    "video_on_movement": false,
+    "snap_on_movement_enabled": true,
+    "snap_history_len": 20
   }],
 
   "COMMENT": "Watchdog for cam subscription",

@@ -104,8 +104,11 @@ class ReolinkDoorbell(ABC):
         self.rtsp = None
         self._snap_manager = SnapOnMovement(cfg)
 
-        self._rec_on_movement = cfg.get('rec_on_movement', False)
-        self._rec_path = cfg['rec_path']
+        self._video_on_movement = cfg.get('video_on_movement', False)
+        self._rec_path = cfg.get('rec_path')
+        if self._video_on_movement and not self._rec_path:
+            self._video_on_movement = False
+            log.error("Cam %s requests video on movement, but rec_path not available. Recordings disabled.", self._cam_host)
         self._rec_retention_days = int(cfg['rec_retention_days'])
         self._rec_default_duration_secs = int(cfg['rec_default_duration_secs'])
 
@@ -375,7 +378,7 @@ class ReolinkDoorbell(ABC):
         """ Motion detect event fired. Higher motion level means more confidence. """
         log.info("Camera %s detected motion (level %d)", self._cam_host, motion_level)
         snap_path = self.get_snapshot()
-        if self._rec_on_movement:
+        if self._video_on_movement:
             self.start_recording()
         self.on_motion_detected(self._cam_host, snap_path, motion_level, cam_msg)
 
