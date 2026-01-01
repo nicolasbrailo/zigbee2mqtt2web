@@ -1,8 +1,15 @@
 {
-  "cam_host": "10.0.0.20",
-  "cam_user": "admin",
-  "cam_pass": "",
-  "is_doorbell": true,
+  "cameras": [{
+    "cam_host": "10.0.0.20",
+    "cam_user": "admin",
+    "cam_pass": "",
+    "is_doorbell": true
+  },{
+    "cam_host": "10.0.0.56",
+    "cam_user": "admin",
+    "cam_pass": "qwepoi",
+    "is_doorbell": false
+  }],
 
   "COMMENT": "Watchdog for cam subscription",
   "cam_subscription_check_interval_secs": 60,

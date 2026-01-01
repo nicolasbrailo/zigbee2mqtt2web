@@ -14,17 +14,15 @@ log = build_logger("ZmwDoorman")
 class ZmwDoorman(ZmwMqttServiceNoCommands):
     """Doorbell service that handles button press events and motion detection."""
 
-    # TODO:
-    # * Add command to send video
-    # * Telegram command to pause notifications
     def __init__(self, cfg, www, sched):
         super().__init__(cfg, sched, svc_deps=['ZmwSpeakerAnnounce', 'ZmwWhatsapp', 'ZmwTelegram',
-                                        'ZmwReolinkDoorbell', 'ZmwContactmon'])
+                                        'ZmwReolinkCams', 'ZmwContactmon'])
         self._cfg = cfg
         # Ensure required config keys exist
         _ = self._cfg["doorbell_announce_volume"]
         _ = self._cfg["doorbell_announce_sound"]
         _ = self._cfg["doorbell_contact_sensor"]
+        _ = self._cfg["doorbell_cam_host"]
 
         self._waiting_on_telegram_snap = None
         self._snap_request_timeout_secs = 5
@@ -54,7 +52,10 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
             case 'ZmwTelegram':
                 if subtopic.startswith("on_command/"):
                     self.on_telegram_cmd(subtopic[len("on_command/"):], msg)
-            case 'ZmwReolinkDoorbell':
+            case 'ZmwReolinkCams':
+                if msg.get("cam_host") != self._cfg["doorbell_cam_host"]:
+                    # Service announced event for camera we don't monitor, ignore
+                    return
                 match subtopic:
                     case "on_snap_ready":
                         self.on_snap_ready(msg)
@@ -86,7 +87,7 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
                     "First snap to arrive will be sent, others will be ignored."
                 )
             self._waiting_on_telegram_snap = time.time()
-            self.message_svc("ZmwReolinkDoorbell", "snap", {})
+            self.message_svc("ZmwReolinkCams", "snap", {"cam_host", self._cfg["doorbell_cam_host"]})
 
     def on_snap_ready(self, msg):
         """Handle camera snap ready event."""
