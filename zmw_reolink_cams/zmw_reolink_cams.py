@@ -12,7 +12,7 @@ from zzmw_lib.service_runner import service_runner
 from reolink import ReolinkDoorbell
 from nvrish import Nvr
 
-log = build_logger("ZmwReolinkDoorbell")
+log = build_logger("ZmwReolinkCams")
 
 class ZmwReolinkDoorbellCam(ReolinkDoorbell):
     """ Link Reolink events to mqtt b-casts """
@@ -82,7 +82,7 @@ class ZmwReolinkDoorbellCam(ReolinkDoorbell):
             'path': path,
         })
 
-class ZmwReolinkDoorbell(ZmwMqttService):
+class ZmwReolinkCam(ZmwMqttService):
     """ Bridge between Zmw services and a Reolink cam """
     DOORBELL_ALERT_DURATION_SECS = 60
 
@@ -167,4 +167,4 @@ class ZmwReolinkDoorbell(ZmwMqttService):
             case _:
                 pass
 
-service_runner(ZmwReolinkDoorbell)
+service_runner(ZmwReolinkCam)
