@@ -57,13 +57,13 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
                 wanted_things.add(s)
 
         # Register for updates
-        self._thing = create_virtual_thing(
+        self._weather = create_virtual_thing(
             name="Weather",
             description="Outside weather from Open-Meteo",
             thing_type="sensor",
             manufacturer="Open-Meteo"
         )
-        self._z2m.register_virtual_thing(self._thing)
+        self._z2m.register_virtual_thing(self._weather)
 
 
         self._z2m = Z2MProxy(cfg, self, sched,
