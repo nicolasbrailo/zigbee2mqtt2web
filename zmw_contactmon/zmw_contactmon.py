@@ -57,7 +57,18 @@ class ZmwContactmon(ZmwMqttService):
         return alerts
 
     def on_service_received_message(self, subtopic, msg):
-        pass
+        """ MQTT callback """
+        match subtopic:
+            case "skip_chimes":
+                self._exec.skip_chimes_with_timeout(msg.get('timeout'))
+            case "enable_chimes":
+                self._exec.enable_chimes()
+            case "publish_state":
+                self.publish_own_svc_message(f"state", self._svc_state())
+            case "state":
+                pass # Ignore echo
+            case _:
+                log.warning("Service received message it can't understand: topic='%s' msg=%s", subtopic, msg)
 
     def on_dep_published_message(self, svc_name, subtopic, msg):
         pass
