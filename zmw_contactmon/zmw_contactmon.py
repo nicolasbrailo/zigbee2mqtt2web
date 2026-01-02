@@ -61,8 +61,10 @@ class ZmwContactmon(ZmwMqttService):
         match subtopic:
             case "skip_chimes":
                 self._exec.skip_chimes_with_timeout(msg.get('timeout'))
+                self.publish_own_svc_message(f"state", self._svc_state())
             case "enable_chimes":
                 self._exec.enable_chimes()
+                self.publish_own_svc_message(f"state", self._svc_state())
             case "publish_state":
                 self.publish_own_svc_message(f"state", self._svc_state())
             case "state":
