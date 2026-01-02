@@ -102,6 +102,7 @@ class CheckTempsWithinRange(MqttHeatingRule):
         self.min_temp = cfg['min_temp']
         self.max_temp = cfg['max_temp']
         self.sensors_to_monitor = cfg['sensors']
+        self.metric = cfg['metric']
 
         if not isinstance(self.min_temp, int) or not isinstance(self.max_temp, int):
             raise ValueError("Config error: min and max temp must be ints")
@@ -121,7 +122,7 @@ class CheckTempsWithinRange(MqttHeatingRule):
         log.info("\t- turn on if temp < %d", self.min_temp)
 
     def get_monitored_sensors(self):
-        return {s: safe_read_sensor(self._zmw, s, 'temperature') for s in self.sensors_to_monitor}
+        return {s: safe_read_sensor(self._zmw, s, self.metric) for s in self.sensors_to_monitor}
 
     def set_z2m(self, z2m):
         self._zmw = z2m
@@ -139,7 +140,7 @@ class CheckTempsWithinRange(MqttHeatingRule):
         more_than_max = []
         less_than_min = []
         for sensor in self.sensors_to_monitor:
-            temp = safe_read_sensor(self._zmw, sensor, 'temperature')
+            temp = safe_read_sensor(self._zmw, sensor, self.metric)
             if temp is None:
                 continue
             if temp > self.max_temp:
@@ -240,6 +241,7 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
         self._is_active = False
 
         self.sensor_name = rule['sensor']
+        self.metric = rule['metric']
         self.schedule = ScheduledMinTargetTemp.SensorTimeSchedule.create_from_json_obj(
             self.sensor_name, rule)
 
@@ -252,7 +254,7 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
                  self.schedule.target_max_temp)
 
     def get_monitored_sensors(self):
-        return {self.sensor_name: safe_read_sensor(self._zmw, self.sensor_name, 'temperature')}
+        return {self.sensor_name: safe_read_sensor(self._zmw, self.sensor_name, self.metric)}
 
     def set_z2m(self, z2m):
         self._zmw = z2m
@@ -285,7 +287,7 @@ class ScheduledMinTargetTemp(MqttHeatingRule):
                     todaysched.set_now_from_rule(False, reason)
             return
 
-        temp = safe_read_sensor(self._zmw, self.sensor_name, 'temperature')
+        temp = safe_read_sensor(self._zmw, self.sensor_name, self.metric)
 
         if temp is None and not self._is_active:
             # This sensor is not responding, ignore its rules

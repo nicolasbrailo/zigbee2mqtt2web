@@ -10,6 +10,7 @@ from zzmw_lib.zmw_mqtt_service import ZmwMqttServiceNoCommands
 from zzmw_lib.service_runner import service_runner
 from zzmw_lib.logs import build_logger
 from zz2m.z2mproxy import Z2MProxy
+from zz2m.thing import create_virtual_thing
 
 from rules import create_rules_from_config
 from schedule_builder import ScheduleBuilder
@@ -56,7 +57,10 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
             for s in r.get_monitored_sensors().keys():
                 wanted_things.add(s)
 
-        # Register for updates
+        self._z2m = Z2MProxy(cfg, self, sched,
+                             cb_on_z2m_network_discovery=self._on_z2m_network_discovery,
+                             cb_is_device_interesting=lambda t: t.name in wanted_things)
+        # Register for updates on weather
         self._weather = create_virtual_thing(
             name="Weather",
             description="Outside weather from Open-Meteo",
@@ -65,10 +69,6 @@ class ZmwHeating(ZmwMqttServiceNoCommands):
         )
         self._z2m.register_virtual_thing(self._weather)
 
-
-        self._z2m = Z2MProxy(cfg, self, sched,
-                             cb_on_z2m_network_discovery=self._on_z2m_network_discovery,
-                             cb_is_device_interesting=lambda t: t.name in wanted_things)
 
     def get_service_alerts(self):
         if self._boiler is None:
