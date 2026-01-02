@@ -26,6 +26,7 @@ class MotionEventRecord:
     """Record of a motion detection event."""
     start_time: float
     duration_secs: Optional[float] = None
+    snap_path: Optional[str] = None
 
 
 @dataclass
@@ -75,6 +76,7 @@ class DoorStats:
 
             self._counters_date = today
             self._last_snap_path = cached.get("last_snap_path")
+            self._last_snap_time = cached.get("last_snap_time")
 
             # Restore histories
             self._doorbell_presses = deque(
@@ -83,7 +85,8 @@ class DoorStats:
                 maxlen=self.MAX_HISTORY_SIZE
             )
             self._motion_events = deque(
-                (MotionEventRecord(start_time=r["start_time"], duration_secs=r.get("duration_secs"))
+                (MotionEventRecord(start_time=r["start_time"], duration_secs=r.get("duration_secs"),
+                                   snap_path=r.get("snap_path"))
                  for r in cached.get("motion_events", [])),
                 maxlen=self.MAX_HISTORY_SIZE
             )
@@ -99,6 +102,7 @@ class DoorStats:
             self._motion_detection_count_today = 0
             self._counters_date = today
             self._last_snap_path = None
+            self._last_snap_time = None
             self._doorbell_presses = deque(maxlen=self.MAX_HISTORY_SIZE)
             self._motion_events = deque(maxlen=self.MAX_HISTORY_SIZE)
             self._door_open_events = deque(maxlen=self.MAX_HISTORY_SIZE)
@@ -110,12 +114,13 @@ class DoorStats:
             "doorbell_press_count_today": self._doorbell_press_count_today,
             "motion_detection_count_today": self._motion_detection_count_today,
             "last_snap_path": self._last_snap_path,
+            "last_snap_time": self._last_snap_time,
             "doorbell_presses": [
                 {"timestamp": r.timestamp, "snap_path": r.snap_path}
                 for r in self._doorbell_presses
             ],
             "motion_events": [
-                {"start_time": r.start_time, "duration_secs": r.duration_secs}
+                {"start_time": r.start_time, "duration_secs": r.duration_secs, "snap_path": r.snap_path}
                 for r in self._motion_events
             ],
             "door_open_events": [
@@ -145,11 +150,11 @@ class DoorStats:
                   self._doorbell_press_count_today, snap_path)
         self._save_state()
 
-    def record_motion_start(self):
+    def record_motion_start(self, snap_path: Optional[str] = None):
         """Record the start of a motion detection event."""
         self._motion_detection_count_today += 1
-        self._motion_in_progress = MotionEventRecord(start_time=time.time())
-        log.debug("Motion started, #%d today", self._motion_detection_count_today)
+        self._motion_in_progress = MotionEventRecord(start_time=time.time(), snap_path=snap_path)
+        log.debug("Motion started, #%d today, snap_path=%s", self._motion_detection_count_today, snap_path)
         self._save_state()
 
     def record_motion_end(self):
@@ -186,8 +191,13 @@ class DoorStats:
     def record_snap(self, snap_path: str):
         """Record a snap path (from any source)."""
         self._last_snap_path = snap_path
+        self._last_snap_time = time.time()
         log.debug("Recorded snap_path=%s", snap_path)
         self._save_state()
+
+    def get_last_snap_path(self) -> Optional[str]:
+        """Return the full path to the last snap, or None if not available."""
+        return self._last_snap_path
 
     @staticmethod
     def _path_to_filename(path: Optional[str]) -> Optional[str]:
@@ -198,16 +208,42 @@ class DoorStats:
 
     def get_stats(self) -> dict:
         """Return current statistics as a dictionary."""
+        # Build combined history
+        history = []
+        for r in self._doorbell_presses:
+            history.append({
+                "event_type": "doorbell",
+                "time": r.timestamp,
+                "snap": self._path_to_filename(r.snap_path),
+            })
+        for r in self._motion_events:
+            history.append({
+                "event_type": "motion",
+                "time": r.start_time,
+                "duration_secs": r.duration_secs,
+                "snap": self._path_to_filename(r.snap_path),
+            })
+        for r in self._door_open_events:
+            history.append({
+                "event_type": "door_open",
+                "time": r.start_time,
+                "duration_secs": r.duration_secs,
+            })
+        history.sort(key=lambda e: e["time"], reverse=True)
+
         return {
             "doorbell_press_count_today": self._doorbell_press_count_today,
             "motion_detection_count_today": self._motion_detection_count_today,
             "last_snap": self._path_to_filename(self._last_snap_path),
+            "last_snap_time": self._last_snap_time,
+            "history": history,
             "doorbell_presses": [
                 {"timestamp": r.timestamp, "snap": self._path_to_filename(r.snap_path)}
                 for r in self._doorbell_presses
             ],
             "motion_events": [
-                {"start_time": r.start_time, "duration_secs": r.duration_secs}
+                {"start_time": r.start_time, "duration_secs": r.duration_secs,
+                 "snap": self._path_to_filename(r.snap_path)}
                 for r in self._motion_events
             ],
             "door_open_events": [

@@ -33,13 +33,30 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
 
         self._door_open_scene = DoorOpenScene(cfg, self, sched)
         self._door_stats = DoorStats(sched)
-        self._snap_directory = None
+
+        # Initialize snap directory from persisted last snap path
+        last_snap_path = self._door_stats.get_last_snap_path()
+        if last_snap_path:
+            self._snap_directory = os.path.dirname(last_snap_path)
+            log.info("Restored snap directory from persisted state: %s", self._snap_directory)
+        else:
+            self._snap_directory = None
 
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
+        www.serve_url('/get_cams_svc_url', self._get_cams_svc_url)
+        www.serve_url('/get_contactmon_svc_url', self._get_contactmon_svc_url)
         www.serve_url('/stats', self._door_stats.get_stats)
         www.serve_url('/get_snap/<filename>', self._get_snap)
+        www.serve_url('/request_snap', self._request_snap, methods=['PUT'])
         self._public_url_base = www.register_www_dir(www_path)
 
+    def _get_cams_svc_url(self):
+        url = self.get_known_services().get("ZmwReolinkCams", {}).get("www")
+        return jsonify({"url": url})
+
+    def _get_contactmon_svc_url(self):
+        url = self.get_known_services().get("ZmwContactmon", {}).get("www")
+        return jsonify({"url": url})
 
     def on_service_came_up(self, service_name):
         if service_name == "ZmwTelegram":
@@ -101,8 +118,14 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
 
     def on_snap_ready(self, msg):
         """Handle camera snap ready event."""
+        if 'snap_path' not in msg:
+            log.error("Bad message format for snap_ready, missing path. Message: %s", msg)
+            return
+        self._update_snap_directory(msg['snap_path'])
+        self._door_stats.record_snap(msg['snap_path'])
+
         if self._waiting_on_telegram_snap is None:
-            log.debug("Received snap_ready command but this service didn't request it, will ignore")
+            log.debug("Received snap_ready command but it wasn't a Telegram request, will not send overt msg")
             return
 
         snap_rq_t = time.time() - self._waiting_on_telegram_snap
@@ -114,14 +137,8 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
             self._waiting_on_telegram_snap = None
             return
 
-        if 'snap_path' not in msg:
-            log.error("Bad message format for snap_ready, missing path. Message: %s", msg)
-            return
-
         log.info("Received camera snap, sending over Telegram")
-        self._update_snap_directory(msg['snap_path'])
         self.message_svc("ZmwTelegram", "send_photo", {'path': msg['snap_path']})
-        self._door_stats.record_snap(msg['snap_path'])
         self._waiting_on_telegram_snap = None
 
     def on_doorbell_button_pressed(self, msg):
@@ -148,13 +165,14 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
     def on_door_motion_detected(self, msg):
         """Handle door motion detection event."""
         log.info("Door reports motion! Sending snap over WA")
-        self._update_snap_directory(msg.get('path_to_img'))
+        snap_path = msg.get('path_to_img')
+        self._update_snap_directory(snap_path)
         self.message_svc("ZmwWhatsapp", "send_photo",
                          {'path': msg['path_to_img'], 'msg': "Motion detected"})
         self._door_open_scene.pet_timer()
-        self._door_stats.record_motion_start()
-        if 'path_to_img' in msg:
-            self._door_stats.record_snap(msg['path_to_img'])
+        self._door_stats.record_motion_start(snap_path)
+        if snap_path:
+            self._door_stats.record_snap(snap_path)
 
     def on_door_motion_cleared(self):
         """Handle door motion cleared event."""
@@ -188,5 +206,11 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
             return jsonify({'error': 'Snap not found'}), 404
 
         return send_file(snap_path, mimetype='image/jpeg')
+
+    def _request_snap(self):
+        """Request a new snap from the doorbell camera."""
+        log.info("User requested new snap via web UI")
+        self.message_svc("ZmwReolinkCams", "snap", {"cam_host": self._cfg["doorbell_cam_host"]})
+        return jsonify({'status': 'ok'})
 
 service_runner(ZmwDoorman)
