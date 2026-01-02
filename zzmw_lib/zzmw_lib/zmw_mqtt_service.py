@@ -144,9 +144,10 @@ class ZmwMqttService(ZmwMqttBase):
         if not healthy_changed:
             return
         self._all_deps_alive = now_healthy
-        if self._all_deps_alive and not self._first_start_ran:
-            self._first_start_ran = True
-            self.on_all_service_deps_running()
+        if self._all_deps_alive:
+            if not self._first_start_ran:
+                self._first_start_ran = True
+                self.on_all_service_deps_running()
         else:
             self.on_service_deps_missing(missing_svcs)
 
