@@ -176,13 +176,13 @@ function TTSAnnounceSection(props) {
   );
 }
 
-function ContactMonSection(props) {
+function DoormanSection(props) {
   return (
-    <section id="contactmon-section">
-      <a className="section-badge" href={ProxiedServices.get('ZmwContactmon')}><img src="/ZmwContactmon/favicon.ico"/></a>
+    <section id="doorman-section">
+      <a className="section-badge" href={ProxiedServices.get('ZmwDoorman')}><img src="/ZmwDoorman/favicon.ico"/></a>
       {React.createElement(
-        ContactMonitor,
-        ContactMonitor.buildProps('/ZmwContactmon'))}
+        DoorMan,
+        DoorMan.buildProps('/ZmwDoorman'))}
     </section>
   );
 }
@@ -194,17 +194,6 @@ function MqttHeatingSection(props) {
       {React.createElement(
         HeatingControls,
         HeatingControls.buildProps('/ZmwHeating'))}
-    </section>
-  );
-}
-
-function ReolinkCamsSection(props) {
-  return (
-    <section id="reolink-cams-section">
-      <a className="section-badge" href={ProxiedServices.get('ZmwReolinkCams')}><img src="/ZmwReolinkCams/favicon.ico"/></a>
-      {React.createElement(
-        CamViewer,
-        CamViewer.buildProps('/ZmwReolinkCams', ProxiedServices.get('ZmwReolinkCams')))}
     </section>
   );
 }
@@ -320,18 +309,16 @@ function Dashboard(props) {
 
       <section id="zmw_other_services">
         { renderSvcBtn('Shout', 'ZmwSpeakerAnnounce') }
-        { renderSvcBtn('Door', 'ZmwContactmon') }
+        { renderSvcBtn('Door', 'ZmwDoorman') }
         { renderSvcBtn('Heat', 'ZmwHeating') }
-        { renderSvcBtn('Cams', 'ZmwReolinkCams') }
         { renderSvcBtn('Sonos', 'ZmwSonosCtrl') }
         { renderIcoBtn('⚙', '/settings.ico') }
       </section>
 
       <div ref={contentRef}>
         {expandedSection === 'Shout' && <TTSAnnounceSection />}
-        {expandedSection === 'Door' && <ContactMonSection />}
+        {expandedSection === 'Door' && <DoormanSection />}
         {expandedSection === 'Heat' && <MqttHeatingSection />}
-        {expandedSection === 'Cams' && <ReolinkCamsSection />}
         {expandedSection === 'Sonos' && <SonosCtrlSection />}
         {expandedSection === '⚙' && <ConfigSection />}
       </div>

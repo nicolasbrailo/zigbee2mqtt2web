@@ -8,10 +8,9 @@ install_svc::
 
 rebuild_ui::
 	cat \
-		../zmw_contactmon/www/app.js \
+		../zmw_doorman/www/app.js \
 		../zmw_heating/www/app.js \
 		../zmw_lights/www/app.js \
-		../zmw_reolink_cams/www/app.js \
 		../zmw_sensormon/www/app.js \
 		../zmw_sonos_ctrl/www/app.js \
 		../zmw_speaker_announce/www/app.js \

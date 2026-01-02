@@ -1,7 +1,8 @@
 class DoorMan extends React.Component {
-  static buildProps() {
+  static buildProps(api_base_path = '') {
     return {
       key: 'DoorMan',
+      api_base_path: api_base_path,
     };
   }
 
@@ -40,14 +41,14 @@ class DoorMan extends React.Component {
   }
 
   fetchStats() {
-    mJsonGet('/stats', (res) => {
+    mJsonGet(`${this.props.api_base_path}/stats`, (res) => {
       this.setState({ stats: res });
     });
   }
 
   requestSnap() {
     this.setState({ snapLoading: true, snapKey: this.state.snapKey + 1 });
-    fetch('/request_snap', { method: 'PUT' });
+    fetch(`${this.props.api_base_path}/request_snap`, { method: 'PUT' });
     setTimeout(() => {
       this.setState({ snapLoading: false, snapKey: this.state.snapKey + 1 });
       this.fetchStats();
@@ -55,7 +56,7 @@ class DoorMan extends React.Component {
   }
 
   openLinkedService(url_cb) {
-    mJsonGet(url_cb, (res) => {
+    mJsonGet(`${this.props.api_base_path}${url_cb}`, (res) => {
       if (res.url) {
         window.open(res.url, '_blank');
       } else {
@@ -68,7 +69,7 @@ class DoorMan extends React.Component {
   openContactmonService() { this.openLinkedService('/get_contactmon_svc_url'); }
 
   fetchContactmonState() {
-    mJsonGet('/contactmon_state', (res) => {
+    mJsonGet(`${this.props.api_base_path}/contactmon_state`, (res) => {
       this.handleContactmonState(res);
     });
   }
@@ -99,7 +100,7 @@ class DoorMan extends React.Component {
   }
 
   skipChimes() {
-    fetch('/skip_chimes', { method: 'PUT' })
+    fetch(`${this.props.api_base_path}/skip_chimes`, { method: 'PUT' })
       .then(res => res.json())
       .then(res => {
         if (res.error || !res.skipping_chimes_timeout_secs) {
@@ -139,7 +140,7 @@ class DoorMan extends React.Component {
               <td>{e.event_type}</td>
               <td>{this.formatTimestamp(e.time)}</td>
               <td>{e.duration_secs !== undefined ? this.formatDuration(e.duration_secs) : '-'}</td>
-              <td>{e.snap ? <a href={`/get_snap/${e.snap}`} target="_blank">{e.snap}</a> : '-'}</td>
+              <td>{e.snap ? <a href={`${this.props.api_base_path}/get_snap/${e.snap}`} target="_blank">{e.snap}</a> : '-'}</td>
             </tr>
           ))}
         </tbody>
@@ -157,13 +158,17 @@ class DoorMan extends React.Component {
     return (
       <div>
         <button onClick={this.requestSnap} disabled={this.state.snapLoading}>
-          <img src="new_snap.ico"/>
+          <img src={`${this.props.api_base_path}/new_snap.ico`} />
           {this.state.snapLoading ? 'Loading...' : 'New Snap'}
         </button>
-        <button onClick={this.openCamsService}><img src="cams.ico"/>Cameras</button>
-        <button onClick={this.openContactmonService}><img src="contactmon.ico"/>Contact</button>
+        <button onClick={this.openCamsService}>
+          <img src={`${this.props.api_base_path}/cams.ico`} />Cameras
+        </button>
+        <button onClick={this.openContactmonService}>
+          <img src={`${this.props.api_base_path}/contactmon.ico`} />Contact
+        </button>
         <button className={this.state.skipChimesRemaining? "warn" : ""} onClick={this.skipChimes}>
-          <img src="silence.ico"/>
+          <img src={`${this.props.api_base_path}/silence.ico`} />
           { this.state.skipChimesRemaining ?
             `Skipping chimes (${this.state.skipChimesRemaining}s)` :
             'Skip chimes' }
@@ -171,8 +176,10 @@ class DoorMan extends React.Component {
         {stats.last_snap && (
           <div>
             {!this.state.snapLoading && (
-              <a href={`/get_snap/${stats.last_snap}`} target="_blank">
-                <img key={this.state.snapKey} src={`/get_snap/${stats.last_snap}?t=${this.state.snapKey}`} alt="Last snap" style={{maxWidth: '100%', maxHeight: '300px'}} />
+              <a href={`${this.props.api_base_path}/get_snap/${stats.last_snap}`} target="_blank">
+                <img key={this.state.snapKey} 
+                     src={`${this.props.api_base_path}/get_snap/${stats.last_snap}?t=${this.state.snapKey}`}
+                     alt="Last snap" style={{maxWidth: '100%', maxHeight: '300px'}} />
               </a>
             )}
           </div>
