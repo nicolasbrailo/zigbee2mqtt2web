@@ -101,6 +101,20 @@ def _create_www_server(AppClass, cfg):
         def log_date_time_string(self):
             return ""
 
+        def log_error(self, format, *args):
+            # Suppress errors from HTTPS requests hitting HTTP server
+            if args:
+                msg = str(args)
+                if 'Bad request version' in msg or 'Bad HTTP/0.9 request type' in msg:
+                    return
+            super().log_error(format, *args)
+
+        def log_request(self, code='-', size='-'):
+            # Suppress logs for TLS handshake attempts (\x16\x03 is TLS record header)
+            if hasattr(self, 'requestline') and self.requestline.startswith('\x16\x03'):
+                return
+            super().log_request(code, size)
+
     flaskapp = Flask(AppClass.__name__)
     flaskapp.config['SEND_FILE_MAX_AGE_DEFAULT'] = 7 * 86400 # N days cache for static files
 
