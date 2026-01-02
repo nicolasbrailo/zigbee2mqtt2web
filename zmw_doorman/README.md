@@ -2,6 +2,8 @@
 
 Doorbell event handler and notification coordinator.
 
+![](README_screenshot.png)
+
 Orchestrates door events:
 * plays announcement sounds on doorbell button press
 * sends photos via WhatsApp/Telegram when cam detects motion

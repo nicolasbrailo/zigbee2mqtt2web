@@ -2,6 +2,7 @@
 import time
 import os
 import pathlib
+import threading
 
 from flask import send_file, jsonify
 
@@ -34,6 +35,9 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
         self._door_open_scene = DoorOpenScene(cfg, self, sched)
         self._door_stats = DoorStats(sched)
 
+        self._contactmon_state_baton = threading.Event()
+        self._contactmon_state = None
+
         # Initialize snap directory from persisted last snap path
         last_snap_path = self._door_stats.get_last_snap_path()
         if last_snap_path:
@@ -45,9 +49,11 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         www.serve_url('/get_cams_svc_url', self._get_cams_svc_url)
         www.serve_url('/get_contactmon_svc_url', self._get_contactmon_svc_url)
+        www.serve_url('/contactmon_state', self._get_contactmon_state)
         www.serve_url('/stats', self._door_stats.get_stats)
         www.serve_url('/get_snap/<filename>', self._get_snap)
         www.serve_url('/request_snap', self._request_snap, methods=['PUT'])
+        www.serve_url('/skip_chimes', self._skip_chimes, methods=['PUT'])
         self._public_url_base = www.register_www_dir(www_path)
 
     def _get_cams_svc_url(self):
@@ -57,6 +63,21 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
     def _get_contactmon_svc_url(self):
         url = self.get_known_services().get("ZmwContactmon", {}).get("www")
         return jsonify({"url": url})
+
+    def _get_contactmon_state(self):
+        self._contactmon_state_baton.clear()
+        self.message_svc("ZmwContactmon", "publish_state", {})
+        if not self._contactmon_state_baton.wait(timeout=3):
+            return jsonify({'error': 'Timeout waiting for contactmon state'}), 504
+        return jsonify(self._contactmon_state)
+
+    def _skip_chimes(self):
+        log.info("User requested to skip chimes via web UI")
+        self._contactmon_state_baton.clear()
+        self.message_svc("ZmwContactmon", "skip_chimes", {})
+        if not self._contactmon_state_baton.wait(timeout=3):
+            return jsonify({'error': 'Timeout waiting for contactmon state'}), 504
+        return jsonify(self._contactmon_state)
 
     def on_service_came_up(self, service_name):
         if service_name == "ZmwTelegram":
@@ -68,7 +89,11 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
         log.debug("%s.%s: %s", svc_name, subtopic, msg)
         match svc_name:
             case 'ZmwContactmon':
-                self.on_contact_report(subtopic, msg)
+                if subtopic.startswith("state"):
+                    self._contactmon_state = msg
+                    self._contactmon_state_baton.set()
+                else:
+                    self.on_contact_report(subtopic, msg)
             case 'ZmwSpeakerAnnounce':
                 pass
             case 'ZmwWhatsapp':
@@ -208,7 +233,6 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
         return send_file(snap_path, mimetype='image/jpeg')
 
     def _request_snap(self):
-        """Request a new snap from the doorbell camera."""
         log.info("User requested new snap via web UI")
         self.message_svc("ZmwReolinkCams", "snap", {"cam_host": self._cfg["doorbell_cam_host"]})
         return jsonify({'status': 'ok'})

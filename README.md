@@ -150,6 +150,8 @@ This service integrates with all other ZMW services running in the system to
 
 Doorbell event handler and notification coordinator.
 
+![](zmw_doorman/README_screenshot.png)
+
 Orchestrates door events:
 * plays announcement sounds on doorbell button press
 * sends photos via WhatsApp/Telegram when cam detects motion

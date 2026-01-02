@@ -11,19 +11,32 @@ class DoorMan extends React.Component {
       stats: null,
       snapLoading: false,
       snapKey: 0,
+      skipChimesRemaining: null,
     };
+    this.skipChimesInterval = null;
     this.fetchStats = this.fetchStats.bind(this);
     this.requestSnap = this.requestSnap.bind(this);
     this.openCamsService = this.openCamsService.bind(this);
     this.openContactmonService = this.openContactmonService.bind(this);
+    this.skipChimes = this.skipChimes.bind(this);
+    this.fetchContactmonState = this.fetchContactmonState.bind(this);
+    this.handleContactmonState = this.handleContactmonState.bind(this);
   }
 
   async componentDidMount() {
     this.fetchStats();
+    this.fetchContactmonState();
+  }
+
+  componentWillUnmount() {
+    if (this.skipChimesInterval) {
+      clearInterval(this.skipChimesInterval);
+    }
   }
 
   on_app_became_visible() {
     this.fetchStats();
+    this.fetchContactmonState();
   }
 
   fetchStats() {
@@ -38,23 +51,63 @@ class DoorMan extends React.Component {
     setTimeout(() => {
       this.setState({ snapLoading: false, snapKey: this.state.snapKey + 1 });
       this.fetchStats();
-    }, 500);
+    }, 1500);
   }
 
-  openCamsService() {
-    mJsonGet('/get_cams_svc_url', (res) => {
+  openLinkedService(url_cb) {
+    mJsonGet(url_cb, (res) => {
       if (res.url) {
         window.open(res.url, '_blank');
+      } else {
+        showGlobalError("Service has no known URL");
       }
     });
   }
 
-  openContactmonService() {
-    mJsonGet('/get_contactmon_svc_url', (res) => {
-      if (res.url) {
-        window.open(res.url, '_blank');
-      }
+  openCamsService() { this.openLinkedService('/get_cams_svc_url'); }
+  openContactmonService() { this.openLinkedService('/get_contactmon_svc_url'); }
+
+  fetchContactmonState() {
+    mJsonGet('/contactmon_state', (res) => {
+      this.handleContactmonState(res);
     });
+  }
+
+  handleContactmonState(res) {
+    if (this.skipChimesInterval) {
+      clearInterval(this.skipChimesInterval);
+      this.skipChimesInterval = null;
+    }
+
+    if (res.skipping_chimes && res.skipping_chimes_timeout_secs) {
+      this.setState({ skipChimesRemaining: Math.ceil(res.skipping_chimes_timeout_secs) });
+      this.skipChimesInterval = setInterval(() => {
+        this.setState((prevState) => {
+          const remaining = prevState.skipChimesRemaining - 1;
+          if (remaining <= 0) {
+            clearInterval(this.skipChimesInterval);
+            this.skipChimesInterval = null;
+            this.fetchContactmonState();
+            return { skipChimesRemaining: null };
+          }
+          return { skipChimesRemaining: remaining };
+        });
+      }, 1000);
+    } else {
+      this.setState({ skipChimesRemaining: null });
+    }
+  }
+
+  skipChimes() {
+    fetch('/skip_chimes', { method: 'PUT' })
+      .then(res => res.json())
+      .then(res => {
+        if (res.error || !res.skipping_chimes_timeout_secs) {
+          showGlobalError("Can't skip chimes");
+          return;
+        }
+        this.handleContactmonState(res);
+      });
   }
 
   formatTimestamp(ts) {
@@ -103,14 +156,18 @@ class DoorMan extends React.Component {
 
     return (
       <div>
-        {stats.door_open_in_progress ?
-          <p className="warn">Door open</p> :
-          <p className="hint">Door closed</p>}
         <button onClick={this.requestSnap} disabled={this.state.snapLoading}>
+          <img src="new_snap.ico"/>
           {this.state.snapLoading ? 'Loading...' : 'New Snap'}
         </button>
-        <button onClick={this.openCamsService}>Cameras</button>
-        <button onClick={this.openContactmonService}>Contact</button>
+        <button onClick={this.openCamsService}><img src="cams.ico"/>Cameras</button>
+        <button onClick={this.openContactmonService}><img src="contactmon.ico"/>Contact</button>
+        <button className={this.state.skipChimesRemaining? "warn" : ""} onClick={this.skipChimes}>
+          <img src="silence.ico"/>
+          { this.state.skipChimesRemaining ?
+            `Skipping chimes (${this.state.skipChimesRemaining}s)` :
+            'Skip chimes' }
+        </button>
         {stats.last_snap && (
           <div>
             {!this.state.snapLoading && (
@@ -118,12 +175,15 @@ class DoorMan extends React.Component {
                 <img key={this.state.snapKey} src={`/get_snap/${stats.last_snap}?t=${this.state.snapKey}`} alt="Last snap" style={{maxWidth: '100%', maxHeight: '300px'}} />
               </a>
             )}
-            <p>Door cam snap @ {this.formatTimestamp(stats.last_snap_time)}</p>
           </div>
         )}
-        <p>{stats.motion_in_progress ? 'Motion detected' : ''}</p>
-        <p>Doorbell rang {stats.doorbell_press_count_today} times.</p>
-        <p>{stats.motion_detection_count_today} motion detection events.</p>
+        <div className={stats.door_open_in_progress || stats.motion_in_progress? "card warn" : "card hint"}>
+          <p>{stats.door_open_in_progress? "Door open" : "Door closed"}
+            {stats.motion_in_progress ? ', motion detected' : ''}
+          </p>
+          <p>Today: Doorbell rang {stats.doorbell_press_count_today} times, {stats.motion_detection_count_today} motion events.
+             Snap @ {this.formatTimestamp(stats.last_snap_time)}</p>
+        </div>
 
         <details>
         <summary>History</summary>
