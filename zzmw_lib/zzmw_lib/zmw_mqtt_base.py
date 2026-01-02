@@ -3,6 +3,7 @@ from .logs import build_logger
 from paho.mqtt import publish as mqtt_bcast
 import json
 import logging
+from datetime import datetime, date
 import paho.mqtt.client as mqtt
 import threading
 
@@ -69,7 +70,11 @@ class ZmwMqttBase(ABC):
 
     def broadcast(self, topic, msg):
         """ JSONises and broadcasts a message to MQTT """
-        msg = json.dumps(msg)
+        def _serialize(obj):
+            if isinstance(obj, (datetime, date)):
+                return obj.isoformat()
+            raise TypeError(f"Type {type(obj)} not serializable")
+        msg = json.dumps(msg, default=_serialize)
         mqtt_bcast.single(qos=1, hostname=self._mqtt_ip, port=self._mqtt_port, topic=topic, payload=msg)
 
     def on_service_discovery_ping(self):
