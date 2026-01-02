@@ -3,6 +3,8 @@ import time
 import os
 import pathlib
 
+from flask import send_file, jsonify
+
 from zzmw_lib.service_runner import service_runner
 from zzmw_lib.zmw_mqtt_service import ZmwMqttServiceNoCommands
 from zzmw_lib.logs import build_logger
@@ -31,9 +33,11 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
 
         self._door_open_scene = DoorOpenScene(cfg, self, sched)
         self._door_stats = DoorStats(sched)
+        self._snap_directory = None
 
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         www.serve_url('/stats', self._door_stats.get_stats)
+        www.serve_url('/get_snap/<filename>', self._get_snap)
         self._public_url_base = www.register_www_dir(www_path)
 
 
@@ -115,6 +119,7 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
             return
 
         log.info("Received camera snap, sending over Telegram")
+        self._update_snap_directory(msg['snap_path'])
         self.message_svc("ZmwTelegram", "send_photo", {'path': msg['snap_path']})
         self._door_stats.record_snap(msg['snap_path'])
         self._waiting_on_telegram_snap = None
@@ -128,6 +133,7 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
                             'public_www': url})
 
         snap_path = msg.get('snap_path')
+        self._update_snap_directory(snap_path)
         self._door_stats.record_doorbell_press(snap_path)
 
         if snap_path is None:
@@ -142,6 +148,7 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
     def on_door_motion_detected(self, msg):
         """Handle door motion detection event."""
         log.info("Door reports motion! Sending snap over WA")
+        self._update_snap_directory(msg.get('path_to_img'))
         self.message_svc("ZmwWhatsapp", "send_photo",
                          {'path': msg['path_to_img'], 'msg': "Motion detected"})
         self._door_open_scene.pet_timer()
@@ -158,5 +165,28 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
         """Handle door motion timeout event."""
         log.warning("Motion event timedout, no vacancy reported")
         self._door_stats.record_motion_end()
+
+    def _update_snap_directory(self, snap_path):
+        """Update the snap directory from a full snap path."""
+        if snap_path is None:
+            return
+        if self._snap_directory is None:
+            self._snap_directory = os.path.dirname(snap_path)
+            log.info("Snap directory discovered: %s", self._snap_directory)
+
+    def _get_snap(self, filename):
+        """Serve a snap file by filename."""
+        if self._snap_directory is None:
+            return jsonify({'error': 'No snap directory available yet'}), 503
+
+        # Prevent path traversal attacks
+        if '/' in filename or '\\' in filename or '..' in filename:
+            return jsonify({'error': 'Invalid filename'}), 400
+
+        snap_path = os.path.join(self._snap_directory, filename)
+        if not os.path.isfile(snap_path):
+            return jsonify({'error': 'Snap not found'}), 404
+
+        return send_file(snap_path, mimetype='image/jpeg')
 
 service_runner(ZmwDoorman)

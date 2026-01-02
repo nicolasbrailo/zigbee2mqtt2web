@@ -255,10 +255,10 @@ class TestDoorStats:
 
         assert result['doorbell_press_count_today'] == 1
         assert result['motion_detection_count_today'] == 1
-        assert result['last_snap_path'] == '/snap1.jpg'
+        assert result['last_snap'] == 'snap1.jpg'
         assert len(result['doorbell_presses']) == 1
         assert result['doorbell_presses'][0]['timestamp'] == 1000.0
-        assert result['doorbell_presses'][0]['snap_path'] == '/snap1.jpg'
+        assert result['doorbell_presses'][0]['snap'] == 'snap1.jpg'
         assert len(result['motion_events']) == 1
         assert result['motion_events'][0]['start_time'] == 2000.0
         assert result['motion_events'][0]['duration_secs'] == 10.0

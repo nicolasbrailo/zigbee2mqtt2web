@@ -1,4 +1,5 @@
 """Door statistics tracking for ZmwDoorman service."""
+import os
 import time
 from collections import deque
 from dataclasses import dataclass
@@ -188,14 +189,21 @@ class DoorStats:
         log.debug("Recorded snap_path=%s", snap_path)
         self._save_state()
 
+    @staticmethod
+    def _path_to_filename(path: Optional[str]) -> Optional[str]:
+        """Convert a full path to just the filename."""
+        if path is None:
+            return None
+        return os.path.basename(path)
+
     def get_stats(self) -> dict:
         """Return current statistics as a dictionary."""
         return {
             "doorbell_press_count_today": self._doorbell_press_count_today,
             "motion_detection_count_today": self._motion_detection_count_today,
-            "last_snap_path": self._last_snap_path,
+            "last_snap": self._path_to_filename(self._last_snap_path),
             "doorbell_presses": [
-                {"timestamp": r.timestamp, "snap_path": r.snap_path}
+                {"timestamp": r.timestamp, "snap": self._path_to_filename(r.snap_path)}
                 for r in self._doorbell_presses
             ],
             "motion_events": [
