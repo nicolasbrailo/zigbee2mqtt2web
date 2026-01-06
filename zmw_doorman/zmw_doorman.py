@@ -37,6 +37,7 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
 
         self._contactmon_state_baton = threading.Event()
         self._contactmon_state = None
+        self._last_motion_detected_time = 0
 
         # Initialize snap directory from persisted last snap path
         last_snap_path = self._door_stats.get_last_snap_path()
@@ -189,15 +190,25 @@ class ZmwDoorman(ZmwMqttServiceNoCommands):
 
     def on_door_motion_detected(self, msg):
         """Handle door motion detection event."""
-        log.info("Door reports motion! Sending snap over WA")
+        # Update history and stats (unconditionally, as this doesn't spam messages, the user needs to ask for it)
         snap_path = msg.get('path_to_img')
-        self._update_snap_directory(snap_path)
-        self.message_svc("ZmwWhatsapp", "send_photo",
-                         {'path': msg['path_to_img'], 'msg': "Motion detected"})
         self._door_open_scene.pet_timer()
         self._door_stats.record_motion_start(snap_path)
+        self._update_snap_directory(snap_path)
         if snap_path:
             self._door_stats.record_snap(snap_path)
+
+        # Rate limit (update last motion time unconditionally, so that we extend the rate limit if messages
+        # keep spamming)
+        dt = time.time() - self._last_motion_detected_time
+        self._last_motion_detected_time = time.time()
+        if dt < 120:
+            log.debug("Motion detected but rate limited (last event %.1fs ago)", dt)
+            return
+
+        log.info("Door reports motion! Sending snap over WA")
+        self.message_svc("ZmwWhatsapp", "send_photo",
+                         {'path': msg['path_to_img'], 'msg': "Motion detected"})
 
     def on_door_motion_cleared(self):
         """Handle door motion cleared event."""
