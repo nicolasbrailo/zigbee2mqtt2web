@@ -67,10 +67,8 @@ class ZmwContactmon(ZmwMqttService):
                 self.publish_own_svc_message(f"state", self._svc_state())
             case "publish_state":
                 self.publish_own_svc_message(f"state", self._svc_state())
-            case "state":
-                pass # Ignore echo
             case _:
-                log.warning("Service received message it can't understand: topic='%s' msg=%s", subtopic, msg)
+                pass # Ignore echos
 
     def on_dep_published_message(self, svc_name, subtopic, msg):
         pass
