@@ -21,6 +21,8 @@ class ZmwLights(ZmwMqttNullSvc):
         # Set up www directory and endpoints
         www_path = os.path.join(pathlib.Path(__file__).parent.resolve(), 'www')
         www.register_www_dir(www_path)
+        www.serve_url('/all_lights_on/prefix/<prefix>', self._all_lights_on, methods=['PUT'])
+        www.serve_url('/all_lights_off/prefix/<prefix>', self._all_lights_off, methods=['PUT'])
         www.serve_url('/get_lights', lambda: [l.get_json_state() for l in self._lights])
         www.serve_url('/get_switches', lambda: [s.get_json_state() for s in self._switches])
 
@@ -66,5 +68,20 @@ class ZmwLights(ZmwMqttNullSvc):
             log.info("Discovered light %s", light.name)
         for switch in self._switches:
             log.info("Discovered switch %s", switch.name)
+
+    def _all_lights_on(self, prefix):
+        ls = self._z2m.get_things_if(lambda t: t.thing_type == 'light' and t.name.startswith(prefix))
+        for l in ls:
+            l.set_brightness_pct(80)
+            l.turn_on()
+        self._z2m.broadcast_things(ls)
+        return {}
+
+    def _all_lights_off(self, prefix):
+        ls = self._z2m.get_things_if(lambda t: t.thing_type == 'light' and t.name.startswith(prefix))
+        for l in ls:
+            l.turn_off()
+        self._z2m.broadcast_things(ls)
+        return {}
 
 service_runner(ZmwLights)

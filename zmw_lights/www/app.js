@@ -530,6 +530,14 @@ class MqttLights extends React.Component {
               <ul>
                 {(buttons.length > 0) && (
                   <li>
+                    <ZmwButton key={`${prefix}_All_On`}
+                               name={`${prefix}_All_On`}
+                               prefix={prefix}
+                               url={`${this.props.api_base_path}/all_lights_on/prefix/${prefix}`} />
+                    <ZmwButton key={`${prefix}_All_Off`}
+                               name={`${prefix}_All_Off`}
+                               prefix={prefix}
+                               url={`${this.props.api_base_path}/all_lights_off/prefix/${prefix}`} />
                   {buttons.map((t) => (
                     <ZmwButton key={t.name} name={t.data.name} url={t.data.url} prefix={prefix} />
                   ))}
