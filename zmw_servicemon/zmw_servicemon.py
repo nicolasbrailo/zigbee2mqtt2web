@@ -4,7 +4,8 @@ import pathlib
 import os
 import json
 import subprocess
-from datetime import datetime
+from collections import deque
+from datetime import datetime, timedelta
 
 from ansi2html import Ansi2HTMLConverter
 from flask import abort, request
@@ -32,6 +33,9 @@ class ZmwServicemon(ZmwMqttServiceMonitor):
 
         # Store list of systemd services to monitor from config
         self._systemd_services = cfg.get('systemd_services', [])
+
+        # Track recently sent error messages for deduplication (message_key, timestamp)
+        self._recent_messages = deque(maxlen=100)
 
         # Add configured systemd services to journal monitor
         for service_name in self._systemd_services:
@@ -145,8 +149,22 @@ class ZmwServicemon(ZmwMqttServiceMonitor):
         self._journal_monitor.monitor_unit(journal_name)
 
     def _on_service_logged_err(self, err):
-        # TODO: Forward to Telegram
-        pass
+        msg_key = (err.get('service'), err.get('message'))
+        now = datetime.now()
+
+        # Check if this message was sent in the last 7 days
+        cutoff = now - timedelta(days=7)
+        for i, (sent_key, sent_time) in enumerate(self._recent_messages):
+            if sent_key == msg_key and sent_time > cutoff:
+                # Message is a duplicate within the last 7 days
+                # Refresh timestamp so it will be ignored for another 7 days
+                del self._recent_messages[i]
+                self._recent_messages.append((msg_key, now))
+                return
+
+        self._recent_messages.append((msg_key, now))
+        msg = f"{err.get('service')} {err.get('priority_name')}: {err.get('message')}"
+        self._message_svc("ZmwTelegram", "send_text", {'msg': msg})
 
     def stop(self):
         """Stop the service and journal monitor"""

@@ -222,7 +222,7 @@ class JournalMonitor:
             return
 
         # Filter for warning and above: WARNING(4), ERR(3), CRIT(2), ALERT(1), EMERG(0)
-        if priority is not None and priority <= 4:
+        if priority is not None and priority <= 3:
             try:
                 self._on_error_log_callback(error_event)
             except BaseException: # pylint: disable=broad-exception-caught
